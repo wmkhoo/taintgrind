@@ -1,0 +1,2 @@
+Warning: silly arg (-1) to malloc()
+Warning: silly args (0,-1) to calloc()

@@ -1,0 +1,27 @@
+#! /bin/sh
+
+dir=`dirname $0`
+
+$dir/../../tests/filter_stderr_basic                    |
+
+# Anonymise addresses
+$dir/../../tests/filter_addresses                       |
+
+# Remove "Memcheck, ..." line and the following copyright line.
+sed "/^Memcheck, a memory error detector/ , /./ d" |
+
+# Replace exit_group() with exit(), because you can get either on Linux
+# depending on the system.
+perl -p -e "s/param exit_group\(status\)/param exit(status)/" |
+
+# Leak check filtering.
+sed "s/checked [0-9,]* bytes./checked ... bytes./" |
+
+# More leak check filtering.  For systems that do extra libc allocations
+# (eg. Darwin) there may be extra (reachable, and thus not shown) loss
+# records.  So we filter out the loss record numbers.
+perl -p -e "s/in loss record \d+ of \d+/in loss record ... of .../" |
+
+$dir/../../memcheck/tests/filter_memcheck "$@"
+
+exit 0

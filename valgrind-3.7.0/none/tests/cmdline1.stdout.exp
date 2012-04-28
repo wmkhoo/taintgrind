@@ -1,0 +1,93 @@
+usage: valgrind [options] prog-and-args
+
+  tool-selection option, with default in [ ]:
+    --tool=<name>             use the Valgrind tool named <name> [memcheck]
+
+  basic user options for all Valgrind tools, with defaults in [ ]:
+    -h --help                 show this message
+    --help-debug              show this message, plus debugging options
+    --version                 show version
+    -q --quiet                run silently; only print error msgs
+    -v --verbose              be more verbose -- show misc extra info
+    --trace-children=no|yes   Valgrind-ise child processes (follow execve)? [no]
+    --trace-children-skip=patt1,patt2,...    specifies a list of executables
+                              that --trace-children=yes should not trace into
+    --trace-children-skip-by-arg=patt1,patt2,...   same as --trace-children-skip=
+                              but check the argv[] entries for children, rather
+                              than the exe name, to make a follow/no-follow decision
+    --child-silent-after-fork=no|yes omit child output between fork & exec? [no]
+    --vgdb=no|yes|full        activate gdbserver? [yes]
+                              full is slower but provides precise watchpoint/step
+    --vgdb-error=<number>     invoke gdbserver after <number> errors [999999999]
+                              to get started quickly, use --vgdb-error=0
+                              and follow the on-screen directions
+    --track-fds=no|yes        track open file descriptors? [no]
+    --time-stamp=no|yes       add timestamps to log messages? [no]
+    --log-fd=<number>         log messages to file descriptor [2=stderr]
+    --log-file=<file>         log messages to <file>
+    --log-socket=ipaddr:port  log messages to socket ipaddr:port
+
+  user options for Valgrind tools that report errors:
+    --xml=yes                 emit error output in XML (some tools only)
+    --xml-fd=<number>         XML output to file descriptor
+    --xml-file=<file>         XML output to <file>
+    --xml-socket=ipaddr:port  XML output to socket ipaddr:port
+    --xml-user-comment=STR    copy STR verbatim into XML output
+    --demangle=no|yes         automatically demangle C++ names? [yes]
+    --num-callers=<number>    show <number> callers in stack traces [12]
+    --error-limit=no|yes      stop showing new errors if too many? [yes]
+    --error-exitcode=<number> exit code to return if errors found [0=disable]
+    --show-below-main=no|yes  continue stack traces below main() [no]
+    --suppressions=<filename> suppress errors described in <filename>
+    --gen-suppressions=no|yes|all    print suppressions for errors? [no]
+    --db-attach=no|yes        start debugger when errors detected? [no]
+    --db-command=<command>    command to start debugger [... -nw %f %p]
+    --input-fd=<number>       file descriptor for input [0=stdin]
+    --dsymutil=no|yes         run dsymutil on Mac OS X when helpful? [no]
+    --max-stackframe=<number> assume stack switch for SP changes larger
+                              than <number> bytes [2000000]
+    --main-stacksize=<number> set size of main thread's stack (in bytes)
+                              [use current 'ulimit' value]
+
+  user options for Valgrind tools that replace malloc:
+    --alignment=<number>      set minimum alignment of heap allocations [...]
+
+  uncommon user options for all Valgrind tools:
+    --fullpath-after=         (with nothing after the '=')
+                              show full source paths in call stacks
+    --fullpath-after=string   like --fullpath-after=, but only show the
+                              part of the path after 'string'.  Allows removal
+                              of path prefixes.  Use this flag multiple times
+                              to specify a set of prefixes to remove.
+    --smc-check=none|stack|all|all-non-file [stack]
+                              checks for self-modifying code: none, only for
+                              code found in stacks, for all code, or for all
+                              code except that from file-backed mappings
+    --read-var-info=yes|no    read debug info on stack and global variables
+                              and use it to print better error messages in
+                              tools that make use of it (Memcheck, Helgrind,
+                              DRD) [no]
+    --vgdb-poll=<number>      gdbserver poll max every <number> basic blocks [5000] 
+    --vgdb-shadow-registers=no|yes   let gdb see the shadow registers [no]
+    --vgdb-prefix=<prefix>    prefix for vgdb FIFOs [/tmp/vgdb-pipe]
+    --run-libc-freeres=no|yes free up glibc memory at exit on Linux? [yes]
+    --sim-hints=hint1,hint2,...  known hints:
+                                 lax-ioctls, enable-outer, fuse-compatible [none]
+    --kernel-variant=variant1,variant2,...  known variants: bproc [none]
+                              handle non-standard kernel variants
+    --show-emwarns=no|yes     show warnings about emulation limits? [no]
+    --require-text-symbol=:sonamepattern:symbolpattern    abort run if the
+                              stated shared object doesn't have the stated
+                              text symbol.  Patterns can contain ? and *.
+
+  user options for Nulgrind:
+    (none)
+
+  Extra options read from ~/.valgrindrc, $VALGRIND_OPTS, ./.valgrindrc
+
+  Nulgrind is Copyright (C) 2002-2011, and GNU GPL'd, by Nicholas Nethercote.
+  Valgrind is Copyright (C) 2000-2011, and GNU GPL'd, by Julian Seward et al.
+  LibVEX is Copyright (C) 2004-2011, and GNU GPL'd, by OpenWorks LLP et al.
+
+  Bug reports, feedback, admiration, abuse, etc, to: www.valgrind.org.
+
