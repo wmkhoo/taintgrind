@@ -2402,74 +2402,68 @@ void post_decode_string_primops( Char *aStr ){
 void post_decode_string_binops( Char *aStr ){
    Char aTmp1[128];
    Char aTmp2[128];
-//   Char aTmp3[128];
-//   Char aTmp4[128];
-   Char *pEquals;
-   Char *pChr;
-//   Int i;
+   Char aTmp3[128];
+   Char *pEquals, *pSpace;
+   Char *pTempVar, *pHex;
 
-   pEquals = VG_(strchr)( aStr, '=' );
+   // 0x15006 t20 = irop t25x1
+   //             ^--pEquals
+   // 0x15006 t28 = irop x0t20
+   //             ^--pEquals
+   pEquals = VG_(strstr)( aStr, " = " );
 
    tl_assert( pEquals );
-   pEquals++;
 
-   pChr = VG_(strchr)( pEquals, 'x' );
+   // 0x15006 t20 = irop t25x1
+   //                   ^--pSpace
+   // 0x15006 t28 = irop x0t20
+   //                   ^--pSpace
+   pSpace = VG_(strchr)( pEquals + 3, ' ' );
+   pTempVar = VG_(strchr)( pSpace, 't' );
+   pHex = VG_(strchr)( pSpace, 'x' );
 
-   if( pChr != NULL ){
-      VG_(strncpy)( aTmp1, aStr, pChr-aStr );
-      VG_(strncpy)( aTmp2, pChr, 127 );
+   tl_assert( pSpace );
+//   tl_assert( pTempVar );
+   tl_assert( pHex );
+
+   if( pTempVar && pTempVar < pHex ){
+
+      // 0x15006 t20 = irop t25x1
+      //                       ^--pHex
+      VG_(strncpy)( aTmp1, aStr, pHex-aStr );
+      aTmp1[pHex-aStr] = '\0';
+      // aTmp1: 0x15006 t20 = irop t25
+
+      VG_(strncpy)( aTmp2, pHex, VG_(strlen)(pHex) );
+      aTmp2[VG_(strlen)(pHex)] = '\0';
+      // aTmp2: x1
 
       tl_assert( VG_(strlen)(aTmp1) +
                  VG_(strlen)(aTmp2) + 2 < 128 );
 
       VG_(sprintf)( aStr, "%s 0%s", aTmp1, aTmp2 );
+   }else if( pTempVar && pTempVar > pHex ){
+
+      // 0x15006 t28 = irop x0t20
+      //                   ^--pSpace
+      VG_(strncpy)( aTmp1, aStr, pSpace-aStr );
+      aTmp1[pSpace-aStr] = '\0';
+      // aTmp1: 0x15006 t28 = irop
+
+      VG_(strncpy)( aTmp2, pHex, pTempVar-pHex );
+      aTmp2[pTempVar-pHex] = '\0';
+      // aTmp2: x0
+
+      VG_(strncpy)( aTmp3, pTempVar, VG_(strlen)(pTempVar) );
+      aTmp3[VG_(strlen)(pTempVar)] = '\0';
+      // aTmp3: t20
+
+      tl_assert( VG_(strlen)(aTmp1) +
+                 VG_(strlen)(aTmp2) +
+                 VG_(strlen)(aTmp3) + 2 < 128 );
+
+      VG_(sprintf)( aStr, "%s 0%s %s", aTmp1, aTmp2, aTmp3 );
    }
-
-   // Should be start of ops string
-/*   while( pChr[0] != ' ' ){ pChr++; }
-   
-   VG_(strncpy)( aTmp1, aStr, pChr-aStr+1 );
-   i = pChr-aStr;
-
-   VG_(strncpy)( aTmp2, aStr+i+1, 127 );
-
-   tl_assert( VG_(strlen)(aTmp1) +
-              VG_(strlen)(aTmp2) < 128 );
-  
-   if( aTmp2[0] == 'x' ){ 
-      pChr = aTmp2 + VG_(strlen)(aTmp2) - 1;
-
-      while( pChr[0] != 'x' && pChr > aTmp2 ){ pChr--; }
-
-      if( pChr > aTmp2 ){
-         VG_(strncpy)( aTmp3, aTmp2, pChr-aTmp2+1 );
-         i = pChr-aTmp2;
-
-         VG_(strncpy)( aTmp4, aTmp2+i+1, 127 );
-         tl_assert( VG_(strlen)(aTmp1) +
-                    VG_(strlen)(aTmp3) +
-                    VG_(strlen)(aTmp4) + 3 < 128 );
-         VG_(sprintf)( aStr, "%s0%s 0x%s", aTmp1, aTmp3, aTmp4 );
-      }else
-         VG_(sprintf)( aStr, "%s0%s", aTmp1, aTmp2 );
-   }else if( aTmp2[0] == 't' ){
-      pChr = aTmp2 + VG_(strlen)(aTmp2) - 1;
-
-      while( pChr[0] != 'x' && pChr > aTmp2 ){ pChr--; }
-
-      if( pChr > aTmp2 ){
-         VG_(strncpy)( aTmp3, aTmp2, pChr-aTmp2+1 );
-         i = pChr-aTmp2;
-
-         VG_(strncpy)( aTmp4, aTmp2+i+1, 127 );
-         tl_assert( VG_(strlen)(aTmp1) +
-                    VG_(strlen)(aTmp3) +
-                    VG_(strlen)(aTmp4) + 3 < 128 );
-         VG_(sprintf)( aStr, "%s%s 0x%s", aTmp1, aTmp3, aTmp4 );
-      }else
-         VG_(sprintf)( aStr, "%s%s", aTmp1, aTmp2 );
-   }
-*/
 }
 
 void post_decode_string_store( Char *aStr ){
@@ -2602,10 +2596,88 @@ void TNT_(helperc_0_tainted_enc32) (
 
          decode_string( enc, aTmp );
          post_decode_string( aTmp );
-//         VG_(umsg)("%s %s | 0x%x | 0x%x\n", fnname, str, value, taint );
-         VG_(printf)("%s | %s | 0x%x | 0x%x\n", fnname, aTmp, value, taint );
-//         VG_(message_flush) ( );
-//         VG_(umsg)("%x %x %x %x\n", enc[0], enc[1], enc[2], enc[3] );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+
+         if( VG_(strstr)( aTmp, " get " ) != NULL && taint ){
+
+            Char *p = aTmp;
+            Char *pGet, *pSpace, *pReg;
+            Char reg[16];
+  
+            // itype
+            while( *p != '\0' && *p != ' ' )
+               p++;
+            p++;
+            // lhs
+            while( *p != '\0' && *p != ' ' )
+               VG_(printf)("%c", *p++);
+
+            // <-
+            VG_(printf)(" <- ");
+
+            // 0x15001 t53 = get 0 i8
+            //              ^--pGet
+            //                   ^--pReg
+            //                    ^--pSpace 
+            pGet = VG_(strstr)( p, " get " );
+            pReg = pGet + 5;
+            pSpace = VG_(strchr)( pReg, ' ' );
+            VG_(strncpy)( reg, pReg, pSpace-pReg );
+            reg[pSpace-pReg] = '\0';
+
+            // rhs
+            VG_(printf)("r%s", reg);
+         }else if( VG_(strstr)( aTmp, " put " ) != NULL && taint ){
+
+            Char *pPut, *pSpace, *pReg;
+            Char reg[16], tmp[16];
+  
+            // 0x19003 put 28 = t24
+            //        ^--pPut
+            //             ^--pReg
+            //               ^--pSpace 
+            pPut = VG_(strstr)( aTmp, " put " );
+            pReg = pPut + 5;
+            pSpace = VG_(strchr)( pReg, ' ' );
+            VG_(strncpy)( reg, pReg, pSpace-pReg );
+            reg[pSpace-pReg] = '\0';
+
+            // lhs
+            VG_(printf)("r%s", reg);
+
+            // <-
+            VG_(printf)(" <- ");
+
+            // 0x19003 put 28 = t24
+            //                  ^--pSpace + 3
+            VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
+            tmp[VG_(strlen)(pSpace + 3)] = '\0';
+
+            // rhs
+            VG_(printf)("%s", tmp);
+
+         }else if( taint ){
+            Char *pTmp1, *pTmp2, *pEquals;
+            Char tmp1[16], tmp2[16];
+
+            // 0x15003 t28 = t61
+            //         ^--pTmp1
+            //               ^--pTmp2
+            pTmp1 = VG_(strstr)( aTmp, " t" );
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp2 = pEquals + 3;
+
+            if( pTmp1 != NULL && pEquals != NULL && pTmp2[0] == 't' ){
+               pTmp1++;
+
+               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+               tmp1[pEquals-pTmp1] = '\0';
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+               VG_(printf)("%s <- %s", tmp1, tmp2);
+            }
+         }
+         VG_(printf)("\n");
       }
    }
 }
@@ -2639,12 +2711,91 @@ void TNT_(helperc_0_tainted_enc64) (
 
          decode_string( enc, aTmp );
          post_decode_string( aTmp );
-//         VG_(umsg)("%s %s | 0x%x | 0x%x\n", fnname, str, value, taint );
-         VG_(printf)("%s | %s | 0x%lx | 0x%lx\n", fnname, aTmp,
+         VG_(printf)("%s | %s | 0x%lx | 0x%lx | ", fnname, aTmp,
                            (long unsigned int)value,
                            (long unsigned int) taint );
-//         VG_(message_flush) ( );
-//         VG_(umsg)("%x %x %x %x\n", enc[0], enc[1], enc[2], enc[3] );
+
+         // Information flow
+         if( VG_(strstr)( aTmp, " get " ) != NULL && taint ){
+
+            Char *p = aTmp;
+            Char *pGet, *pSpace, *pReg;
+            Char reg[16];
+  
+            // itype
+            while( *p != '\0' && *p != ' ' )
+               p++;
+            p++;
+            // lhs
+            while( *p != '\0' && *p != ' ' )
+               VG_(printf)("%c", *p++);
+
+            // <-
+            VG_(printf)(" <- ");
+
+            // 0x15001 t53 = get 0 i8
+            //              ^--pGet
+            //                   ^--pReg
+            //                    ^--pSpace 
+            pGet = VG_(strstr)( p, " get " );
+            pReg = pGet + 5;
+            pSpace = VG_(strchr)( pReg, ' ' );
+            VG_(strncpy)( reg, pReg, pSpace-pReg );
+            reg[pSpace-pReg] = '\0';
+
+            // rhs
+            VG_(printf)("r%s", reg);
+         }else if( VG_(strstr)( aTmp, " put " ) != NULL && taint ){
+
+            Char *pPut, *pSpace, *pReg;
+            Char reg[16], tmp[16];
+  
+            // 0x19003 put 28 = t24
+            //        ^--pPut
+            //             ^--pReg
+            //               ^--pSpace 
+            pPut = VG_(strstr)( aTmp, " put " );
+            pReg = pPut + 5;
+            pSpace = VG_(strchr)( pReg, ' ' );
+            VG_(strncpy)( reg, pReg, pSpace-pReg );
+            reg[pSpace-pReg] = '\0';
+
+            // lhs
+            VG_(printf)("r%s", reg);
+
+            // <-
+            VG_(printf)(" <- ");
+
+            // 0x19003 put 28 = t24
+            //                  ^--pSpace + 3
+            VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
+            tmp[VG_(strlen)(pSpace + 3)] = '\0';
+
+            // rhs
+            VG_(printf)("%s", tmp);
+
+         }else if( taint ){
+            Char *pTmp1, *pTmp2, *pEquals;
+            Char tmp1[16], tmp2[16];
+
+            // 0x15003 t28 = t61
+            //         ^--pTmp1
+            //               ^--pTmp2
+            pTmp1 = VG_(strstr)( aTmp, " t" );
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp2 = pEquals + 3;
+
+            if( pTmp1 != NULL && pEquals != NULL && pTmp2[0] == 't' ){
+               pTmp1++;
+
+               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+               tmp1[pEquals-pTmp1] = '\0';
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+               VG_(printf)("%s <- %s", tmp1, tmp2);
+            }
+         }
+         VG_(printf)("\n");
       }
    }
 }
@@ -2655,8 +2806,8 @@ void TNT_(helperc_1_tainted_enc32) (
    UInt enc1, 
    UInt enc2, 
 //   UInt enc3, 
-   UInt value, 
-   UInt arg1, 
+   UInt value1, 
+   UInt value2, 
    UInt taint1, 
    UInt taint2 ) {
 
@@ -2691,13 +2842,98 @@ void TNT_(helperc_1_tainted_enc32) (
          VG_(describe_IP) ( pc, fnname, n_fnname );
 
          decode_string( enc, aTmp );
+         //VG_(printf)("decoded string %s\n", aTmp);
          post_decode_string( aTmp );
-//         VG_(umsg)("%s %s | 0x%x 0x%x | 0x%x 0x%x\n", 
-//            fnname, str, value, arg1, taint1, taint2 );
-         VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x\n", 
-            fnname, aTmp, value, arg1, taint1, taint2 );
-//         VG_(message_flush) ( );
-//         VG_(umsg)("%x %x\n", enc[0], enc[1]/*, enc[2], enc[3]*/ );
+
+         VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+            fnname, aTmp, value1, value2, taint1, taint2 );
+
+         // Information flow
+         if( VG_(strstr)( aTmp, " LD " ) != NULL && taint1 ){
+            Char objname[256];
+            PtrdiffT pdt;
+            VG_(memset)( objname, 0, 255 );
+//            VG_(get_objname)( arg1, objname, 255 );
+            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+
+            if( objname[0] == '\0' ){
+               VG_(sprintf)( objname, "%x_unknownobj", value2 );
+            }
+
+            Char *pTmp, *pEquals;
+            Char tmp[16];
+
+            // 0x15008 t35 = LD I32 0x805badc
+            //         ^--pTmp
+            //            ^--pEquals
+            pTmp = VG_(strstr)( aTmp, " t" );
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp++;
+            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
+            tmp[pEquals-pTmp] = '\0';
+
+            VG_(printf)("%s <- %s", tmp, objname);
+
+         }else if( VG_(strstr)( aTmp, " ST " ) != NULL && taint2 ){
+            Char objname[256];
+            PtrdiffT pdt;
+            VG_(memset)( objname, 0, 255 );
+            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+
+            if( objname[0] == '\0' ){
+               VG_(sprintf)( objname, "%x_unknownobj", value1 );
+            }
+
+            Char *pEquals, *pTmp, *pSpace;
+            Char tmp[16];
+
+            // 0x19006 ST t80 = t85 I16
+            //               ^--pEquals
+            //                  ^--pTmp
+            //                     ^--pSpace
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp = pEquals + 3;
+            pSpace = VG_(strchr)( pTmp, ' ' );
+            VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
+            tmp[pSpace-pTmp] = '\0';
+            
+            VG_(printf)("%s <- %s", objname, tmp);
+
+         }else if( taint1 && taint2 ){
+            Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
+            Char tmp1[16], tmp2[16];
+
+            // 0x15006 t7 = Shl32 t35 0x5
+            //         ^--pTmp1   ^--pTmp2
+            //           ^--pEquals
+            //                        ^--pHex
+            // 0x15006 t7 = Shl32 0x5 t35 
+            //         ^--pTmp1       ^--pTmp2
+            //           ^--pEquals
+            //                    ^--pHex
+
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1++;
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2++;
+            pHex = VG_(strstr)( pEquals, " 0x" ); pHex++;
+
+            VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+            tmp1[pEquals-pTmp1] = '\0';
+
+            if( pTmp2 < pHex ){
+               pSpace = VG_(strchr)( pTmp2, ' ' );
+               VG_(strncpy)( tmp2, pTmp2, pSpace-pTmp2 );
+               tmp2[pSpace-pTmp2] = '\0';
+            }else{
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+            }
+
+            VG_(printf)("%s <- %s", tmp1, tmp2);
+         }
+
+         VG_(printf)("\n");
+
       }
    }
 }
@@ -2706,8 +2942,8 @@ VG_REGPARM(3)
 void TNT_(helperc_1_tainted_enc64) (
    ULong enc0, 
    ULong enc1, 
-   ULong value, 
-   ULong arg1, 
+   ULong value1, 
+   ULong value2, 
    ULong taint1, 
    ULong taint2 ) {
 
@@ -2744,16 +2980,97 @@ void TNT_(helperc_1_tainted_enc64) (
 
          decode_string( enc, aTmp );
          post_decode_string( aTmp );
-//         VG_(umsg)("%s %s | 0x%x 0x%x | 0x%x 0x%x\n", 
-//            fnname, str, value, arg1, taint1, taint2 );
-         VG_(printf)("%s | %s | 0x%lx 0x%lx | 0x%lx 0x%lx\n", 
+         VG_(printf)("%s | %s | 0x%lx 0x%lx | 0x%lx 0x%lx | ", 
                            fnname, aTmp,
-                           (long unsigned int) value,
-                           (long unsigned int) arg1,
+                           (long unsigned int) value1,
+                           (long unsigned int) value2,
                            (long unsigned int) taint1,
                            (long unsigned int) taint2 );
-//         VG_(message_flush) ( );
-//         VG_(umsg)("%x %x\n", enc[0], enc[1]/*, enc[2], enc[3]*/ );
+
+         // Information flow
+         if( VG_(strstr)( aTmp, " LD " ) != NULL && taint1 ){
+            Char objname[256];
+            PtrdiffT pdt;
+            VG_(memset)( objname, 0, 255 );
+            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+
+            if( objname[0] == '\0' ){
+               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
+            }
+
+            Char *pTmp, *pEquals;
+            Char tmp[16];
+
+            // 0x15008 t35 = LD I32 0x805badc
+            //         ^--pTmp
+            //            ^--pEquals
+            pTmp = VG_(strstr)( aTmp, " t" );
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp++;
+            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
+            tmp[pEquals-pTmp] = '\0';
+
+            VG_(printf)("%s <- %s", tmp, objname);
+
+         }else if( VG_(strstr)( aTmp, " ST " ) != NULL && taint2 ){
+            Char objname[256];
+            PtrdiffT pdt;
+            VG_(memset)( objname, 0, 255 );
+            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+
+            if( objname[0] == '\0' ){
+               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
+            }
+
+            Char *pEquals, *pTmp, *pSpace;
+            Char tmp[16];
+
+            // 0x19006 ST t80 = t85 I16
+            //               ^--pEquals
+            //                  ^--pTmp
+            //                     ^--pSpace
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp = pEquals + 3;
+            pSpace = VG_(strchr)( pTmp, ' ' );
+            VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
+            tmp[pSpace-pTmp] = '\0';
+            
+            VG_(printf)("%s <- %s", objname, tmp);
+
+         }else if( taint1 && taint2 ){
+            Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
+            Char tmp1[16], tmp2[16];
+
+            // 0x15006 t7 = Shl32 t35 0x5
+            //         ^--pTmp1   ^--pTmp2
+            //           ^--pEquals
+            //                        ^--pHex
+            // 0x15006 t7 = Shl32 0x5 t35 
+            //         ^--pTmp1       ^--pTmp2
+            //           ^--pEquals
+            //                    ^--pHex
+
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1++;
+            pEquals = VG_(strstr)( aTmp, " = " );
+            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2++;
+            pHex = VG_(strstr)( pEquals, " 0x" ); pHex++;
+
+            VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+            tmp1[pEquals-pTmp1] = '\0';
+
+            if( pTmp2 < pHex ){
+               pSpace = VG_(strchr)( pTmp2, ' ' );
+               VG_(strncpy)( tmp2, pTmp2, pSpace-pTmp2 );
+               tmp2[pSpace-pTmp2] = '\0';
+            }else{
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+            }
+
+            VG_(printf)("%s <- %s", tmp1, tmp2);
+         }
+
+         VG_(printf)("\n");
       }
    }
 }
@@ -2842,10 +3159,40 @@ void TNT_(helperc_2_tainted) (
           !TNT_(clo_tainted_ins_only)){
          pc = VG_(get_IP)( VG_(get_running_tid)() );
          VG_(describe_IP) ( pc, fnname, n_fnname );
-         VG_(printf)("%s | %s | 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x\n", 
+         VG_(printf)("%s | %s | 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x | ", 
             fnname, str, value, arg1, arg2, 
             taint1, taint2, taint3 );
-//         VG_(message_flush) ( );
+
+         // Information flow
+         if( VG_(strstr)( str, "0x15006" ) != NULL && taint1 ){
+            Char *pTmp1, *pTmp2, *pTmp3, *pEquals;
+            Char tmp1[16], tmp2[16], tmp3[16];
+
+            // 0x15006 t81 = Add32 t20 t20
+            //         ^--pTmp1    ^--pTmp2
+            //            ^--pEquals   ^--pTmp3
+            pTmp1 = VG_(strstr)( str, " t" );
+            pEquals = VG_(strstr)( str, " = " );
+            pTmp2 = VG_(strstr)( pEquals, " t" );
+            pTmp3 = VG_(strstr)( pTmp2+1, " t" );
+            pTmp1++; pTmp2++; pTmp3++;
+
+            VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+            tmp1[pEquals-pTmp1] = '\0';
+            VG_(strncpy)( tmp2, pTmp2, pTmp3-1-pTmp2 );
+            tmp2[pTmp3-1-pTmp2] = '\0';
+            VG_(strncpy)( tmp3, pTmp3, VG_(strlen)(pTmp3) );
+            tmp3[VG_(strlen)(pTmp3)] = '\0';
+
+            if( taint2 && taint3 )
+               VG_(printf)("%s <- %s; %s <- %s", tmp1, tmp2, tmp1, tmp3 );
+            else if( taint2 )
+               VG_(printf)("%s <- %s", tmp1, tmp2 );
+            else if( taint3 )
+               VG_(printf)("%s <- %s", tmp1, tmp3 );
+         }
+
+         VG_(printf)("\n");
       }
    }
 }
@@ -3006,7 +3353,7 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
     case 17: //__NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
-#elif define VGP_amd64_freebsd || define VGP_x86_freebsd
+#elif defined VGP_amd64_freebsd || defined VGP_x86_freebsd
     case 3: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
       break;
