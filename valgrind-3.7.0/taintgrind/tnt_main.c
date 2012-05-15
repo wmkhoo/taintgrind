@@ -2598,7 +2598,7 @@ void TNT_(helperc_0_tainted_enc32) (
          post_decode_string( aTmp );
          VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         if( VG_(strstr)( aTmp, " get " ) != NULL && taint ){
+         if( VG_(strstr)( aTmp, " get " ) != NULL /*&& taint*/ ){
 
             Char *p = aTmp;
             Char *pGet, *pSpace, *pReg;
@@ -2627,7 +2627,7 @@ void TNT_(helperc_0_tainted_enc32) (
 
             // rhs
             VG_(printf)("r%s", reg);
-         }else if( VG_(strstr)( aTmp, " put " ) != NULL && taint ){
+         }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;
             Char reg[16], tmp[16];
@@ -2656,7 +2656,7 @@ void TNT_(helperc_0_tainted_enc32) (
             // rhs
             VG_(printf)("%s", tmp);
 
-         }else if( taint ){
+         }else/* if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
             Char tmp1[16], tmp2[16];
 
@@ -2716,7 +2716,7 @@ void TNT_(helperc_0_tainted_enc64) (
                            (long unsigned int) taint );
 
          // Information flow
-         if( VG_(strstr)( aTmp, " get " ) != NULL && taint ){
+         if( VG_(strstr)( aTmp, " get " ) != NULL /*&& taint*/ ){
 
             Char *p = aTmp;
             Char *pGet, *pSpace, *pReg;
@@ -2745,7 +2745,7 @@ void TNT_(helperc_0_tainted_enc64) (
 
             // rhs
             VG_(printf)("r%s", reg);
-         }else if( VG_(strstr)( aTmp, " put " ) != NULL && taint ){
+         }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;
             Char reg[16], tmp[16];
@@ -2774,7 +2774,7 @@ void TNT_(helperc_0_tainted_enc64) (
             // rhs
             VG_(printf)("%s", tmp);
 
-         }else if( taint ){
+         }else /*if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
             Char tmp1[16], tmp2[16];
 
@@ -2849,7 +2849,7 @@ void TNT_(helperc_1_tainted_enc32) (
             fnname, aTmp, value1, value2, taint1, taint2 );
 
          // Information flow
-         if( VG_(strstr)( aTmp, " LD " ) != NULL && taint1 ){
+         if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
             PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
@@ -2874,7 +2874,7 @@ void TNT_(helperc_1_tainted_enc32) (
 
             VG_(printf)("%s <- %s", tmp, objname);
 
-         }else if( VG_(strstr)( aTmp, " ST " ) != NULL && taint2 ){
+         }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
             PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
@@ -2899,7 +2899,7 @@ void TNT_(helperc_1_tainted_enc32) (
             
             VG_(printf)("%s <- %s", objname, tmp);
 
-         }else if( taint1 && taint2 ){
+         }else /*if( taint1 && taint2 )*/{
             Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
             Char tmp1[16], tmp2[16];
 
@@ -2988,7 +2988,7 @@ void TNT_(helperc_1_tainted_enc64) (
                            (long unsigned int) taint2 );
 
          // Information flow
-         if( VG_(strstr)( aTmp, " LD " ) != NULL && taint1 ){
+         if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
             PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
@@ -3012,7 +3012,7 @@ void TNT_(helperc_1_tainted_enc64) (
 
             VG_(printf)("%s <- %s", tmp, objname);
 
-         }else if( VG_(strstr)( aTmp, " ST " ) != NULL && taint2 ){
+         }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
             PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
@@ -3037,7 +3037,7 @@ void TNT_(helperc_1_tainted_enc64) (
             
             VG_(printf)("%s <- %s", objname, tmp);
 
-         }else if( taint1 && taint2 ){
+         }else /*if( taint1 && taint2 )*/{
             Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
             Char tmp1[16], tmp2[16];
 
@@ -3098,10 +3098,32 @@ void TNT_(helperc_0_tainted) (
          pc = VG_(get_IP)( VG_(get_running_tid)() );
          VG_(describe_IP) ( pc, fnname, n_fnname );
          VG_(printf)("%s | %s | 0x%x | 0x%x\n", fnname, str, value, taint );
-//         VG_(message_flush) ( );
+
+         // Information flow
+         if( VG_(strstr)( str, "0x15006" ) != NULL /*&& taint*/ ){
+            Char *pTmp1, *pTmp2, *pTmp3, *pEquals;
+            Char tmp1[16], tmp2[16], tmp3[16];
+
+            // 0x15006 t81 = Add32 t20 t20
+            //         ^--pTmp1    ^--pTmp2
+            //            ^--pEquals   ^--pTmp3
+            pTmp1 = VG_(strstr)( str, " t" );
+            pEquals = VG_(strstr)( str, " = " );
+            pTmp2 = VG_(strstr)( pEquals, " t" );
+            pTmp3 = VG_(strstr)( pTmp2+1, " t" );
+            pTmp1++; pTmp2++; pTmp3++;
+
+            VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+            tmp1[pEquals-pTmp1] = '\0';
+            VG_(strncpy)( tmp2, pTmp2, pTmp3-1-pTmp2 );
+            tmp2[pTmp3-1-pTmp2] = '\0';
+            VG_(strncpy)( tmp3, pTmp3, VG_(strlen)(pTmp3) );
+            tmp3[VG_(strlen)(pTmp3)] = '\0';
+
+            VG_(printf)("%s <- %s; %s <- %s", tmp1, tmp2, tmp1, tmp3 );
+         }
       }
    }
-//   VG_(free)( str ); str = NULL;
 }
 
 VG_REGPARM(3)
@@ -3164,7 +3186,7 @@ void TNT_(helperc_2_tainted) (
             taint1, taint2, taint3 );
 
          // Information flow
-         if( VG_(strstr)( str, "0x15006" ) != NULL && taint1 ){
+         if( VG_(strstr)( str, "0x15006" ) != NULL /*&& taint1*/ ){
             Char *pTmp1, *pTmp2, *pTmp3, *pEquals;
             Char tmp1[16], tmp2[16], tmp3[16];
 
@@ -3184,12 +3206,12 @@ void TNT_(helperc_2_tainted) (
             VG_(strncpy)( tmp3, pTmp3, VG_(strlen)(pTmp3) );
             tmp3[VG_(strlen)(pTmp3)] = '\0';
 
-            if( taint2 && taint3 )
+            //if( taint2 && taint3 )
                VG_(printf)("%s <- %s; %s <- %s", tmp1, tmp2, tmp1, tmp3 );
-            else if( taint2 )
+            /*else if( taint2 )
                VG_(printf)("%s <- %s", tmp1, tmp2 );
             else if( taint3 )
-               VG_(printf)("%s <- %s", tmp1, tmp3 );
+               VG_(printf)("%s <- %s", tmp1, tmp3 );*/
          }
 
          VG_(printf)("\n");
