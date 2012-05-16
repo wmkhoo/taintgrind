@@ -2331,9 +2331,9 @@ void post_decode_string_load( Char *aStr ){
    }else
       tl_assert(0);
 
-   if( irtype > 9 ){
+   if( irtype >= IRType_MAX ){
       VG_(printf)("%s\n", aStr);
-      tl_assert( irtype <= 9 );
+      tl_assert( irtype < IRType_MAX );
    }
 
    VG_(strncpy)( aTmp2, aStr+i+1, 127 );
@@ -2494,9 +2494,9 @@ void post_decode_string_store( Char *aStr ){
    }else
       tl_assert(0);
 
-   if( irtype > 9 ){
+   if( irtype >= IRType_MAX ){
       VG_(printf)("%s\n", aStr);
-      tl_assert( irtype <= 9 );
+      tl_assert( irtype < IRType_MAX );
    }
 
    VG_(strncpy)( aTmp2, aStr+i+1, 127 );
@@ -2600,33 +2600,27 @@ void TNT_(helperc_0_tainted_enc32) (
 
          if( VG_(strstr)( aTmp, " get " ) != NULL /*&& taint*/ ){
 
-            Char *p = aTmp;
-            Char *pGet, *pSpace, *pReg;
-            Char reg[16];
+            Char *pTmp, *pEquals, *pGet, *pSpace, *pReg;
+            Char reg[16], tmp[16];
   
-            // itype
-            while( *p != '\0' && *p != ' ' )
-               p++;
-            p++;
-            // lhs
-            while( *p != '\0' && *p != ' ' )
-               VG_(printf)("%c", *p++);
-
-            // <-
-            VG_(printf)(" <- ");
-
             // 0x15001 t53 = get 0 i8
+            //         ^--pTmp
+            //            ^--pEquals
             //              ^--pGet
             //                   ^--pReg
             //                    ^--pSpace 
-            pGet = VG_(strstr)( p, " get " );
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp++;
+            pEquals = VG_(strstr)( aTmp, " = " );
+            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
+            tmp[pEquals-pTmp] = '\0';
+            pGet = VG_(strstr)( aTmp, " get " );
             pReg = pGet + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
 
             // rhs
-            VG_(printf)("r%s", reg);
+            VG_(printf)("%s <- r%s", tmp, reg);
          }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;

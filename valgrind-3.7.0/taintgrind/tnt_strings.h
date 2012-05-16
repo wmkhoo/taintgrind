@@ -2,7 +2,7 @@
 #define __TNT_STRINGS_H
 
 /* ------------------ Types ------------------ */
-
+// VEX/pub/libvex_ir.h
 const char *IRType_string[] = {
    "INVALID",
    "I1",
@@ -13,7 +13,10 @@ const char *IRType_string[] = {
    "I128",
    "F32",
    "F64",
+   "F128",
    "V128" };
+
+#define IRType_MAX ( sizeof(IRType_string)/sizeof(IRType_string[0]) )
 
 /* ------------------ Endianness ------------------ */
 
