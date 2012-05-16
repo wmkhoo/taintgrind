@@ -2621,6 +2621,7 @@ void TNT_(helperc_0_tainted_enc32) (
 
             // rhs
             VG_(printf)("%s <- r%s", tmp, reg);
+
          }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;
@@ -2630,25 +2631,16 @@ void TNT_(helperc_0_tainted_enc32) (
             //        ^--pPut
             //             ^--pReg
             //               ^--pSpace 
+            //                  ^--pSpace + 3
             pPut = VG_(strstr)( aTmp, " put " );
             pReg = pPut + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
-
-            // lhs
-            VG_(printf)("r%s", reg);
-
-            // <-
-            VG_(printf)(" <- ");
-
-            // 0x19003 put 28 = t24
-            //                  ^--pSpace + 3
             VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
             tmp[VG_(strlen)(pSpace + 3)] = '\0';
 
-            // rhs
-            VG_(printf)("%s", tmp);
+            VG_(printf)("r%s <- %s", reg, tmp);
 
          }else/* if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
@@ -2712,33 +2704,26 @@ void TNT_(helperc_0_tainted_enc64) (
          // Information flow
          if( VG_(strstr)( aTmp, " get " ) != NULL /*&& taint*/ ){
 
-            Char *p = aTmp;
-            Char *pGet, *pSpace, *pReg;
-            Char reg[16];
+            Char *pTmp, *pEquals, *pGet, *pSpace, *pReg;
+            Char reg[16], tmp[16];
   
-            // itype
-            while( *p != '\0' && *p != ' ' )
-               p++;
-            p++;
-            // lhs
-            while( *p != '\0' && *p != ' ' )
-               VG_(printf)("%c", *p++);
-
-            // <-
-            VG_(printf)(" <- ");
-
             // 0x15001 t53 = get 0 i8
+            //         ^--pTmp
+            //            ^--pEquals
             //              ^--pGet
             //                   ^--pReg
             //                    ^--pSpace 
-            pGet = VG_(strstr)( p, " get " );
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp++;
+            pEquals = VG_(strstr)( aTmp, " = " );
+            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
+            tmp[pEquals-pTmp] = '\0';
+            pGet = VG_(strstr)( aTmp, " get " );
             pReg = pGet + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
 
-            // rhs
-            VG_(printf)("r%s", reg);
+            VG_(printf)("%s <- r%s", tmp, reg);
          }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;
@@ -2748,25 +2733,16 @@ void TNT_(helperc_0_tainted_enc64) (
             //        ^--pPut
             //             ^--pReg
             //               ^--pSpace 
+            //                  ^--pSpace + 3
             pPut = VG_(strstr)( aTmp, " put " );
             pReg = pPut + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
-
-            // lhs
-            VG_(printf)("r%s", reg);
-
-            // <-
-            VG_(printf)(" <- ");
-
-            // 0x19003 put 28 = t24
-            //                  ^--pSpace + 3
             VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
             tmp[VG_(strlen)(pSpace + 3)] = '\0';
 
-            // rhs
-            VG_(printf)("%s", tmp);
+            VG_(printf)("r%s <- %s", reg, tmp);
 
          }else /*if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
@@ -3431,8 +3407,8 @@ static void tnt_print_usage(void) {
 "    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]\n"
 "    --after-bb=[0,1000000]      start instrumentation after [0]\n"
 "    --before-bb=[0,1000000]     stop instrumentation after [-1]\n"
-"    --tainted-ins-only= no|yes  print tainted instructions only [no]\n"
-"    --critical-ins-only= no|yes print critical instructions only [no]\n"
+"    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
+"    --critical-ins-only= no|yes print critical instructions only [yes]\n"
    );
 }
 
