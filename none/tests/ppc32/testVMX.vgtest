@@ -1,0 +1,2 @@
+prereq: ../../../tests/check_vmx_cap
+prog: testVMX

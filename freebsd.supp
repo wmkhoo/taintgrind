@@ -1,0 +1,35 @@
+# Suppressions for FreeBSD
+
+##----------------------------------------------------------------------##
+# Memcheck
+##----------------------------------------------------------------------##
+
+{
+   rtld-1
+   Memcheck:Cond
+   obj:/libexec/ld-elf*.so.1
+}
+{
+   libc puts leak
+   Memcheck:Leak
+   fun:malloc
+   obj:/lib/libc.so.7
+   obj:/lib/libc.so.7
+   obj:/lib/libc.so.7
+   fun:puts
+   fun:main
+}
+{
+   DRD-1
+   drd:ConflictingAccess
+   obj:/lib/libthr.so.3
+   fun:pthread_create
+   fun:pthread_create
+   fun:main
+}
+{
+   DRD-2
+   drd:ConflictingAccess
+   fun:pthread_exit
+}
+

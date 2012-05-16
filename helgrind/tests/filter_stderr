@@ -1,0 +1,37 @@
+#! /bin/sh
+
+dir=`dirname $0`
+
+$dir/../../tests/filter_stderr_basic                    |
+
+# Anonymise addresses
+$dir/../../tests/filter_addresses                       |
+
+# get rid of the numbers in bits of text "Thread #n", "thread #n",
+# "Thread n" and "thread n",
+# as these make some tests more scheduling sensitive -- those where
+# there are multiple threads which play interchangeable roles.
+sed \
+ -e "s/hread #[0-9][0-9]*/hread #x/g" \
+ -e "s/hread [0-9][0-9]*/hread x/g" |
+
+# Likewise for frame numbers, which depend on compilation.
+sed -e "s/frame #[0-9][0-9]*/frame #x/g" | \
+
+# Merge sem_wait and sem_wait@*, as either could be used.  Likewise for
+# sem_post.
+sed \
+ -e "s/sem_wait@\*/sem_wait/" \
+ -e "s/sem_post@\*/sem_post/" |
+
+# Remove "Helgrind, ..." line and the following copyright line;
+# also the standard postamble (does such a word exist?)
+sed \
+ -e "/^Helgrind, a thread error detector/ , /./ d" \
+ -e "/^For counts of detected and suppressed errors, rerun with: -v$/d" \
+ -e "/^Use --history-level=approx or =none to gain increased speed, at$/d" \
+ -e "/^the cost of reduced accuracy of conflicting-access information$/d" |
+
+$dir/../../helgrind/tests/filter_helgrind "$@"
+
+exit 0

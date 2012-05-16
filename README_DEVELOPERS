@@ -1,0 +1,181 @@
+
+Building and not installing it
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To run Valgrind without having to install it, run coregrind/valgrind
+with the VALGRIND_LIB environment variable set, where <dir> is the root
+of the source tree (and must be an absolute path).  Eg:
+
+  VALGRIND_LIB=~/grind/head4/.in_place ~/grind/head4/coregrind/valgrind 
+
+This allows you to compile and run with "make" instead of "make install",
+saving you time.
+
+Or, you can use the 'vg-in-place' script which does that for you.
+
+I recommend compiling with "make --quiet" to further reduce the amount of
+output spewed out during compilation, letting you actually see any errors,
+warnings, etc.
+
+
+Building a distribution tarball
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To build a distribution tarball from the valgrind sources:
+
+  make dist
+
+In addition to compiling, linking and packaging everything up, the command
+will also build the documentation. Even if all required tools for building the
+documentation are installed, this step may not succeed because of hidden
+dependencies. E.g. on Ubuntu you must have "docbook-xsl" installed.
+Additionally, specific tool versions maybe needed.
+
+If you only want to test whether the generated tarball is complete and runs
+regression tests successfully, building documentation is not needed.
+Edit docs/Makefile.am, search for BUILD_ALL_DOCS and follow instructions there.
+
+
+Running the regression tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To build and run all the regression tests, run "make [--quiet] regtest".
+
+To run a subset of the regression tests, execute:
+
+  perl tests/vg_regtest <name>
+
+where <name> is a directory (all tests within will be run) or a single
+.vgtest test file, or the name of a program which has a like-named .vgtest
+file.  Eg:
+
+  perl tests/vg_regtest memcheck
+  perl tests/vg_regtest memcheck/tests/badfree.vgtest
+  perl tests/vg_regtest memcheck/tests/badfree
+
+
+Running the performance tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To build and run all the performance tests, run "make [--quiet] perf".
+
+To run a subset of the performance suite, execute:
+
+  perl perf/vg_perf <name>
+
+where <name> is a directory (all tests within will be run) or a single
+.vgperf test file, or the name of a program which has a like-named .vgperf
+file.  Eg:
+
+  perl perf/vg_perf perf/
+  perl perf/vg_perf perf/bz2.vgperf
+  perl perf/vg_perf perf/bz2
+
+To compare multiple versions of Valgrind, use the --vg= option multiple
+times.  For example, if you have two Valgrinds next to each other, one in
+trunk1/ and one in trunk2/, from within either trunk1/ or trunk2/ do this to
+compare them on all the performance tests:
+
+  perl perf/vg_perf --vg=../trunk1 --vg=../trunk2 perf/
+
+
+Debugging Valgrind with GDB
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To debug the valgrind launcher program (<prefix>/bin/valgrind) just
+run it under gdb in the normal way.
+
+Debugging the main body of the valgrind code (and/or the code for
+a particular tool) requires a bit more trickery but can be achieved
+without too much problem by following these steps:
+
+(1) Set VALGRIND_LAUNCHER to point to the valgrind executable.  Eg:
+
+      export VALGRIND_LAUNCHER=/usr/local/bin/valgrind
+
+    or for an uninstalled version in a source directory $DIR:
+
+      export VALGRIND_LAUNCHER=$DIR/coregrind/valgrind
+
+(2) Run gdb on the tool executable.  Eg:
+
+      gdb /usr/local/lib/valgrind/ppc32-linux/lackey
+
+    or
+
+      gdb $DIR/.in_place/x86-linux/memcheck
+
+(3) Do "handle SIGSEGV SIGILL nostop noprint" in GDB to prevent GDB from
+    stopping on a SIGSEGV or SIGILL:
+
+    (gdb) handle SIGILL SIGSEGV nostop noprint
+
+(4) Set any breakpoints you want and proceed as normal for gdb. The
+    macro VG_(FUNC) is expanded to vgPlain_FUNC, so If you want to set
+    a breakpoint VG_(do_exec), you could do like this in GDB:
+
+    (gdb) b vgPlain_do_exec
+
+(5) Run the tool with required options:
+
+    (gdb) run pwd
+
+Steps (1)--(3) can be put in a .gdbinit file, but any directory names must
+be fully expanded (ie. not an environment variable).
+
+A different and possibly easier way is as follows:
+
+(1) Run Valgrind as normal, but add the flag --wait-for-gdb=yes.  This
+    puts the tool executable into a wait loop soon after it gains
+    control.  This delays startup for a few seconds.
+
+(2) In a different shell, do "gdb /proc/<pid>/exe <pid>", where
+    <pid> you read from the output printed by (1).  This attaches
+    GDB to the tool executable, which should be in the abovementioned
+    wait loop.
+
+(3) Do "cont" to continue.  After the loop finishes spinning, startup
+    will continue as normal.  Note that comment (3) above re passing
+    signals applies here too.
+
+
+Self-hosting
+~~~~~~~~~~~~
+To run Valgrind under Valgrind:
+
+(1) Check out 2 trees, "Inner" and "Outer".  Inner runs the app
+    directly.  Outer runs Inner.
+
+(2) Configure inner with --enable-inner and build/install as
+    usual.
+
+(3) Configure Outer normally and build/install as usual.
+
+(4) Choose a very simple program (date) and try
+
+    outer/.../bin/valgrind --sim-hints=enable-outer --trace-children=yes  \
+       --tool=cachegrind -v inner/.../bin/valgrind --tool=none -v prog
+
+If you omit the --trace-children=yes, you'll only monitor Inner's launcher
+program, not its stage2.
+
+The whole thing is fragile, confusing and slow, but it does work well enough
+for you to get some useful performance data.  Inner has most of
+its output (ie. those lines beginning with "==<pid>==") prefixed with a '>',
+which helps a lot.
+
+At the time of writing the allocator is not annotated with client requests
+so Memcheck is not as useful as it could be.  It also has not been tested
+much, so don't be surprised if you hit problems.
+
+When using self-hosting with an outer Callgrind tool, use '--pop-on-jump'
+(on the outer). Otherwise, Callgrind has much higher memory requirements. 
+
+
+Printing out problematic blocks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you want to print out a disassembly of a particular block that
+causes a crash, do the following.
+
+Try running with "--vex-guest-chase-thresh=0 --trace-flags=10000000
+--trace-notbelow=999999".  This should print one line for each block
+translated, and that includes the address.
+
+Then re-run with 999999 changed to the highest bb number shown.
+This will print the one line per block, and also will print a
+disassembly of the block in which the fault occurred.

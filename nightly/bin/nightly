@@ -1,0 +1,270 @@
+#!/bin/sh
+
+#----------------------------------------------------------------------------
+# Automated build and test for Valgrind.  Compares Valgrind from 24 hours
+# ago with the current one.  See the README.txt on how to run it.
+#----------------------------------------------------------------------------
+
+#----------------------------------------------------------------------------
+# Helper functions
+#----------------------------------------------------------------------------
+
+# Returns the revision number of the source files with date $1.
+get_svn_revision() {
+  (cd $DIR; rm -rf infodir;
+   svn co -r "{$1}" "${valgrind_svn_repo}/nightly" infodir > /dev/null;
+   revno=`svn info infodir | sed -n 's/^Revision: //p'`;
+   rm -rf infodir;
+   echo $revno)
+}
+
+runcmd () {
+   logfile=$1
+   str=$2
+   shift 2
+
+   # Header in short logfile.
+   # We use "printf" to avoid printing a newline;  "echo -n" isn't POSIX and
+   # so isn't supported on all systems.
+   printf "   $str  ... " >> $logfile.short
+
+   # Header and command in verbose logfile
+   printf "   $str  ... " >> $logfile.verbose
+   echo "$*" >> $logfile.verbose
+
+   # Run the command
+   ("${ABT_EVAL}" "$*") >> $logfile.verbose 2>&1
+   res=$?
+
+   # Write result to the short logfile
+   if [ $res = 0 ]
+   then
+      echo "done"   >> $logfile.short
+   else
+      echo "failed" >> $logfile.short
+   fi
+
+   return $res
+}
+
+#----------------------------------------------------------------------------
+# Startup
+#----------------------------------------------------------------------------
+
+valgrind_svn_repo="svn://svn.valgrind.org/valgrind/trunk"
+
+# Must have exactly two arguments
+if [ $# -ne 2 ] ; then
+    echo "usage: $0 /path/to/valgrind/nightly <tag>"
+    exit 1
+fi
+
+# Get args from command line
+DIR=$1
+TAG=$2
+
+# Get times and date
+START=`date "+%F %H:%M:%S %Z"`
+
+# This is one of the formats SVN accepts.  Yes, the 'T' appears in the final
+# string, it's supposed to be like that.
+svn_date_format="+%Y-%m-%dT%H:%M:%S"
+
+# The time-and-date from 24 hours ago is tricky;  Linux and Darwin have
+# different ways of getting it, so we try things until something works.
+svn_old_date=
+if [ "z" = "z${svn_old_date}" ] ; then
+    # Linux method.
+    svn_old_date=`date --date=yesterday $svn_date_format 2> /dev/null`
+fi
+if [ "z" = "z${svn_old_date}" ] ; then
+    # Darwin method.
+    svn_old_date=`date -v-24H $svn_date_format 2> /dev/null`
+fi
+if [ "z" = "z${svn_old_date}" ] ; then
+    echo "Sorry, can't work out the time and date for 24 hours ago, aborting"
+    exit 1;
+fi
+
+# The time-and-date for now is easy.
+svn_new_date=`date $svn_date_format`
+
+cd $DIR
+
+# Clean up output files produced by a previous run.
+rm -rf diffs diffs.txt diff.short final new.short new.verbose old.short old.verbose
+rm -rf sendmail.log unchanged.log valgrind-old valgrind-new
+
+# Setup any relevant environment variables from conf/<tag>.conf.
+. conf/$TAG.conf
+if [ "${ABT_JOBS}" = "" ]; then
+  ABT_JOBS=1
+fi
+if [ "${ABT_EVAL}" = "" ]; then
+  ABT_EVAL="eval"
+fi
+if [ "${ABT_RUN_REGTEST}" = "" ]; then
+  ABT_RUN_REGTEST="make regtest"
+fi
+
+
+#----------------------------------------------------------------------------
+# Check out, build, test
+#----------------------------------------------------------------------------
+
+svn_old_rev="`get_svn_revision ${svn_old_date}`"
+svn_new_rev="`get_svn_revision ${svn_new_date}`"
+if [ "${svn_old_rev}" = "${svn_new_rev}" ]; then
+  echo "Both {$svn_old_date} and {$svn_new_date} correspond to r${svn_new_rev}"\
+       "-- skipping nightly build." >unchanged.log
+  exit 0
+fi
+
+# Do everything twice -- once for the 24 hours old Valgrind, and once 
+# for the current one.
+for logfile in old new ; do
+
+   # Remove old short and verbose log files, and start the new ones
+   for ext in short verbose ; do
+      echo > $logfile.$ext
+   done
+
+   # Choose the current Valgrind, or one from 24 hours ago
+   if [ $logfile = "old" ] ; then
+      svn_date=$svn_old_date
+   else
+      svn_date=$svn_new_date
+   fi
+
+   # Get dates for the old and new versions
+
+   # Check out, build, run tests
+   runcmd $logfile \
+          "Checking out valgrind source tree" \
+          "svn co ${valgrind_svn_repo} -r {$svn_date} valgrind-$logfile" && \
+   \
+   runcmd $logfile \
+          "Configuring valgrind             " \
+          "cd valgrind-$logfile && ./autogen.sh  && ./configure --prefix=`pwd`/valgrind-$logfile/Inst ${ABT_CONFIGURE_OPTIONS}" && \
+   \
+   runcmd $logfile \
+          "Building valgrind                " \
+          "cd valgrind-$logfile && make -j ${ABT_JOBS} && make -j ${ABT_JOBS} check && make install" && \
+   \
+   runcmd $logfile \
+          "Running regression tests         " \
+          "cd valgrind-$logfile && ${ABT_RUN_REGTEST}"
+
+   # Grab some indicative text for the short log file -- if the regtests
+   # succeeded, show their results.  If we didn't make it that far, show the
+   # last 20 lines.
+   egrep -q '^== [0-9]+ tests' $logfile.verbose && (
+      echo >> $logfile.short
+      echo "Regression test results follow" >> $logfile.short
+      echo >> $logfile.short
+      awk '/^== [0-9]+ tests/, /^$/ { print }' $logfile.verbose >> $logfile.short
+   ) || (
+      echo >> $logfile.short
+      echo "Last 20 lines of verbose log follow" >> $logfile.short \
+      echo >> $logfile.short
+      tail -20 $logfile.verbose >> $logfile.short
+   )
+done
+
+#----------------------------------------------------------------------------
+# Prepare results and send
+#----------------------------------------------------------------------------
+
+# Get times and date
+END=`date "+%F %H:%M:%S %Z"`
+
+# Gather some information about this run and its environment
+valgrind_revision="`svn info valgrind-new | grep Revision | sed 's/Revision[ ]*:[ ]*//'`"
+vex_revision="`svn info valgrind-new/VEX | grep Revision | sed 's/Revision[ ]*:[ ]*//'`"
+gcc_version="`gcc --version | head -1`"
+libc_so="`ls -1 /lib/libc.so.* | tail -1`"
+libc="unknown"
+if [ "x$libc_so" != "x" ]; then
+  if [ -e "$libc_so" -a -r "$libc_so" ]; then
+    libc="`/lib/libc.so.* | head -1`"
+  fi
+fi
+uname_stuff="`uname -mrs`"
+if [ -e "/etc/issue.net" -a -r "/etc/issue.net" ]; then
+  vendor_stuff="`cat /etc/issue.net | head -1`"
+else
+  vendor_stuff="unknown"
+fi
+
+echo "valgrind revision: $valgrind_revision" >  final
+echo "VEX revision:      $vex_revision"      >> final
+echo "GCC version:       $gcc_version"       >> final
+echo "C library:         $libc"              >> final
+echo "uname -mrs:        $uname_stuff"       >> final
+echo "Vendor version:    $vendor_stuff"      >> final
+
+# 'final' shows the difference between the old and new results
+echo                                              >> final
+echo "Nightly build on" $TAG "(" $ABT_DETAILS ")" >> final
+echo "Started at" $START                          >> final
+echo "Ended   at" $END                            >> final
+
+# If the results differ from 24 hours ago, print extra stuff.
+diff -C1 old.short new.short > diff.short
+changed=$?
+
+if [ $changed != 0 ] ; then
+   echo "Results differ from 24 hours ago"      >> final
+   changed_str=""
+else
+   echo "Results unchanged from 24 hours ago"   >> final
+   changed_str="(unchanged) "
+fi
+
+# Always show the current results.
+cat new.short >> final
+
+if [ $changed != 0 ] ; then
+   echo "=================================================" >> final
+   echo "== Results from 24 hours ago                   ==" >> final
+   echo "=================================================" >> final
+   cat old.short                                            >> final
+
+   echo                                                     >> final
+   echo "=================================================" >> final
+   echo "== Difference between 24 hours ago and now     ==" >> final
+   echo "=================================================" >> final
+   echo                                                     >> final
+   cat diff.short                                           >> final
+   echo                                                     >> final
+fi
+
+# Gather up the diffs (at most the first 100 lines for each one) into a
+# single file.
+MAX_LINES=100
+diff_files=`find . -name '*.diff*' | sort`
+if [ z"$diff_files" = z ] ; then
+   echo "Congratulations, all tests passed!" >> diffs
+else
+   for i in $diff_files ; do
+      echo "=================================================" >> diffs
+      echo $i                                                  >> diffs 
+      echo "=================================================" >> diffs
+      if [ `wc -l < $i` -le $MAX_LINES ] ; then
+         cat $i                                                >> diffs
+      else
+         head -n $MAX_LINES $i                                 >> diffs
+         echo "<truncated beyond $MAX_LINES lines>"            >> diffs
+      fi
+   done
+fi
+
+# Rename diffs into diffs.txt such that it can be viewed easily with an
+# e-mail client.
+mv diffs diffs.txt
+
+# Use the conf/<tag>.sendmail script to email the results.
+conf/$TAG.sendmail \
+   "$changed_str$START nightly build ($TAG, $ABT_DETAILS)" \
+   final \
+   diffs.txt > sendmail.log 2>&1

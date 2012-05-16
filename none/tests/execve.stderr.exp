@@ -1,0 +1,4 @@
+
+execve(0x........(./execve), 0x........, 0x........) failed, errno 14
+EXEC FAILED: I can't recover from execve() failing, so I'm dying.
+Add more stringent tests in PRE(sys_execve), or work out how to recover.
