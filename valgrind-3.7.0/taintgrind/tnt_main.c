@@ -3552,7 +3552,7 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
     case 478: //__NR_lseek:
-      TNT_(syscall_lseek)(tid, args, nArgs, res);
+      TNT_(syscall_llseek)(tid, args, nArgs, res);
       break;
 #else
 #error Unknown platform
