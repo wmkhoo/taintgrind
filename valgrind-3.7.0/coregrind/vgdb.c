@@ -105,6 +105,11 @@ I_die_here : (PTRACEINVOKER) architecture missing in vgdb.c
 #endif
 #endif
 
+#if defined(VGO_freebsd)
+#warning Fix me
+#undef PTRACEINVOKER
+#endif
+
 
 // Outputs information for the user about ptrace_scope protection
 // or ptrace not working.

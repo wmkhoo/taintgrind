@@ -19,7 +19,7 @@
 
 // rmme when reintegrated
 // Allocates a 16-aligned block.  Asserts if the allocation fails.
-#ifdef VGO_darwin
+#if defined(VGO_darwin) || defined(VGO_freebsd)
 #include <stdlib.h>
 #else
 #include <malloc.h>
@@ -31,6 +31,10 @@ static void* memalign16(size_t szB)
 #if defined(VGO_darwin)
    // Darwin lacks memalign, but its malloc is always 16-aligned anyway.
    x = malloc(szB);
+#elif defined(VGO_freebsd)
+   int error = posix_memalign(&x, 16, szB);
+   if (error != 0)
+      x = NULL;
 #else
    x = memalign(16, szB);
 #endif

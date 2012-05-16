@@ -6,8 +6,11 @@
 # Shell scripts that should fail
 #----------------------------------------------------------------------------
 
-echo "Execute a directory"
-./x86/
+os=$(uname -s)
+if [ "${os}" != "FreeBSD" ]; then
+	echo "Execute a directory"
+	./x86/
+fi
 
 echo "Execute a non-executable file"
 ./shell.vgtest

@@ -40,12 +40,12 @@
 #include "pub_tool_machine.h"
 
 // XXX: this is *really* the wrong spot for these things
-#if defined(VGP_x86_linux)
+#if defined(VGP_x86_linux) || defined(VGP_x86_freebsd)
 #  define VG_ELF_DATA2XXX     ELFDATA2LSB
 #  define VG_ELF_MACHINE      EM_386
 #  define VG_ELF_CLASS        ELFCLASS32
 #  undef  VG_PLAT_USES_PPCTOC
-#elif defined(VGP_amd64_linux)
+#elif defined(VGP_amd64_linux) || defined(VGP_amd64_freebsd)
 #  define VG_ELF_DATA2XXX     ELFDATA2LSB
 #  define VG_ELF_MACHINE      EM_X86_64
 #  define VG_ELF_CLASS        ELFCLASS64

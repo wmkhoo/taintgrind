@@ -39,25 +39,6 @@
 // lot of work on Linux (ELF).
 //--------------------------------------------------------------------
 
-/* These are OS-specific and defined below. */
-typedef  struct _IICreateImageInfo    IICreateImageInfo;
-typedef  struct _IIFinaliseImageInfo  IIFinaliseImageInfo;
-
-/* This is a two stage process.  The first stage, which is most of the
-   work, creates the initial image in memory to the extent possible.
-   To do this it takes a bundle of information in an IICreateImageInfo
-   structure, which is gathered in an OS-specific way at startup.
-   This returns an IIFinaliseImageInfo structure: */
-extern 
-IIFinaliseImageInfo VG_(ii_create_image)( IICreateImageInfo );
-
-/* Just before starting the client, we may need to make final
-   adjustments to its initial image.  Also we need to set up the VEX
-   guest state for thread 1 (the root thread) and copy in essential
-   starting values.  This is handed the IIFinaliseImageInfo created by
-   VG_(ii_create_image). */
-extern 
-void VG_(ii_finalise_image)( IIFinaliseImageInfo );
 
 /* Note that both IICreateImageInfo and IIFinaliseImageInfo are
    OS-specific.  We now go on to give instantiations of them
@@ -65,7 +46,7 @@ void VG_(ii_finalise_image)( IIFinaliseImageInfo );
 
 /* ------------------------- Linux ------------------------- */
 
-#if defined(VGO_linux)
+#if defined(VGO_linux) || defined(VGO_freebsd)
 
 struct _IICreateImageInfo {
    /* ------ Mandatory fields ------ */
@@ -121,6 +102,25 @@ struct _IIFinaliseImageInfo {
 #  error "Unknown OS"
 #endif
 
+
+typedef  struct _IICreateImageInfo    IICreateImageInfo;
+typedef  struct _IIFinaliseImageInfo  IIFinaliseImageInfo;
+
+/* This is a two stage process.  The first stage, which is most of the
+   work, creates the initial image in memory to the extent possible.
+   To do this it takes a bundle of information in an IICreateImageInfo
+   structure, which is gathered in an OS-specific way at startup.
+   This returns an IIFinaliseImageInfo structure: */
+extern 
+IIFinaliseImageInfo VG_(ii_create_image)( IICreateImageInfo );
+
+/* Just before starting the client, we may need to make final
+   adjustments to its initial image.  Also we need to set up the VEX
+   guest state for thread 1 (the root thread) and copy in essential
+   starting values.  This is handed the IIFinaliseImageInfo created by
+   VG_(ii_create_image). */
+extern 
+void VG_(ii_finalise_image)( IIFinaliseImageInfo );
 
 #endif   // __PUB_CORE_INITIMG_H
 

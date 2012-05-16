@@ -164,6 +164,9 @@ extern Bool VG_(am_notify_client_mmap)
    specified address range. */
 extern Bool VG_(am_notify_client_shmat)( Addr a, SizeT len, UInt prot );
 
+extern SysRes VG_(am_do_mprotect_NO_NOTIFY)
+   ( Addr start, SizeT length, UInt prot);
+
 /* Notifies aspacem that an mprotect was completed successfully.  The
    segment array is updated accordingly.  Note, as with
    VG_(am_notify_munmap), it is not the job of this function to reject
@@ -190,7 +193,6 @@ extern Bool VG_(am_notify_munmap)( Addr start, SizeT len );
    aspacem.  In short, DO NOT USE THIS FUNCTION. */
 extern SysRes VG_(am_do_mmap_NO_NOTIFY)
    ( Addr start, SizeT length, UInt prot, UInt flags, Int fd, Off64T offset);
-
 
 //--------------------------------------------------------------
 // Dealing with mappings which do not arise directly from the

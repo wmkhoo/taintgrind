@@ -1,4 +1,4 @@
-
+ 
 /*--------------------------------------------------------------------*/
 /*--- Attaching a debugger.                           m_debugger.c ---*/
 /*--------------------------------------------------------------------*/
@@ -232,6 +232,12 @@ static Int ptrace_setregs(Int pid, VexGuestArchState* vex)
    return VG_(ptrace)(VKI_PTRACE_SETREGS, pid, NULL, &uregs);
 
 #elif defined(VGP_x86_darwin)
+   I_die_here;
+
+#elif defined(VGP_x86_freebsd)
+   I_die_here;
+
+#elif defined(VGP_amd64_freebsd)
    I_die_here;
 
 #elif defined(VGP_amd64_darwin)

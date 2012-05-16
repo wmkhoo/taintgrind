@@ -241,8 +241,12 @@ pth_mutexspeed_LDADD	= -lpthread
 pth_once_LDADD		= -lpthread
 pth_rwlock_LDADD	= -lpthread
 pth_stackalign_LDADD	= -lpthread
-res_search_LDADD        = -lresolv -lpthread
-resolv_LDADD            = -lresolv -lpthread
+if VGCONF_OS_IS_FREEBSD
+ res_search_LDADD       = -lpthread
+else
+ res_search_LDADD       = -lresolv -lpthread
+ resolv_LDADD           = -lresolv -lpthread
+endif
 semlimit_LDADD		= -lpthread
 thread_exits_LDADD	= -lpthread
 threaded_fork_LDADD	= -lpthread

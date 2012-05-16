@@ -240,7 +240,7 @@
 
 /* --- Soname of the standard C library. --- */
 
-#if defined(VGO_linux)
+#if defined(VGO_linux) || defined(VGO_freebsd)
 #  define  VG_Z_LIBC_SONAME  libcZdsoZa              // libc.so*
 
 #elif defined(VGO_darwin) && (DARWIN_VERS <= DARWIN_10_6)
@@ -263,6 +263,8 @@
 
 #if defined(VGO_linux)
 #  define  VG_Z_LIBPTHREAD_SONAME  libpthreadZdsoZd0     // libpthread.so.0
+#elif defined(VGO_freebsd)
+#  define  VG_Z_LIBPTHREAD_SONAME  libthrZdsoZa     // libthr.so*
 #elif defined(VGO_darwin)
 #  define  VG_Z_LIBPTHREAD_SONAME  libSystemZdZaZddylib  // libSystem.*.dylib
 #else
@@ -287,6 +289,18 @@
 
 #define  VG_Z_LD_SO_1               ldZdsoZd1                  // ld.so.1
 #define  VG_U_LD_SO_1               "ld.so.1"
+
+#endif
+
+/* --- Sonames for FreeBSD ELF linkers, plus unencoded versions. --- */
+
+#if defined(VGO_freebsd)
+
+#define  VG_Z_LD_ELF_SO_1           ldZhelfZdsoZd1           // ld-elf.so.1
+#define  VG_U_LD_ELF_SO_1           "ld-elf.so.1"
+
+#define  VG_Z_LD_ELF32_SO_1         ldZhelf32ZdsoZd1         // ld-elf32.so.1
+#define  VG_U_LD_ELF32_SO_1         "ld-elf32.so.1"
 
 #endif
 

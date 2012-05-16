@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# use: georgia-tech-cellbuzz.sendmail subject file-to-mail [file-to-attach]
+# Don't forget to set the variables 'from' and 'realname' in ~/.muttrc !
+
+sender="bvanassche@acm.org"
+recipients="valgrind-developers@lists.sourceforge.net"
+#recipients="bvanassche@acm.org"
+if [ $# -ge 3 ]; then
+  gzip -9 <"$3" >"$3.gz"
+  mutt -s "$1" -a "$3.gz" ${recipients} < "$2"
+  rm -f "$3.gz"
+else
+  mutt -s "$1" ${recipients} < "$2"
+fi

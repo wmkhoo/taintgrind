@@ -1182,6 +1182,8 @@ void VG_(redir_initialise) ( void )
    }
    /* nothing so far */
 
+#  elif defined(VGP_x86_freebsd) || defined(VGP_amd64_freebsd)
+/* XXX do something real if needed */
 #  elif defined(VGP_x86_darwin)
    /* If we're using memcheck, use these intercepts right from
       the start, otherwise dyld makes a lot of noise. */

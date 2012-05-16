@@ -14,6 +14,10 @@
 #  define MAP_NORESERVE 0
 #endif
 
+#if !defined(MAP_ANONYMOUS)
+#  define MAP_ANONYMOUS MAP_ANON
+#endif
+
 int main()
 {
 	char **volatile ptrs;

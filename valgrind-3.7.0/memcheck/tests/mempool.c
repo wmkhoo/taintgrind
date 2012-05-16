@@ -35,10 +35,10 @@ pool *make_pool()
 
    if(USE_MMAP) {
       p = (pool *)mmap(0, sizeof(pool), PROT_READ|PROT_WRITE|PROT_EXEC,
-                       MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+                       MAP_PRIVATE|MAP_ANON, -1, 0);
       p->where = p->mem = (char *)mmap(NULL, SUPERBLOCK_SIZE,
                                        PROT_READ|PROT_WRITE|PROT_EXEC,
-                                       MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+                                       MAP_PRIVATE|MAP_ANON, -1, 0);
    } else {
       p = (pool *)malloc(sizeof(pool));
       p->where = p->mem = (char *)malloc(SUPERBLOCK_SIZE);
@@ -57,7 +57,7 @@ void push(pool *p)
    if(USE_MMAP)
       l = (level_list *)mmap(0, sizeof(level_list),
                              PROT_READ|PROT_WRITE|PROT_EXEC,
-                             MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+                             MAP_PRIVATE|MAP_ANON, -1, 0);
    else
       l = (level_list *)malloc(sizeof(level_list));
 

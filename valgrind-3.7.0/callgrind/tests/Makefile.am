@@ -26,4 +26,4 @@ check_PROGRAMS = clreq simwork threads
 AM_CFLAGS   += $(AM_FLAG_M3264_PRI)
 AM_CXXFLAGS += $(AM_FLAG_M3264_PRI)
 
-threads_LDADD = -lpthread
+threads_LDFLAGS = -pthread

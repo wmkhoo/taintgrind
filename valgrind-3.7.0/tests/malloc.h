@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #if defined(VGO_darwin)
 #  include <malloc/malloc.h>
+#elif defined(VGO_freebsd)
+#  include <stdlib.h>
 #else
 #  include <malloc.h>
 #endif
@@ -14,7 +16,7 @@ __attribute__((unused))
 static void* memalign16(size_t szB)
 {
    void* x;
-#if defined(VGO_darwin)
+#if defined(VGO_darwin) || defined(VGO_freebsd)
    // Darwin lacks memalign, but its malloc is always 16-aligned anyway.
    x = malloc(szB);
 #else

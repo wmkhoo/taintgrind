@@ -110,6 +110,8 @@
 */
 #undef PLAT_x86_darwin
 #undef PLAT_amd64_darwin
+#undef PLAT_x86_freebsd
+#undef PLAT_amd64_freebsd
 #undef PLAT_x86_win32
 #undef PLAT_x86_linux
 #undef PLAT_amd64_linux
@@ -123,6 +125,10 @@
 #  define PLAT_x86_darwin 1
 #elif defined(__APPLE__) && defined(__x86_64__)
 #  define PLAT_amd64_darwin 1
+#elif defined(__FreeBSD__) && defined(__i386__)
+#  define PLAT_x86_freebsd 1
+#elif defined(__FreeBSD__) && defined(__amd64__)
+#  define PLAT_amd64_freebsd 1
 #elif defined(__MINGW32__) || defined(__CYGWIN32__) \
       || (defined(_WIN32) && defined(_M_IX86))
 #  define PLAT_x86_win32 1
@@ -228,7 +234,8 @@
 /* ------------------------- x86-{linux,darwin} ---------------- */
 
 #if defined(PLAT_x86_linux)  ||  defined(PLAT_x86_darwin)  \
-    ||  (defined(PLAT_x86_win32) && defined(__GNUC__))
+    ||  (defined(PLAT_x86_win32) && defined(__GNUC__)) \
+    || defined(PLAT_x86_freebsd)
 
 typedef
    struct { 
@@ -349,7 +356,8 @@ valgrind_do_client_request_expr(uintptr_t _zzq_default, uintptr_t _zzq_request,
 
 /* ------------------------ amd64-{linux,darwin} --------------- */
 
-#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin)
+#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin) || \
+   defined(PLAT_amd64_freebsd)
 
 typedef
    struct { 
@@ -752,7 +760,7 @@ typedef
 
 /* ------------------------- x86-{linux,darwin} ---------------- */
 
-#if defined(PLAT_x86_linux)  ||  defined(PLAT_x86_darwin)
+#if defined(PLAT_x86_linux)  ||  defined(PLAT_x86_darwin)  || defined(PLAT_x86_freebsd)
 
 /* These regs are trashed by the hidden call.  No need to mention eax
    as gcc can already see that, plus causes gcc to bomb. */
@@ -1158,7 +1166,7 @@ typedef
 
 /* ------------------------ amd64-{linux,darwin} --------------- */
 
-#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin)
+#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin)  ||  defined(PLAT_amd64_freebsd)
 
 /* ARGREGS: rdi rsi rdx rcx r8 r9 (the rest on stack in R-to-L order) */
 

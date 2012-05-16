@@ -398,6 +398,97 @@ static UInt local_sys_getpid ( void )
    return (UInt)(__res);
 }
 
+#elif defined(VGP_x86_freebsd)
+
+static UInt local_sys_write_stderr ( HChar* buf, Int n )
+{
+   Int block[2];
+   block[0] = (Int)buf;
+   block[1] = n;
+   __asm__ volatile (
+      "pushl %%ebx\n"           /* ebx is callee-save */
+      "movl  %0, %%ebx\n"       /* ebx = &block */
+      "pushl %%ebx\n"           /* save &block */
+      "movl  0(%%ebx), %%ecx\n" /* %ecx = buf */
+      "movl  4(%%ebx), %%edx\n" /* %edx = n */
+      "pushl %%edx\n"          /* arg3 = n */
+      "pushl %%ecx\n"          /* arg2 = buf */
+      "movl  $2, %%ebx\n"       /* %ebx = stderr */
+      "pushl %%ebx\n"          /* arg1 = fd */
+      "movl  $4, %%eax\n"       /* %eax = __NR_write */
+      "pushl %%eax\n"          /* fake return address */
+      "int   $0x80\n"           /* write(stderr, buf, n) */
+      "popl  %%ebx\n"           /* pop fake return address */
+      "popl  %%ebx\n"           /* pop arg1 */
+      "popl  %%ebx\n"           /* pop arg2 */
+      "popl  %%ebx\n"           /* pop arg3 */
+      "popl  %%ebx\n"           /* reestablish &block */
+      "movl  %%eax, 0(%%ebx)\n" /* block[0] = result */
+      "popl  %%ebx\n"           /* restore ebx */
+      : /*wr*/
+      : /*rd*/    "g" (block)
+      : /*trash*/ "eax", "edi", "ecx", "edx", "memory", "cc"
+   );
+   if (block[0] < 0) 
+      block[0] = -1;
+   return block[0];
+}
+
+static UInt local_sys_getpid ( void )
+{
+   UInt __res;
+   __asm__ volatile (
+      "movl $20, %%eax\n"  /* set %eax = __NR_getpid */
+      "int  $0x80\n"       /* getpid() */
+      "movl %%eax, %0\n"   /* set __res = eax */
+      : "=mr" (__res)
+      :
+      : "eax" );
+   return __res;
+}
+
+#elif defined(VGP_amd64_freebsd)
+__attribute__((noinline))
+static UInt local_sys_write_stderr ( HChar* buf, Int n )
+{
+   Long block[2];
+   block[0] = (Long)buf;
+   block[1] = n;
+   __asm__ volatile (
+      "subq  $256, %%rsp\n"     /* don't trash the stack redzone */
+      "pushq %%r15\n"           /* r15 is callee-save */
+      "movq  %0, %%r15\n"       /* r15 = &block */
+      "pushq %%r15\n"           /* save &block */
+      "movq  $4, %%rax\n"       /* rax = __NR_write */
+      "movq  $2, %%rdi\n"       /* rdi = stderr */
+      "movq  0(%%r15), %%rsi\n" /* rsi = buf */
+      "movq  8(%%r15), %%rdx\n" /* rdx = n */
+      "syscall\n"               /* write(stderr, buf, n) */
+      "popq  %%r15\n"           /* reestablish &block */
+      "movq  %%rax, 0(%%r15)\n" /* block[0] = result */
+      "popq  %%r15\n"           /* restore r15 */
+      "addq  $256, %%rsp\n"     /* restore stack ptr */
+      : /*wr*/
+      : /*rd*/    "g" (block)
+      : /*trash*/ "rax", "rdi", "rsi", "rdx", "memory", "cc"
+   );
+   if (block[0] < 0) 
+      block[0] = -1;
+   return (UInt)block[0];
+}
+
+static UInt local_sys_getpid ( void )
+{
+   UInt __res;
+   __asm__ volatile (
+      "movq $20, %%rax\n"  /* set %rax = __NR_getpid */
+      "syscall\n"          /* getpid() */
+      "movl %%eax, %0\n"   /* set __res = %eax */
+      : "=mr" (__res)
+      :
+      : "rax" );
+   return __res;
+}
 
 #else
 # error Unknown platform

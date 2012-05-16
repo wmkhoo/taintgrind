@@ -79,6 +79,8 @@ typedef Int ArenaId;
 #elif defined(VGP_amd64_linux) || \
       defined(VGP_ppc32_linux) || \
       defined(VGP_ppc64_linux) || \
+      defined(VGP_x86_freebsd) || \
+      defined(VGP_amd64_freebsd) || \
       defined(VGP_s390x_linux) || \
       defined(VGP_x86_darwin)  || \
       defined(VGP_amd64_darwin)

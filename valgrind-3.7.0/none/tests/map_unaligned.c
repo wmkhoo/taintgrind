@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include "tests/sys_mman.h"
 
+#ifndef MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+#endif
+
 int main(int argc, char **argv)
 {
    void *p1;

@@ -1,0 +1,9 @@
+On Linux, procfs has a process map file that contains both a file descriptor number and a pathname
+that corresponds to a chunk of a given process's mmap space.
+
+FreeBSD4's /proc/curproc/map file does not have either.  This kernel module allows valgrind to identify
+which file some random mmap segment came from or the filename that corresponds to a random fd.
+
+This package works on both FreeBSD-4.x and 6.x.
+
+-Peter

@@ -4281,6 +4281,9 @@ static Bool is_in_dynamic_linker_shared_object( Addr64 ga )
    if (VG_STREQ(soname, VG_U_LD_SO_1))              return True;
 #  elif defined(VGO_darwin)
    if (VG_STREQ(soname, VG_U_DYLD)) return True;
+#  elif defined(VGO_freebsd)
+   if (VG_STREQ(soname, VG_U_LD_ELF_SO_1))          return True;
+   if (VG_STREQ(soname, VG_U_LD_ELF32_SO_1))        return True;
 #  else
 #    error "Unsupported OS"
 #  endif

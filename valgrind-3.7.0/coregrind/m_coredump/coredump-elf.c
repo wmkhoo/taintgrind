@@ -28,7 +28,7 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
-#if defined(VGO_linux)
+#if defined(VGO_linux) || defined(VGO_freebsd)
 
 #include "pub_core_basics.h"
 #include "pub_core_vki.h"
@@ -93,6 +93,9 @@ static void fill_ehdr(ESZ(Ehdr) *ehdr, Int num_phdrs)
    ehdr->e_ident[EI_CLASS]   = VG_ELF_CLASS;
    ehdr->e_ident[EI_DATA]    = VG_ELF_DATA2XXX;
    ehdr->e_ident[EI_VERSION] = EV_CURRENT;
+#if defined(VGO_freebsd)
+   ehdr->e_ident[EI_OSABI]   = ELFOSABI_FREEBSD;
+#endif
 
    ehdr->e_type = ET_CORE;
    ehdr->e_machine = VG_ELF_MACHINE;
@@ -112,7 +115,7 @@ static void fill_ehdr(ESZ(Ehdr) *ehdr, Int num_phdrs)
 
 static void fill_phdr(ESZ(Phdr) *phdr, const NSegment *seg, UInt off, Bool write)
 {
-   SizeT len = seg->end - seg->start;
+   SizeT len = seg->end - seg->start + 1;
 
    write = write && should_dump(seg);
 
@@ -195,29 +198,9 @@ static void fill_prpsinfo(const ThreadState *tst,
 
    VG_(memset)(prpsinfo, 0, sizeof(*prpsinfo));
 
-   switch(tst->status) {
-   case VgTs_Runnable:
-   case VgTs_Yielding:
-      prpsinfo->pr_sname = 'R';
-      break;
+   prpsinfo->pr_version = VKI_PRPSINFO_VERSION;
+   prpsinfo->pr_psinfosz = sizeof(struct vki_elf_prpsinfo);
 
-   case VgTs_WaitSys:
-      prpsinfo->pr_sname = 'S';
-      break;
-
-   case VgTs_Zombie:
-      prpsinfo->pr_sname = 'Z';
-      break;
-
-   case VgTs_Empty:
-   case VgTs_Init:
-      prpsinfo->pr_sname = '?';
-      break;
-   }
-
-   prpsinfo->pr_uid = 0;
-   prpsinfo->pr_gid = 0;
-   
    if (VG_(resolve_filename)(VG_(cl_exec_fd), name, VKI_PATH_MAX)) {
       Char *n = name+VG_(strlen)(name)-1;
 
@@ -226,7 +209,8 @@ static void fill_prpsinfo(const ThreadState *tst,
       if (n != name)
 	 n++;
 
-      VG_(strncpy)(prpsinfo->pr_fname, n, sizeof(prpsinfo->pr_fname));
+      VG_(strncpy)(prpsinfo->pr_fname, n, sizeof(prpsinfo->pr_fname) - 1);
+      VG_(strncpy)(prpsinfo->pr_psargs, n, sizeof(prpsinfo->pr_psargs) - 1);
    }
 }
 
@@ -239,16 +223,14 @@ static void fill_prstatus(const ThreadState *tst,
 
    VG_(memset)(prs, 0, sizeof(*prs));
 
-   prs->pr_info.si_signo = si->si_signo;
-   prs->pr_info.si_code = si->si_code;
-   prs->pr_info.si_errno = 0;
+   prs->pr_version = VKI_PRSTATUS_VERSION;
+   prs->pr_statussz = sizeof(struct vki_elf_prstatus);
+   prs->pr_gregsetsz = sizeof(vki_elf_gregset_t);
+   prs->pr_fpregsetsz = sizeof(vki_elf_fpregset_t);
+   prs->pr_osreldate = VG_(getosreldate)();
 
    prs->pr_cursig = si->si_signo;
-
    prs->pr_pid = tst->os_state.lwpid;
-   prs->pr_ppid = 0;
-   prs->pr_pgrp = VG_(getpgrp)();
-   prs->pr_sid = VG_(getpgrp)();
    
 #ifdef VGP_s390x_linux
    /* prs->pr_reg has struct type. Need to take address. */
@@ -365,6 +347,46 @@ static void fill_prstatus(const ThreadState *tst,
    regs->ARM_pc   = arch->vex.guest_R15T;
    regs->ARM_cpsr = LibVEX_GuestARM_get_cpsr( &((ThreadArchState*)arch)->vex );
 
+#elif defined(VGP_amd64_freebsd)
+   regs->rflags = LibVEX_GuestAMD64_get_rflags( &((ThreadArchState*)arch)->vex );
+   regs->rsp    = arch->vex.guest_RSP;
+   regs->rip    = arch->vex.guest_RIP;
+   regs->rbx    = arch->vex.guest_RBX;
+   regs->rcx    = arch->vex.guest_RCX;
+   regs->rdx    = arch->vex.guest_RDX;
+   regs->rsi    = arch->vex.guest_RSI;
+   regs->rdi    = arch->vex.guest_RDI;
+   regs->rbp    = arch->vex.guest_RBP;
+   regs->rax    = arch->vex.guest_RAX;
+   regs->r8     = arch->vex.guest_R8;
+   regs->r9     = arch->vex.guest_R9;
+   regs->r10    = arch->vex.guest_R10;
+   regs->r11    = arch->vex.guest_R11;
+   regs->r12    = arch->vex.guest_R12;
+   regs->r13    = arch->vex.guest_R13;
+   regs->r14    = arch->vex.guest_R14;
+   regs->r15    = arch->vex.guest_R15;
+
+#elif defined(VGP_x86_freebsd)
+   regs->eflags = LibVEX_GuestX86_get_eflags( &arch->vex );
+   regs->esp    = arch->vex.guest_ESP;
+   regs->eip    = arch->vex.guest_EIP;
+
+   regs->ebx    = arch->vex.guest_EBX;
+   regs->ecx    = arch->vex.guest_ECX;
+   regs->edx    = arch->vex.guest_EDX;
+   regs->esi    = arch->vex.guest_ESI;
+   regs->edi    = arch->vex.guest_EDI;
+   regs->ebp    = arch->vex.guest_EBP;
+   regs->eax    = arch->vex.guest_EAX;
+
+   regs->cs     = arch->vex.guest_CS;
+   regs->ds     = arch->vex.guest_DS;
+   regs->ss     = arch->vex.guest_SS;
+   regs->es     = arch->vex.guest_ES;
+   regs->fs     = arch->vex.guest_FS;
+   regs->gs     = arch->vex.guest_GS;
+
 #elif defined(VGP_s390x_linux)
 #  define DO(n)  regs->gprs[n] = arch->vex.guest_r##n
    DO(0);  DO(1);  DO(2);  DO(3);  DO(4);  DO(5);  DO(6);  DO(7);
@@ -448,6 +470,15 @@ static void fill_fpu(const ThreadState *tst, vki_elf_fpregset_t *fpu)
 
 #elif defined(VGP_arm_linux)
    // umm ...
+
+#elif defined(VGP_x86_freebsd)
+
+#elif defined(VGP_amd64_freebsd)
+
+#  define DO(n)  VG_(memcpy)(fpu->xmm_space + n * 4, &arch->vex.guest_XMM##n, sizeof(arch->vex.guest_XMM##n))
+   DO(0);  DO(1);  DO(2);  DO(3);  DO(4);  DO(5);  DO(6);  DO(7);
+   DO(8);  DO(9);  DO(10); DO(11); DO(12); DO(13); DO(14); DO(15);
+#  undef DO
 
 #elif defined(VGP_s390x_linux)
 #  define DO(n)  fpu->fprs[n].ui = arch->vex.guest_f##n
@@ -565,6 +596,12 @@ void make_elf_coredump(ThreadId tid, const vki_siginfo_t *si, UInt max_size)
    phdrs = VG_(arena_malloc)(VG_AR_CORE, "coredump-elf.mec.1", 
                              sizeof(*phdrs) * num_phdrs);
 
+   fill_prpsinfo(&VG_(threads)[tid], &prpsinfo);
+#if defined(VGO_freebsd)
+   /* gdb doesn't care about the order of these, but some freebsd tools do. */
+   add_note(&notelist, "FreeBSD", NT_PRPSINFO, &prpsinfo, sizeof(prpsinfo));
+#endif
+
    for(i = 1; i < VG_N_THREADS; i++) {
       vki_elf_fpregset_t  fpu;
 
@@ -580,20 +617,21 @@ void make_elf_coredump(ThreadId tid, const vki_siginfo_t *si, UInt max_size)
 #     endif
 
       fill_fpu(&VG_(threads)[i], &fpu);
-#     if !defined(VGPV_arm_linux_android)
-      add_note(&notelist, "CORE", NT_FPREGSET, &fpu, sizeof(fpu));
-#     endif
-
       fill_prstatus(&VG_(threads)[i], &prstatus, si);
-#     if !defined(VGPV_arm_linux_android)
+#if defined(VGO_freebsd)
+      add_note(&notelist, "FreeBSD", NT_FPREGSET, &fpu, sizeof(fpu));
+      add_note(&notelist, "FreeBSD", NT_PRSTATUS, &prstatus, sizeof(prstatus));
+#else
+#if !defined(VGPV_arm_linux_android)
+      add_note(&notelist, "CORE", NT_FPREGSET, &fpu, sizeof(fpu));
       add_note(&notelist, "CORE", NT_PRSTATUS, &prstatus, sizeof(prstatus));
-#     endif
+#endif
+#endif
    }
 
-   fill_prpsinfo(&VG_(threads)[tid], &prpsinfo);
-#  if !defined(VGPV_arm_linux_android)
+#if !defined(VGO_freebsd) && !defined(VGPV_arm_linux_android)
    add_note(&notelist, "CORE", NT_PRPSINFO, &prpsinfo, sizeof(prpsinfo));
-#  endif
+#endif
 
    for (note = notelist, notesz = 0; note != NULL; note = note->next)
       notesz += note_size(note);
@@ -619,8 +657,7 @@ void make_elf_coredump(ThreadId tid, const vki_siginfo_t *si, UInt max_size)
       if (!may_dump(seg))
 	 continue;
 
-      fill_phdr(&phdrs[idx], seg, off,
-                (seg->end - seg->start + off) < max_size);
+      fill_phdr(&phdrs[idx], seg, off, (seg->end - seg->start + 1 + off) < max_size);
       
       off += phdrs[idx].p_filesz;
 
@@ -643,9 +680,8 @@ void make_elf_coredump(ThreadId tid, const vki_siginfo_t *si, UInt max_size)
 	 continue;
 
       if (phdrs[idx].p_filesz > 0) {
-	 vg_assert(VG_(lseek)(core_fd, phdrs[idx].p_offset, VKI_SEEK_SET) 
-                   == phdrs[idx].p_offset);
-	 vg_assert(seg->end - seg->start >= phdrs[idx].p_filesz);
+	 vg_assert(VG_(lseek)(core_fd, phdrs[idx].p_offset, VKI_SEEK_SET) == phdrs[idx].p_offset);
+	 vg_assert(seg->end - seg->start + 1 >= phdrs[idx].p_filesz);
 
 	 (void)VG_(write)(core_fd, (void *)seg->start, phdrs[idx].p_filesz);
       }

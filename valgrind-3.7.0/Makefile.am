@@ -53,6 +53,7 @@ SUPP_FILES = \
 	glibc-2.X-drd.supp \
 	exp-sgcheck.supp \
 	darwin9.supp darwin9-drd.supp \
+	freebsd.supp \
 	darwin10.supp darwin10-drd.supp \
 	darwin11.supp \
 	bionic.supp

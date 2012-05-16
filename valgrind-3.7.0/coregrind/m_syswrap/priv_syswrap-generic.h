@@ -151,7 +151,9 @@ DECL_TEMPLATE(generic, sys_madvise);
 
 // These ones aren't POSIX, but are in some standard and look reasonably
 // generic,  and are the same for all architectures under Linux.
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_nice);      // SVr4, SVID EXT, AT&T, X/OPEN, BSD 4.3
+#endif
 DECL_TEMPLATE(generic, sys_sync);      // SVr4, SVID, X/OPEN, BSD 4.3
 DECL_TEMPLATE(generic, sys_brk);       // 4.3BSD
 DECL_TEMPLATE(generic, sys_acct);      // SVR4, non-POSIX
@@ -163,7 +165,9 @@ DECL_TEMPLATE(generic, sys_select);    // 4.4BSD
 DECL_TEMPLATE(generic, sys_flock);     // 4.4BSD
 DECL_TEMPLATE(generic, sys_poll);      // XPG4-UNIX
 DECL_TEMPLATE(generic, sys_getrusage); // SVr4, 4.3BSD
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_stime);	    // SVr4, SVID, X/OPEN
+#endif
 DECL_TEMPLATE(generic, sys_settimeofday); // SVr4, 4.3BSD (non-POSIX)
 DECL_TEMPLATE(generic, sys_getpriority);  // SVr4, 4.4BSD
 DECL_TEMPLATE(generic, sys_setpriority);  // SVr4, 4.4BSD
@@ -179,32 +183,44 @@ DECL_TEMPLATE(generic, sys_utimes);       // 4.3BSD
 DECL_TEMPLATE(generic, sys_sigaction);             // (x86) P
 
 // Funny names, not sure...
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_newstat);               // * P
 DECL_TEMPLATE(generic, sys_newlstat);              // *
 DECL_TEMPLATE(generic, sys_newfstat);              // * P (SVr4,BSD4.3)
+#endif
 
 // For the remainder, not really sure yet
 DECL_TEMPLATE(generic, sys_ptrace);                // (x86?) (almost-P)
 DECL_TEMPLATE(generic, sys_setrlimit);             // SVr4, 4.3BSD
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_old_getrlimit);         // SVr4, 4.3BSD L?
+#endif
 DECL_TEMPLATE(generic, sys_statfs);                // * L?
 DECL_TEMPLATE(generic, sys_fstatfs);               // * L?
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_iopl);                  // (x86/amd64) L
 DECL_TEMPLATE(generic, sys_ipc);                   // (x86) L
 DECL_TEMPLATE(generic, sys_newuname);              // * P
 DECL_TEMPLATE(generic, sys_pread64);               // * (Unix98?)
 DECL_TEMPLATE(generic, sys_pwrite64);              // * (Unix98?)
+#endif
 DECL_TEMPLATE(generic, sys_sigaltstack);           // (x86) (XPG4-UNIX)
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_getpmsg);               // (?) (?)
 DECL_TEMPLATE(generic, sys_putpmsg);               // (?) (?)
+#endif
 DECL_TEMPLATE(generic, sys_getrlimit);             // * (?)
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_truncate64);            // %% (P?)
 DECL_TEMPLATE(generic, sys_ftruncate64);           // %% (P?)
+#endif
 DECL_TEMPLATE(generic, sys_lchown);                // * (L?)
 DECL_TEMPLATE(generic, sys_mincore);               // * L?
+#ifdef VGO_linux
 DECL_TEMPLATE(generic, sys_getdents64);            // * (SVr4,SVID?)
 DECL_TEMPLATE(generic, sys_statfs64);              // * (?)
 DECL_TEMPLATE(generic, sys_fstatfs64);             // * (?)
+#endif
 
 
 /* ---------------------------------------------------------------------

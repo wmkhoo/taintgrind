@@ -22,9 +22,10 @@ int main(void)
    int res;
 
    /* Install own SIGSEGV handler */
+   memset(&sigsegv_new, 0, sizeof(sigsegv_new));
    sigsegv_new.sa_handler  = SIGSEGV_handler;
    sigsegv_new.sa_flags    = 0;
-#if !defined(__APPLE__)
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
    sigsegv_new.sa_restorer = NULL;
 #endif
    res = sigemptyset( &sigsegv_new.sa_mask );

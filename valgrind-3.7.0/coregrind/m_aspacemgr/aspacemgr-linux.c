@@ -3,7 +3,7 @@
 /*--- The address space manager: segment initialisation and        ---*/
 /*--- tracking, stack operations                                   ---*/
 /*---                                                              ---*/
-/*--- Implementation for Linux (and Darwin!)   m_aspacemgr-linux.c ---*/
+/*--- Implementation for Linux, FreeBSD and Darwin                 ---*/
 /*--------------------------------------------------------------------*/
 
 /*
@@ -31,7 +31,7 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
-#if defined(VGO_linux) || defined(VGO_darwin)
+#if defined(VGO_linux) || defined(VGO_darwin) || defined(VGO_freebsd)
 
 /* *************************************************************
    DO NOT INCLUDE ANY OTHER FILES HERE.
@@ -946,7 +946,7 @@ static void sync_check_mapping_callback ( Addr addr, SizeT len, UInt prot,
          cmp_devino = False;
 #endif
 
-#if defined(VGO_darwin)
+#if defined(VGO_darwin) || defined(VGO_freebsd)
       // GrP fixme kernel info doesn't have dev/inode
       cmp_devino = False;
       
@@ -1637,6 +1637,32 @@ Addr VG_(am_startup) ( Addr sp_at_startup )
 
    suggested_clstack_top = -1; // ignored; Mach-O specifies its stack
 
+#elif defined(VGO_freebsd)
+
+# if VG_WORDSIZE == 4
+   aspacem_minAddr = (Addr) 0x00010000; // 64K
+   aspacem_maxAddr = VG_PGROUNDDN( sp_at_startup ) - 1;
+# else
+   aspacem_minAddr = (Addr) 0x00010000; // 64k
+   aspacem_maxAddr = (Addr) (Addr)0x800000000 - 1; // 32G
+#  ifdef ENABLE_INNER
+   { Addr cse = VG_PGROUNDDN( sp_at_startup ) - 1;
+     if (aspacem_maxAddr > cse)
+        aspacem_maxAddr = cse;
+   }
+#    endif
+# endif
+
+   aspacem_cStart = aspacem_minAddr;
+   aspacem_vStart = VG_PGROUNDUP((aspacem_minAddr + aspacem_maxAddr + 1) / 2);
+
+#  ifdef ENABLE_INNER
+   aspacem_vStart -= 0x10000000; // 256M
+#  endif
+
+   suggested_clstack_top = aspacem_maxAddr - 16*1024*1024ULL
+                                           + VKI_PAGE_SIZE;
+
 #else
 
    /* Establish address limits and block out unusable parts
@@ -2009,13 +2035,13 @@ VG_(am_notify_client_mmap)( Addr a, SizeT len, UInt prot, UInt flags,
    needDiscard = any_Ts_in_range( a, len );
 
    init_nsegment( &seg );
-   seg.kind   = (flags & VKI_MAP_ANONYMOUS) ? SkAnonC : SkFileC;
+   seg.kind   = (flags & (VKI_MAP_ANONYMOUS | VKI_MAP_STACK)) ? SkAnonC : SkFileC;
    seg.start  = a;
    seg.end    = a + len - 1;
    seg.hasR   = toBool(prot & VKI_PROT_READ);
    seg.hasW   = toBool(prot & VKI_PROT_WRITE);
    seg.hasX   = toBool(prot & VKI_PROT_EXEC);
-   if (!(flags & VKI_MAP_ANONYMOUS)) {
+   if (!(flags & (VKI_MAP_ANONYMOUS | VKI_MAP_STACK))) {
       // Nb: We ignore offset requests in anonymous mmaps (see bug #126722)
       seg.offset = offset;
       if (ML_(am_get_fd_d_i_m)(fd, &dev, &ino, &mode)) {
@@ -3583,11 +3609,84 @@ Bool VG_(get_changed_segments)(
    return !css_overflowed;
 }
 
-#endif // defined(VGO_darwin)
+#elif defined(VGO_freebsd)
 
-/*------END-procmaps-parser-for-Darwin---------------------------*/
+ /* Size of a smallish table used to read /proc/self/map entries. */
+ #define M_PROCMAP_BUF 10485760	/* 10M */
+ 
+ /* static ... to keep it out of the stack frame. */
+ static Char procmap_buf[M_PROCMAP_BUF];
+ 
+static void parse_procselfmaps (
+      void (*record_mapping)( Addr addr, SizeT len, UInt prot,
+                              ULong dev, ULong ino, Off64T offset, 
+                              const UChar* filename ),
+      void (*record_gap)( Addr addr, SizeT len )
+   )
+{
+    Int    i;
+    Addr   start, endPlusOne, gapStart;
+    UChar* filename;
+    char   *p;
+    UInt          prot;
+    ULong  foffset, dev, ino;
+    struct vki_kinfo_vmentry *kve;
+    vki_size_t len;
+    Int    oid[4];
+    SysRes sres;
+ 
+    foffset = ino = 0; /* keep gcc-4.1.0 happy */
+ 
+    oid[0] = VKI_CTL_KERN;
+    oid[1] = VKI_KERN_PROC;
+    oid[2] = VKI_KERN_PROC_VMMAP;
+    oid[3] = sr_Res(VG_(do_syscall0)(__NR_getpid));
+    len = sizeof(procmap_buf);
+ 
+    sres = VG_(do_syscall6)(__NR___sysctl, (UWord)oid, 4, (UWord)procmap_buf,
+       (UWord)&len, 0, 0);
+    if (sr_isError(sres)) {
+       VG_(debugLog)(0, "procselfmaps", "sysctll %ld\n", sr_Err(sres));
+       ML_(am_exit)(1);
+    }
+    gapStart = Addr_MIN;
+    i = 0;
+    p = procmap_buf;
+    while (p < (char *)procmap_buf + len) {
+       kve = (struct vki_kinfo_vmentry *)p;
+       start      = (UWord)kve->kve_start;
+       endPlusOne = (UWord)kve->kve_end;
+       foffset    = kve->kve_offset;
+       filename   = kve->kve_path;
+       dev        = kve->kve_fsid;
+       ino        = kve->kve_fileid;
+       if (filename[0] != '/') {
+         filename = NULL;
+         foffset = 0;
+       }
+ 
+       prot = 0;
+       if (kve->kve_protection & VKI_KVME_PROT_READ)  prot |= VKI_PROT_READ;
+       if (kve->kve_protection & VKI_KVME_PROT_WRITE) prot |= VKI_PROT_WRITE;
+       if (kve->kve_protection & VKI_KVME_PROT_EXEC)  prot |= VKI_PROT_EXEC;
+ 
+       if (record_gap && gapStart < start)
+          (*record_gap) ( gapStart, start-gapStart );
+ 
+       if (record_mapping && start < endPlusOne)
+          (*record_mapping) ( start, endPlusOne-start,
+                              prot, dev, ino,
+                              foffset, filename );
+       gapStart = endPlusOne;
+       p += kve->kve_structsize;
+    }
+ 
+    if (record_gap && gapStart < Addr_MAX)
+       (*record_gap) ( gapStart, Addr_MAX - gapStart + 1 );
+}
 
-#endif // defined(VGO_linux) || defined(VGO_darwin)
+#endif
+#endif
 
 /*--------------------------------------------------------------------*/
 /*--- end                                                          ---*/

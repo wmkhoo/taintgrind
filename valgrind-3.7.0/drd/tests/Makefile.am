@@ -341,8 +341,11 @@ endif
 
 if HAVE_BUILTIN_ATOMIC_CXX
 check_PROGRAMS +=        \
-  annotate_smart_pointer \
-  tsan_unittest
+  annotate_smart_pointer
+endif
+
+if !VGCONF_OS_IS_FREEBSD
+check_PROGRAMS += tsan_unittest
 endif
 
 if HAVE_OPENMP

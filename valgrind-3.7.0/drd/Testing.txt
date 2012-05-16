@@ -1,0 +1,89 @@
+How to test DRD
+~~~~~~~~~~~~~~~
+
+1. Start with compiling DRD.
+
+2. Check as follows that all global symbols in DRD have been wrapped by the
+   DRD_() macro (output must be empty):
+     ( cd drd && nm -A drd*.o|grep ' T '|grep -v ' T vgDrd_' )
+
+3. Check as follows that all global symbols in the preloaded shared library
+   are redirected functions (output must contain one symbol that starts with
+   a double underscore, something like __i686.get_pc_thunk.bx):
+     ( cd drd && nm -A vgpreload*.o|grep ' T '|grep -v ' T _vg' )
+
+4. Verify that all files needed for the regression tests are included in
+   drd/tests/Makefile.am:
+     (
+       cd drd/tests;
+       for f in *.vgtest *.exp*; do grep -q "$f" Makefile.am || echo $f; done
+     )
+
+5. Verify that all files referenced in EXTRA_DIST in drd/tests/Makefile.am
+   exist:
+     (
+       cd drd/tests;
+       for e in $(awk '/\\$/{n=$0; sub("\\\\$", "", n); if (line != "")\
+           { line = line " " n } else { line=n }} \
+           /[^\\]$/{if (line != ""){print line;line=""};print}' < Makefile.am \
+         | sed -n 's/^EXTRA_DIST *=//p' | sed 's/..noinst_SCRIPTS.//')
+       do
+         [ -e "$e" ] || echo "$e"
+       done
+     )
+     
+6. Run the regression tests as follows:
+     perl tests/vg_regtest drd
+
+7. Run the regression tests that were developed for Thread Sanitizer:
+     ./vg-in-place --tool=drd --check-stack-var=yes drd/tests/tsan_unittest 2>&1|less
+
+8. Test the slowdown for matinv for various matrix sizes via the script
+   drd/scripts/run-matinv (must be about 25 for i == 1 and about
+   50 for i == 10 with n == 200).
+
+9. Test whether DRD works with standard KDE applications and whether it does
+   not print any false positives. Test this both with KDE3 and KDE4 on Linux:
+     ./vg-in-place --tool=drd --read-var-info=yes kate
+     ./vg-in-place --tool=drd --read-var-info=yes --check-stack-var=yes kate
+     ./vg-in-place --tool=drd --read-var-info=yes --trace-children=yes knode
+     ./vg-in-place --tool=drd --read-var-info=yes --check-stack-var=yes --trace-children=yes knode
+     ./vg-in-place --tool=drd --read-var-info=yes --check-stack-var=yes /usr/bin/designer
+
+  and on Darwin:
+    ./vg-in-place --tool=drd --trace-fork-join=yes --show-confl-seg=no --gen-suppressions=all /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal
+    ./vg-in-place --tool=drd --trace-fork-join=yes --show-confl-seg=no --gen-suppressions=all /Applications/Safari.app/Contents/MacOS/Safari
+
+10. Test whether DRD works with standard GNOME applications. Expect
+   race reports triggered by ORBit_RootObject_duplicate() and after
+   having closed the GNOME terminal window:
+     ./vg-in-place --tool=drd --read-var-info=yes --trace-children=yes gnome-terminal
+
+11. Rerun the GraphicsMagick test suite:
+    1. Recompile gcc via drd/scripts/download-and-build-gcc.
+    2. Replace the distro-provided libgomp.so* by the newly compiled versions:
+       cp $HOME/gcc-.../lib/libgomp.so.1.0.0.0 /usr/lib
+       cp $HOME/gcc-.../lib64/libgomp.so.1.0.0.0 /usr/lib64
+       rpm --verify libgomp43-32bit
+       rpm --verify libgomp43
+    3. Build and install Valgrind in /usr:
+       ./autogen.sh && ./configure --prefix=/usr CC=$HOME/gcc-4.4.0/bin/gcc \
+       && make -s && make -s install
+    4. Download the GraphicsMagick source code:
+       cvs -d :pserver:anonymous@cvs.graphicsmagick.org:/GraphicsMagick login
+       cvs -d :pserver:anonymous@cvs.graphicsmagick.org:/GraphicsMagick co GraphicsMagick
+       cd GraphicsMagick
+       ./configure
+       export OMP_NUM_THREADS=4
+       make -j2 -s MEMCHECK="$HOME/software/valgrind/vg-in-place --tool=drd --check-stack-var=yes --read-var-info=yes --quiet" check
+    5. Expected result: 776 tests / 23 expected failures / 147m24s user time
+       on a E8400 CPU @ 3 GHz.
+
+12. Test DRD with Firefox. First build and install Firefox 3:
+     drd/scripts/download-and-build-firefox
+   Now run the following command:
+     LD_LIBRARY_PATH=$HOME/software/mozilla-build/dist/lib: ./vg-in-place --tool=drd --check-stack-var=yes --trace-children=yes --show-confl-seg=no $HOME/software/mozilla-build/dist/bin/firefox-bin
+
+13. Verify that the XML output matches the DRD XML output XSD.
+
+   drd/tests/verify-xml-output

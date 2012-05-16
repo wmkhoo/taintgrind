@@ -28,7 +28,7 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
-#if defined(VGO_linux) || defined(VGO_darwin)
+#if defined(VGO_linux) || defined(VGO_darwin) || defined(VGO_freebsd)
 
 #include "pub_core_basics.h"
 #include "pub_core_debuginfo.h"
@@ -1810,11 +1810,11 @@ void ML_(read_debuginfo_dwarf1) (
 
 /* --------------- Decls --------------- */
 
-#if defined(VGP_x86_linux)
+#if defined(VGP_x86_linux) || defined(VGP_x86_freebsd)
 #  define FP_REG         5
 #  define SP_REG         4
 #  define RA_REG_DEFAULT 8
-#elif defined(VGP_amd64_linux)
+#elif defined(VGP_amd64_linux) || defined(VGP_amd64_freebsd)
 #  define FP_REG         6
 #  define SP_REG         7
 #  define RA_REG_DEFAULT 16
@@ -4127,7 +4127,7 @@ void ML_(read_callframe_info_dwarf3)
     return;
 }
 
-#endif // defined(VGO_linux) || defined(VGO_darwin)
+#endif // defined(VGO_linux) || defined(VGO_darwin) || defined(VGO_freebsd)
 
 /*--------------------------------------------------------------------*/
 /*--- end                                                          ---*/

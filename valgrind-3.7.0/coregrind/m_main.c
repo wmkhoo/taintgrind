@@ -1186,7 +1186,9 @@ static void print_preamble ( Bool logging_to_fd,
       VG_(umsg)("\n");
 
    if (VG_(clo_verbosity) > 1) {
+#if !defined(VGO_freebsd)
       SysRes fd;
+#endif
       VexArch vex_arch;
       VexArchInfo vex_archinfo;
       if (!logging_to_fd)
@@ -1199,6 +1201,8 @@ static void print_preamble ( Bool logging_to_fd,
       }
 
       VG_(message)(Vg_DebugMsg, "Contents of /proc/version:\n");
+#if !defined(VGO_freebsd)
+      VG_(message)(Vg_DebugMsg, "Contents of /proc/version:");
       fd = VG_(open) ( "/proc/version", VKI_O_RDONLY, 0 );
       if (sr_isError(fd)) {
          VG_(message)(Vg_DebugMsg, "  can't open /proc/version\n");
@@ -1216,6 +1220,7 @@ static void print_preamble ( Bool logging_to_fd,
          VG_(close)(sr_Res(fd));
 #        undef BUF_LEN
       }
+#endif
 
       VG_(machine_get_VexArchInfo)( &vex_arch, &vex_archinfo );
       VG_(message)(
@@ -1241,7 +1246,7 @@ static void print_preamble ( Bool logging_to_fd,
 
 /* Number of file descriptors that Valgrind tries to reserve for
    it's own use - just a small constant. */
-#define N_RESERVED_FDS (10)
+#define N_RESERVED_FDS (20)
 
 static void setup_file_descriptors(void)
 {
@@ -1694,7 +1699,7 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
    if (!need_help) {
       VG_(debugLog)(1, "main", "Create initial image\n");
 
-#     if defined(VGO_linux) || defined(VGO_darwin)
+#     if defined(VGO_linux) || defined(VGO_darwin) || defined(VGO_freebsd)
       the_iicii.argv              = argv;
       the_iicii.envp              = envp;
       the_iicii.toolname          = toolname;
@@ -1862,9 +1867,9 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
       VG_(debugLog)(1, "main", "Wait for GDB\n");
       VG_(printf)("pid=%d, entering delay loop\n", VG_(getpid)());
 
-#     if defined(VGP_x86_linux)
+#     if defined(VGP_x86_linux) || defined(VGP_x86_freebsd)
       iters = 5;
-#     elif defined(VGP_amd64_linux) || defined(VGP_ppc64_linux)
+#     elif defined(VGP_amd64_linux) || defined(VGP_ppc64_linux) || defined(VGP_amd64_freebsd)
       iters = 10;
 #     elif defined(VGP_ppc32_linux)
       iters = 5;
@@ -1917,7 +1922,7 @@ Int valgrind_main ( Int argc, HChar **argv, HChar **envp )
                                VG_(free), sizeof(Addr_n_ULong) );
    tl_assert(addr2dihandle);
 
-#  if defined(VGO_linux)
+#  if defined(VGO_linux) || defined(VGO_freebsd)
    { Addr* seg_starts;
      Int   n_seg_starts;
      Addr_n_ULong anu;
@@ -2460,6 +2465,7 @@ static void final_tidyup(ThreadId tid)
    VG_(set_default_handler)(VKI_SIGBUS);
    VG_(set_default_handler)(VKI_SIGILL);
    VG_(set_default_handler)(VKI_SIGFPE);
+   VG_(set_default_handler)(VKI_SIGSYS);
 
    // We were exiting, so assert that...
    vg_assert(VG_(is_exiting)(tid));
@@ -2479,7 +2485,7 @@ static void final_tidyup(ThreadId tid)
 /*=== Getting to main() alive: LINUX                               ===*/
 /*====================================================================*/
 
-#if defined(VGO_linux)
+#if defined(VGO_linux) || defined(VGO_freebsd)
 
 /* If linking of the final executables is done with glibc present,
    then Valgrind starts at main() above as usual, and all of the
@@ -2737,6 +2743,44 @@ asm("\n"
     "\t.word "VG_STRINGIFY(VG_STACK_GUARD_SZB)"\n"
     "\t.word "VG_STRINGIFY(VG_STACK_ACTIVE_SZB)"\n"
 );
+#elif defined(VGP_x86_freebsd)
+asm("\n"
+    ".text\n"
+    "\t.globl _start\n"
+    "\t.type _start,@function\n"
+    "_start:\n"
+    /* set up the new stack in %eax */
+    "\tmovl  $vgPlain_interim_stack, %eax\n"
+    "\taddl  $"VG_STRINGIFY(VG_STACK_GUARD_SZB)", %eax\n"
+    "\taddl  $"VG_STRINGIFY(VG_STACK_ACTIVE_SZB)", %eax\n"
+    "\tsubl  $16, %eax\n"
+    "\tandl  $~15, %eax\n"
+    /* install it, and collect the original one */
+    "\txchgl %eax, %esp\n"
+    /* call _start_in_C_linux, passing it the startup %esp */
+    "\tpushl %eax\n"
+    "\tcall  _start_in_C_linux\n"
+    "\thlt\n"
+    ".previous\n"
+);
+#elif defined(VGP_amd64_freebsd)
+asm("\n"
+    ".text\n"
+    "\t.globl _start\n"
+    "\t.type _start,@function\n"
+    "_start:\n"
+    /* set up the new stack in %rsi */
+    "\tmovq  $vgPlain_interim_stack, %rsi\n"
+    "\taddq  $"VG_STRINGIFY(VG_STACK_GUARD_SZB)", %rsi\n"
+    "\taddq  $"VG_STRINGIFY(VG_STACK_ACTIVE_SZB)", %rsi\n"
+    "\tandq  $~15, %rsi\n"
+    /* install it, and collect the original one */
+    "\txchgq %rsi, %rsp\n"
+    /* call _start_in_C_amd64_freebsd, passing it the startup %rsp */
+    "\tcall  _start_in_C_amd64_freebsd\n"
+    "\thlt\n"
+    ".previous\n"
+);
 #else
 #  error "Unknown linux platform"
 #endif
@@ -2748,6 +2792,26 @@ asm("\n"
 #include <elf.h>
 /* --- !!! --- EXTERNAL HEADERS end --- !!! --- */
 
+#if defined(VGP_amd64_freebsd)
+void _start_in_C_amd64_freebsd ( UWord* pArgc, UWord *initial_sp );
+void _start_in_C_amd64_freebsd ( UWord* pArgc, UWord *initial_sp )
+{
+   Int     r;
+   Word    argc = pArgc[0];
+   HChar** argv = (HChar**)&pArgc[1];
+   HChar** envp = (HChar**)&pArgc[1+argc+1];
+
+   VG_(memset)( &the_iicii, 0, sizeof(the_iicii) );
+   VG_(memset)( &the_iifii, 0, sizeof(the_iifii) );
+
+   the_iicii.sp_at_startup = (Addr)initial_sp;
+
+   r = valgrind_main( (Int)argc, argv, envp );
+   /* NOTREACHED */
+   VG_(exit)(r);
+}
+
+#else
 /* Avoid compiler warnings: this fn _is_ used, but labelling it
    'static' causes gcc to complain it isn't. */
 void _start_in_C_linux ( UWord* pArgc );
@@ -2786,6 +2850,7 @@ void _start_in_C_linux ( UWord* pArgc )
    /* NOTREACHED */
    VG_(exit)(r);
 }
+#endif
 
 
 /*====================================================================*/

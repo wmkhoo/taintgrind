@@ -464,6 +464,22 @@ typedef struct SigQueue {
       I_die_here;
    }
 
+#elif defined(VGP_x86_freebsd)
+#  define VG_UCONTEXT_INSTR_PTR(uc)       ((UWord)(uc)->uc_mcontext.eip)
+#  define VG_UCONTEXT_STACK_PTR(uc)       ((UWord)(uc)->uc_mcontext.esp)
+#  define VG_UCONTEXT_FRAME_PTR(uc)       ((UWord)(uc)->uc_mcontext.ebp)
+#  define VG_UCONTEXT_SYSCALL_NUM(uc)     ((UWord)(uc)->uc_mcontext.eax)
+#  define VG_UCONTEXT_SYSCALL_SYSRES(uc)                        \
+      /* Convert the value in uc_mcontext.eax into a SysRes. */ \
+      VG_(mk_SysRes_x86_freebsd)( (uc)->uc_mcontext.eax, \
+	 (uc)->uc_mcontext.edx, ((uc)->uc_mcontext.eflags & 1) != 0 ? True : False)
+#  define VG_UCONTEXT_LINK_REG(uc)        0 /* What is an LR for anyway? */
+#  define VG_UCONTEXT_TO_UnwindStartRegs(srP, uc)        \
+      { (srP)->r_pc = (ULong)((uc)->uc_mcontext.eip);    \
+        (srP)->r_sp = (ULong)((uc)->uc_mcontext.esp);    \
+        (srP)->misc.X86.r_ebp = (uc)->uc_mcontext.ebp;   \
+      }
+
 #elif defined(VGP_s390x_linux)
 
 #  define VG_UCONTEXT_INSTR_PTR(uc)       ((uc)->uc_mcontext.regs.psw.addr)
@@ -472,7 +488,6 @@ typedef struct SigQueue {
 #  define VG_UCONTEXT_SYSCALL_SYSRES(uc)                        \
       VG_(mk_SysRes_s390x_linux)((uc)->uc_mcontext.regs.gprs[2])
 #  define VG_UCONTEXT_LINK_REG(uc) ((uc)->uc_mcontext.regs.gprs[14])
-
 #  define VG_UCONTEXT_TO_UnwindStartRegs(srP, uc)        \
       { (srP)->r_pc = (ULong)((uc)->uc_mcontext.regs.psw.addr);    \
         (srP)->r_sp = (ULong)((uc)->uc_mcontext.regs.gprs[15]);    \
@@ -480,6 +495,21 @@ typedef struct SigQueue {
         (srP)->misc.S390X.r_lr = (uc)->uc_mcontext.regs.gprs[14];  \
       }
 
+#elif defined(VGP_amd64_freebsd)
+#  define VG_UCONTEXT_INSTR_PTR(uc)       ((uc)->uc_mcontext.rip)
+#  define VG_UCONTEXT_STACK_PTR(uc)       ((uc)->uc_mcontext.rsp)
+#  define VG_UCONTEXT_FRAME_PTR(uc)       ((uc)->uc_mcontext.rbp)
+#  define VG_UCONTEXT_SYSCALL_NUM(uc)     ((uc)->uc_mcontext.rax)
+#  define VG_UCONTEXT_SYSCALL_SYSRES(uc)                        \
+      /* Convert the value in uc_mcontext.rax into a SysRes. */ \
+      VG_(mk_SysRes_amd64_freebsd)( (uc)->uc_mcontext.rax, \
+	 (uc)->uc_mcontext.rdx, ((uc)->uc_mcontext.rflags & 1) != 0 ? True : False )
+#  define VG_UCONTEXT_LINK_REG(uc)        0 /* No LR on amd64 either */
+#  define VG_UCONTEXT_TO_UnwindStartRegs(srP, uc)        \
+      { (srP)->r_pc = (uc)->uc_mcontext.rip;             \
+        (srP)->r_sp = (uc)->uc_mcontext.rsp;             \
+        (srP)->misc.AMD64.r_rbp = (uc)->uc_mcontext.rbp; \
+      }
 
 #else 
 #  error Unknown platform
@@ -493,7 +523,7 @@ typedef struct SigQueue {
 #if defined(VGO_linux)
 #  define VKI_SIGINFO_si_addr  _sifields._sigfault._addr
 #  define VKI_SIGINFO_si_pid   _sifields._kill._pid
-#elif defined(VGO_darwin)
+#elif defined(VGO_darwin) || defined(VGO_freebsd)
 #  define VKI_SIGINFO_si_addr  si_addr
 #  define VKI_SIGINFO_si_pid   si_pid
 #else
@@ -648,6 +678,7 @@ void calculate_SKSS_from_SCSS ( SKSS* dst )
       case VKI_SIGFPE:
       case VKI_SIGILL:
       case VKI_SIGTRAP:
+      case VKI_SIGSYS:
 	 /* For these, we always want to catch them and report, even
 	    if the client code doesn't. */
 	 skss_handler = sync_signalhandler;
@@ -707,10 +738,13 @@ void calculate_SKSS_from_SCSS ( SKSS* dst )
       /* We don't set a signal stack, so ignore */
 
       /* always ask for SA_SIGINFO */
-      skss_flags |= VKI_SA_SIGINFO;
+      if (skss_handler != VKI_SIG_IGN && skss_handler != VKI_SIG_DFL)
+         skss_flags |= VKI_SA_SIGINFO;
 
+#ifdef VGO_linux
       /* use our own restorer */
       skss_flags |= VKI_SA_RESTORER;
+#endif
 
       /* Create SKSS entry for this signal. */
       if (sig != VKI_SIGKILL && sig != VKI_SIGSTOP)
@@ -734,6 +768,7 @@ void calculate_SKSS_from_SCSS ( SKSS* dst )
    After a possible SCSS change, update SKSS and the kernel itself.
    ------------------------------------------------------------------ */
 
+#ifdef VGO_linux
 // We need two levels of macro-expansion here to convert __NR_rt_sigreturn
 // to a number before converting it to a string... sigh.
 extern void my_sigreturn(void);
@@ -814,6 +849,7 @@ extern void my_sigreturn(void);
 asm(
    MY_SIGRETURN(__NR_rt_sigreturn)
 );
+#endif
 
 
 static void handle_SCSS_change ( Bool force_update )
@@ -848,7 +884,8 @@ static void handle_SCSS_change ( Bool force_update )
       ksa.ksa_handler = skss.skss_per_sig[sig].skss_handler;
       ksa.sa_flags    = skss.skss_per_sig[sig].skss_flags;
 #     if !defined(VGP_ppc32_linux) && \
-         !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+         !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+         !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
       ksa.sa_restorer = my_sigreturn;
 #     endif
       /* Re above ifdef (also the assertion below), PaulM says:
@@ -881,7 +918,8 @@ static void handle_SCSS_change ( Bool force_update )
          vg_assert(ksa_old.sa_flags 
                    == skss_old.skss_per_sig[sig].skss_flags);
 #        if !defined(VGP_ppc32_linux) && \
-            !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+            !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+            !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
          vg_assert(ksa_old.sa_restorer 
                    == my_sigreturn);
 #        endif
@@ -1002,7 +1040,8 @@ SysRes VG_(do_sys_sigaction) ( Int signo,
       old_act->ksa_handler = scss.scss_per_sig[signo].scss_handler;
       old_act->sa_flags    = scss.scss_per_sig[signo].scss_flags;
       old_act->sa_mask     = scss.scss_per_sig[signo].scss_mask;
-#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+         !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
       old_act->sa_restorer = scss.scss_per_sig[signo].scss_restorer;
 #     endif
    }
@@ -1014,7 +1053,8 @@ SysRes VG_(do_sys_sigaction) ( Int signo,
       scss.scss_per_sig[signo].scss_mask     = new_act->sa_mask;
 
       scss.scss_per_sig[signo].scss_restorer = NULL;
-#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+         !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
       scss.scss_per_sig[signo].scss_restorer = new_act->sa_restorer;
 #     endif
 
@@ -1202,7 +1242,6 @@ void VG_(clear_out_queued_signals)( ThreadId tid, vki_sigset_t* saved_mask )
    The signal simulation proper.  A simplified version of what the 
    Linux kernel does.
    ------------------------------------------------------------------ */
-
 /* Set up a stack frame (VgSigContext) for the client's signal
    handler. */
 static
@@ -1304,6 +1343,9 @@ static const Char *signame(Int sigNo)
 #     if defined(VKI_SIGUNUSED)
       case VKI_SIGUNUSED: return "SIGUNUSED";
 #     endif
+#     if defined(VKI_SIGINFO)
+      case VKI_SIGINFO: return "SIGINFO";
+#     endif
 
 #  if defined(VKI_SIGRTMIN) && defined(VKI_SIGRTMAX)
    case VKI_SIGRTMIN ... VKI_SIGRTMAX:
@@ -1327,7 +1369,8 @@ void VG_(kill_self)(Int sigNo)
 
    sa.ksa_handler = VKI_SIG_DFL;
    sa.sa_flags = 0;
-#  if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#  if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+      !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
    sa.sa_restorer = 0;
 #  endif
    VG_(sigemptyset)(&sa.sa_mask);
@@ -1363,7 +1406,12 @@ static Bool is_signal_from_kernel(ThreadId tid, int signum, int si_code)
    // macros but we don't use them here because other platforms don't have
    // them.
    return ( si_code > VKI_SI_USER ? True : False );
-
+#elif defined(VGO_freebsd)
+   // It looks like there's no reliable way to say where the signal came from
+   if (VG_(threads)[tid].status == VgTs_WaitSys) {
+      return False;
+   } else
+      return True;
 #  elif defined(VGO_darwin)
    // On Darwin 9.6.0, the si_code is completely unreliable.  It should be the
    // case that 0 means "user", and >0 means "kernel".  But:
@@ -1431,6 +1479,7 @@ static void default_action(const vki_siginfo_t *info, ThreadId tid)
       case VKI_SIGTRAP:	/* core */
       case VKI_SIGXCPU:	/* core */
       case VKI_SIGXFSZ:	/* core */
+      case VKI_SIGSYS:	/* core */
          terminate = True;
          core = True;
          break;
@@ -1447,7 +1496,6 @@ static void default_action(const vki_siginfo_t *info, ThreadId tid)
 #     if defined(VKI_SIGPWR)
       case VKI_SIGPWR:	/* term */
 #     endif
-      case VKI_SIGSYS:	/* term */
       case VKI_SIGPROF:	/* term */
       case VKI_SIGVTALRM:	/* term */
 #     if defined(VKI_SIGRTMIN) && defined(VKI_SIGRTMAX)
@@ -1933,7 +1981,7 @@ static int sanitize_si_code(int si_code)
       mask them off) sign extends them when exporting to user space so
       we do the same thing here. */
    return (Short)si_code;
-#elif defined(VGO_darwin)
+#elif defined(VGO_darwin) || defined(VGO_freebsd)
    return si_code;
 #else
 #  error Unknown OS
@@ -2424,7 +2472,8 @@ void pp_ksigaction ( vki_sigaction_toK_t* sa )
    VG_(printf)("pp_ksigaction: handler %p, flags 0x%x, restorer %p\n", 
                sa->ksa_handler, 
                (UInt)sa->sa_flags, 
-#              if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#              if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+                  !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
                   sa->sa_restorer
 #              else
                   (void*)0
@@ -2446,7 +2495,8 @@ void VG_(set_default_handler)(Int signo)
 
    sa.ksa_handler = VKI_SIG_DFL;
    sa.sa_flags = 0;
-#  if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#  if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+      !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
    sa.sa_restorer = 0;
 #  endif
    VG_(sigemptyset)(&sa.sa_mask);
@@ -2548,7 +2598,8 @@ void VG_(sigstartup_actions) ( void )
 
 	 tsa.ksa_handler = (void *)sync_signalhandler;
 	 tsa.sa_flags = VKI_SA_SIGINFO;
-#        if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#        if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+            !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
 	 tsa.sa_restorer = 0;
 #        endif
 	 VG_(sigfillset)(&tsa.sa_mask);
@@ -2575,7 +2626,8 @@ void VG_(sigstartup_actions) ( void )
       scss.scss_per_sig[i].scss_mask     = sa.sa_mask;
 
       scss.scss_per_sig[i].scss_restorer = NULL;
-#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin)
+#     if !defined(VGP_x86_darwin) && !defined(VGP_amd64_darwin) && \
+         !defined(VGP_x86_freebsd) && !defined(VGP_amd64_freebsd)
       scss.scss_per_sig[i].scss_restorer = sa.sa_restorer;
 #     endif
 

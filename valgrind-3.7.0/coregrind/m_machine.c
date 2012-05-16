@@ -33,6 +33,7 @@
 #include "pub_core_threadstate.h"
 #include "pub_core_libcassert.h"
 #include "pub_core_libcbase.h"
+#include "pub_core_libcprint.h"
 #include "pub_core_libcfile.h"
 #include "pub_core_mallocfree.h"
 #include "pub_core_machine.h"
@@ -129,6 +130,14 @@ void VG_(set_syscall_return_shadows) ( ThreadId tid,
    VG_(threads)[tid].arch.vex_shadow2.guest_R0 = s2res;
 #  elif defined(VGO_darwin)
    // GrP fixme darwin syscalls may return more values (2 registers plus error)
+#  elif defined(VGP_x86_freebsd)
+   VG_(threads)[tid].arch.vex_shadow1.guest_EAX = s1res;
+   VG_(threads)[tid].arch.vex_shadow2.guest_EAX = s2res;
+   /* QQQ: this is very incomplete.  EDX and EFL are affected */
+#  elif defined(VGP_amd64_freebsd)
+   VG_(threads)[tid].arch.vex_shadow1.guest_RAX = s1res;
+   VG_(threads)[tid].arch.vex_shadow2.guest_RAX = s2res;
+   /* QQQ: this is very incomplete.  EDX and EFL are affected */
 #  elif defined(VGP_s390x_linux)
    VG_(threads)[tid].arch.vex_shadow1.guest_r2 = s1res;
    VG_(threads)[tid].arch.vex_shadow2.guest_r2 = s2res;
@@ -647,6 +656,20 @@ Bool VG_(machine_get_hwcaps)( void )
      if (!have_cx8)
         return False;
 
+#if defined(VGP_x86_freebsd)
+     if (have_sse1 || have_sse2) {
+	Int sc, error;
+	vki_size_t scl;
+	/* Regardless of whether cpuid says, the OS has to enable SSE first! */
+	scl = sizeof(sc);
+	error = VG_(sysctlbyname)("hw.instruction_sse", &sc, &scl, 0, 0);
+	if (error == -1 || sc != 1) {
+	    have_sse1 = 0;
+	    have_sse2 = 0;
+	    VG_(message)(Vg_UserMsg, "Warning: cpu has SSE, but the OS has not enabled it.  Disabling in valgrind!");
+	}
+     }
+#endif
      /* Figure out if this is an AMD that can do LZCNT. */
      have_lzcnt = False;
      if (0 == VG_(strcmp)(vstr, "AuthenticAMD")
@@ -1281,6 +1304,7 @@ void* VG_(fnptr_to_fnentry)( void* f )
 #  if defined(VGP_x86_linux) || defined(VGP_amd64_linux)  \
       || defined(VGP_arm_linux)                           \
       || defined(VGP_ppc32_linux) || defined(VGO_darwin)  \
+      || defined(VGP_x86_freebsd) || defined(VGP_amd64_freebsd) \
       || defined(VGP_s390x_linux)
    return f;
 #  elif defined(VGP_ppc64_linux)

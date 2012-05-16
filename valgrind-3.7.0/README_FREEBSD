@@ -1,0 +1,14 @@
+So, install ports for autoconf, automake and gmake.
+$ sh autogen.sh
+$ ./configure --prefix=/where/ever
+$ gmake
+$ gmake install
+
+Sun Aug 19 20:26:48 UTC 2007 PS_STRINGS
+	Valgrind barfs all over the place on setproctitle.
+
+	This also manifests itself in a corrupted environment in
+	children of child processes when --trace-children=yes is used.
+
+	To cope correctly Valgrind must install the modified argv/envp
+	pointers in the ps-strings area, and mark it as accessible.

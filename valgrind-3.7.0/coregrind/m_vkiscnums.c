@@ -58,6 +58,20 @@ Char* VG_(sysnum_string_extra)(Word sysnum, SizeT n_buf, Char* buf)
 }
 
 //---------------------------------------------------------------------------
+#elif defined(VGO_freebsd)
+//---------------------------------------------------------------------------
+
+Char* VG_(sysnum_string)(Word sysnum, SizeT n_buf, Char* buf)
+{
+   VG_(snprintf)(buf, n_buf, "%3ld", sysnum);
+   return buf;
+}
+
+Char* VG_(sysnum_string_extra)(Word sysnum, SizeT n_buf, Char* buf)
+{
+   return VG_(sysnum_string)(sysnum, n_buf, buf);
+}
+
 #elif defined(VGO_darwin)
 //---------------------------------------------------------------------------
 

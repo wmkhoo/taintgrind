@@ -52,4 +52,3 @@ lackey_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LINK = \
 	$(lackey_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CFLAGS) \
 	$(lackey_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDFLAGS)
 endif
-

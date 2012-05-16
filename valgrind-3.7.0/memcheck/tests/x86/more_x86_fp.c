@@ -87,7 +87,7 @@ void test_fcvt(double a)
     long double la;
     int16_t fpuc;
     int i;
-    int64_t lla;
+    long long int lla;
     int ia;
     int16_t wa;
     double ra;

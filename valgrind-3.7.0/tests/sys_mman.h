@@ -2,7 +2,7 @@
 
 #include <sys/mman.h>
 
-#if defined(VGO_darwin)
+#if defined(VGO_darwin) || defined(VGO_freebsd)
 #  define MAP_ANONYMOUS MAP_ANON
 #endif
 

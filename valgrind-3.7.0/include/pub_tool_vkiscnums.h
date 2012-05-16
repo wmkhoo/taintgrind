@@ -53,6 +53,12 @@ extern Char* VG_(sysnum_string_extra)(Word sysnum, SizeT n_buf, Char* buf);
    ({ Char qq_zz_buf[64]; VG_(sysnum_string_extra)(sysnum, 64, qq_zz_buf); })
 
 
+#if defined(VGO_freebsd)
+   // See the FreeBSD-specific case in pub_tool_vkiscnums_asm.h for an
+   // explanation of why we include this here rather than there.
+#  include "vki/vki-scnums-freebsd.h"
+#endif
+
 #endif   // __PUB_TOOL_VKISCNUMS_H
 
 /*--------------------------------------------------------------------*/

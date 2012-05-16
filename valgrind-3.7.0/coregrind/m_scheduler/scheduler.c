@@ -414,6 +414,7 @@ static void block_signals(void)
    VG_(sigdelset)(&mask, VKI_SIGFPE);
    VG_(sigdelset)(&mask, VKI_SIGILL);
    VG_(sigdelset)(&mask, VKI_SIGTRAP);
+   VG_(sigdelset)(&mask, VKI_SIGSYS);
 
    /* Can't block these anyway */
    VG_(sigdelset)(&mask, VKI_SIGSTOP);
@@ -427,6 +428,8 @@ static void os_state_clear(ThreadState *tst)
    tst->os_state.lwpid       = 0;
    tst->os_state.threadgroup = 0;
 #  if defined(VGO_linux)
+   /* no other fields to clear */
+#  elif defined(VGO_freebsd)
    /* no other fields to clear */
 #  elif defined(VGO_darwin)
    tst->os_state.post_mach_trap_fn = NULL;

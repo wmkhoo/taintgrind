@@ -1436,6 +1436,9 @@ Bool VG_(translate) ( ThreadId tid,
 #  if defined(VGP_amd64_linux)
    vex_abiinfo.guest_amd64_assume_fs_is_zero  = True;
 #  endif
+#  if defined(VGP_amd64_freebsd)
+   vex_abiinfo.guest_amd64_assume_fs_is_zero  = True;
+#  endif
 #  if defined(VGP_amd64_darwin)
    vex_abiinfo.guest_amd64_assume_gs_is_0x60  = True;
 #  endif

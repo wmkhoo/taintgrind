@@ -37,6 +37,12 @@ if VGCONF_OS_IS_LINUX
  MPI_FLAG_M3264_PRI = $(AM_FLAG_M3264_PRI)
  MPI_FLAG_M3264_SEC = $(AM_FLAG_M3264_SEC)
 endif
+if VGCONF_OS_IS_FREEBSD
+ CFLAGS_MPI  = -g -O -fno-omit-frame-pointer -Wall -fpic
+ LDFLAGS_MPI = -fpic -shared
+ MPI_FLAG_M3264_PRI = $(AM_FLAG_M3264_PRI)
+ MPI_FLAG_M3264_SEC = $(AM_FLAG_M3264_SEC)
+endif
 if VGCONF_OS_IS_DARWIN
  CFLAGS_MPI  = -g -O -fno-omit-frame-pointer -Wall -dynamic
  LDFLAGS_MPI = -dynamic -dynamiclib -all_load

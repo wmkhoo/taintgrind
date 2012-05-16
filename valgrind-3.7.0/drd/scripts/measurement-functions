@@ -1,0 +1,146 @@
+#!/bin/bash
+
+########################
+# Function definitions #
+########################
+
+## Print the logarithm base 2 of $1 on stdout.
+function log2 {
+  local i
+
+  for ((i=0;i<64;i++))
+  do
+    if [ $((2**i)) = "$1" ]; then
+      echo $i
+      return 0
+    fi
+  done
+  echo error
+  return 1
+}
+
+## Print the size of the level 2 cache in bytes on stdout.
+function get_cache_size {
+  local s
+  if [ -e /sys/devices/system/cpu/cpu0/cache/index2/size ]; then
+    s="$(</sys/devices/system/cpu/cpu0/cache/index2/size)"
+  else
+    s="$(cat /proc/cpuinfo|while read a b c d e ; do if [ "$a" = cache -a "$b" = size ]; then echo $d $e; break; fi; done)"
+    s="${s%B}"
+  fi
+  if [ "${s%M}" != "$s" ]; then
+    echo $((${s%M}*1024*1024))
+  elif [ "${s%K}" != "$s" ]; then
+    echo $((${s%K}*1024))
+  else
+    echo $s
+  fi
+}
+
+## Read zero or more lines from stdin, and print the average and standard
+#  deviation per column. n is the number of lines, m the number of columns.
+#  Each line must have the same number of columns.
+function avgstddev {
+  awk '{n++;m=NF;for(i=1;i<=NF;i++){sum[i]+=$i;sumsq[i]+=$i*$i}}END{for(i=1;i<=m;i++){d=sumsq[i]/n-sum[i]*sum[i]/n/n;printf "%.2f %.2f ",sum[i]/n,(d>=0.0001?sqrt(d):0.01)}}'
+}
+
+## Query the virtual memory size for the last invocation of command $1 from
+#  the information logged by the kernel (BSD process accounting).
+function query_cmd_vsz {
+  local pacct
+
+  if [ ! -e /usr/sbin/dump-acct ]; then
+    echo "Error: userspace tools for BSD process accounting have not been" >&2
+    echo "installed. Please install the acct package (Debian systems)."    >&2
+    return 1
+  fi
+
+  if ! { dump-acct -h 2>&1 | grep -q -w format; }; then
+    echo "Error: the installed version of dump-acct is not recent enough." >&2
+    return 1
+  fi
+
+  if [ -e /var/log/account/pacct ]; then
+    pacct=/var/log/account/pacct
+  elif [ -e /var/account/pacct ]; then
+    pacct=/var/account/pacct
+  else
+    echo "Where is the pacct file ?" >&2
+    return 1
+  fi
+  /usr/sbin/dump-acct "${pacct}" | \
+    grep -- "^$(basename "$1").*|v3|" | \
+    cut -f8 -d'|' | \
+    tail -n 1 | \
+    { read vsz; echo ${vsz:-0}; }
+}
+
+## Query the virtual memory size for the last invocation of command $1 from
+#  the information logged by the kernel (BSD process accounting).
+function query_vsz {
+  local cmd tool
+
+  cmd="$(basename "$1")"
+  if [ "${cmd}" = "vg-in-place" ]; then
+    tool="tool-not-found"
+    for arg in "${@}"
+    do
+      if [ "${arg#--tool=}" != "${arg}" ]; then
+        tool="${arg#--tool=}"
+	break
+      fi
+    done
+    vsz_tool="$(query_cmd_vsz "${tool}")"
+    awk "END{print $(query_cmd_vsz ${cmd}) + ${vsz_tool:-0}}" \
+      </dev/null
+  else
+    query_cmd_vsz "${cmd}"
+  fi
+}
+
+## Echo all arguments on stderr, run the command passed in $1 .. ${$#} three
+#  times, pass the output of ${test_input} -p${p} to the command, write the
+#  command output to the file specified in ${test_output}, and print the
+#  runtime of the command on stdout.
+function measure_runtime {
+  local i
+
+  echo "$@" >&2
+  if [ "${test_output}" != "" ]; then
+    echo "$@" >"${test_output}"
+  fi
+  for ((i=0;i<3;i++))
+  do
+    echo -n "$("${test_input:-true}" $p | \
+      /usr/bin/time --format="%e" "$@" 2>&1 | \
+      tee -a "${test_output:-/dev/null}" | \
+      tail -n 1) "
+    query_vsz "$@"
+  done
+}
+
+## Print the average runtime of the command passed in $5 .. ${$#}, the ratio
+#  of the runtime to $1 +/- $2 and the ratio of the VSZ to $3 +/- $4.
+function print_runtime_ratio {
+  local tmp avg1="$1" stddev1="$2" vsz1="$3" vszdev1="$4"
+  local avg2 stddev2 vsz2 vszdev2
+
+  if [ "${avg1}" = "" -o "${stddev1}" = "" -o "${vsz1}" = "" -o "${vszdev1}" = "" ]; then
+    echo "Error: invalid arguments ($@)."
+    exit 1
+  fi
+
+  shift
+  shift
+  shift
+  shift
+
+  tmp="/tmp/test-timing.$$"
+  rm -f "${tmp}"
+
+  measure_runtime "$@" | avgstddev > "$tmp"
+  read avg2 stddev2 vsz2 vszdev2 < "$tmp"
+  echo "Average time: ${avg2} +/- ${stddev2} seconds / VSZ ${vsz2} +/- ${vszdev2} KB"
+  awk "END{printf "'"'"Ratio = %.2f +/- %.2f; VSZ ratio: %.2f +/- %.2f\n"'"'", ${avg2}/${avg1}, ${avg2}/${avg1}*(${stddev1}/${avg1}+${stddev2}/${avg2}), ${vsz2}/${vsz1}, ${vsz2}/${vsz1}*(${vszdev1}/${vsz1}+${vszdev2}/${vsz2})}" </dev/null
+}
+

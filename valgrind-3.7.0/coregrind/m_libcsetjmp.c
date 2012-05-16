@@ -275,13 +275,13 @@ __asm__(
 
 /* ------------ amd64-{linux,darwin} ------------ */
 
-#if defined(VGP_amd64_linux) || defined(VGP_amd64_darwin)
+#if defined(VGP_amd64_linux) || defined(VGP_amd64_darwin) || defined(VGP_amd64_freebsd)
 
 __asm__(
 ".text"  "\n"
 ""       "\n"
 
-#if defined(VGP_amd64_linux)
+#if defined(VGP_amd64_linux) || defined(VGP_amd64_freebsd)
 ".global VG_MINIMAL_SETJMP"  "\n"  // rdi = jmp_buf
 "VG_MINIMAL_SETJMP:"  "\n"
 
@@ -318,7 +318,7 @@ __asm__(
 ""       "\n"
 
 
-#if defined(VGP_amd64_linux)
+#if defined(VGP_amd64_linux) || defined(VGP_amd64_freebsd)
 ".global VG_MINIMAL_LONGJMP"  "\n"
 "VG_MINIMAL_LONGJMP:"  "\n"    // rdi = jmp_buf
 
@@ -366,18 +366,18 @@ __asm__(
 #endif
 );
 
-#endif /* VGP_amd64_linux || VGP_amd64_darwin */
+#endif /* VGP_amd64_linux || VGP_amd64_darwin || VGP_amd64_freebsd */
 
 
 /* ------------ x86-{linux,darwin} ------------ */
 
-#if defined(VGP_x86_linux) || defined(VGP_x86_darwin)
+#if defined(VGP_x86_linux) || defined(VGP_x86_darwin) || defined(VGP_x86_freebsd)
 
 __asm__(
 ".text"  "\n"
 ""       "\n"
 
-#if defined(VGP_x86_linux)
+#if defined(VGP_x86_linux) || defined(VGP_x86_freebsd)
 ".global VG_MINIMAL_SETJMP"  "\n"  // eax = jmp_buf
 "VG_MINIMAL_SETJMP:"  "\n"
 
@@ -408,7 +408,7 @@ __asm__(
 ""       "\n"
 
 
-#if defined(VGP_x86_linux)
+#if defined(VGP_x86_linux) || defined(VGP_x86_freebsd)
 ".global VG_MINIMAL_LONGJMP"  "\n"
 "VG_MINIMAL_LONGJMP:"  "\n"    // eax = jmp_buf
 
@@ -442,7 +442,7 @@ __asm__(
 #endif
 );
 
-#endif /* VGP_x86_linux || VGP_x86_darwin */
+#endif /* VGP_x86_linux || VGP_x86_darwin  || VGP_x86_freebsd */
 
 /*--------------------------------------------------------------------*/
 /*--- end                                                          ---*/
