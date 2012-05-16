@@ -146,8 +146,9 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 }
 
 // Forward declaration
-Int  atoi( Char c );
-Int  atoi_test( Char c );
+Int  ctoi( Char c );
+Int  ctoi_test( Char c );
+Int  atoi( Char *s );
 Char decode_char( UInt num );
 void decode_string( UInt *enc, Char *aStr );
 void post_decode_string( Char *aStr );
@@ -156,6 +157,8 @@ void post_decode_string_primops( Char *aStr );
 void post_decode_string_binops( Char *aStr );
 void post_decode_string_store( Char *aStr );
 void post_decode_string_mux0x( Char *aStr );
+Int get_and_check_reg( Char *reg );
+Int get_and_check_tvar( Char *tmp );
 
 static void update_SM_counts(SecMap* oldSM, SecMap* newSM); //285
 
@@ -2133,7 +2136,7 @@ void TNT_(helperc_STOREV8) ( Addr a, UWord vbits8 )
 #endif
 }
 
-Int atoi_test( Char c ){
+Int ctoi_test( Char c ){
    switch(c){
    case '0':
    case '1':
@@ -2163,8 +2166,8 @@ Int atoi_test( Char c ){
    }
 }
 
-Int atoi( Char c ){
-   tl_assert( atoi_test(c) );
+Int ctoi( Char c ){
+   tl_assert( ctoi_test(c) );
 
    switch(c){
    case '0':
@@ -2208,6 +2211,21 @@ Int atoi( Char c ){
    default:
       tl_assert(0);
    }
+}
+
+Int atoi( Char *s ){
+   Int result = 0;
+   Int multiplier = 1;
+   Int i;
+
+   for( i = VG_(strlen)(s)-1; i>=0; i-- ){
+      tl_assert( ctoi_test( s[i] ) );
+      result += multiplier * ctoi(s[i]);
+      // Assume decimal
+      multiplier *= 10;
+   }
+
+   return result;
 }
 
 Char decode_char( UInt num ){
@@ -2324,9 +2342,9 @@ void post_decode_string_load( Char *aStr ){
    i = pChr-aStr;
 
    if( aStr[i+1] == ' '       && 
-       atoi_test( aStr[i+2] ) &&
+       ctoi_test( aStr[i+2] ) &&
        aStr[i+3] == ' '       ){
-       irtype = atoi( aStr[i+2] );
+       irtype = ctoi( aStr[i+2] );
        i = i+3;
    }else
       tl_assert(0);
@@ -2360,25 +2378,25 @@ void post_decode_string_primops( Char *aStr ){
    i = pChr-aStr;
 
    if( aStr[i+1] == ' '       && 
-       atoi_test( aStr[i+2] ) &&
+       ctoi_test( aStr[i+2] ) &&
        aStr[i+3] == ' '       ){
-       irop = atoi( aStr[i+2] );
+       irop = ctoi( aStr[i+2] );
        i = i+3;
    }else if( aStr[i+1] == ' '       && 
-             atoi_test( aStr[i+2] ) &&
-             atoi_test( aStr[i+3] ) &&
+             ctoi_test( aStr[i+2] ) &&
+             ctoi_test( aStr[i+3] ) &&
              aStr[i+4] == ' '       ){
-       irop = atoi( aStr[i+2] ) * 0x10 +
-              atoi( aStr[i+3] );
+       irop = ctoi( aStr[i+2] ) * 0x10 +
+              ctoi( aStr[i+3] );
        i = i+4;
    }else if( aStr[i+1] == ' '       && 
-             atoi_test( aStr[i+2] ) &&
-             atoi_test( aStr[i+3] ) &&
-             atoi_test( aStr[i+4] ) &&
+             ctoi_test( aStr[i+2] ) &&
+             ctoi_test( aStr[i+3] ) &&
+             ctoi_test( aStr[i+4] ) &&
              aStr[i+5] == ' '       ){
-       irop = atoi( aStr[i+2] ) * 0x100 +
-              atoi( aStr[i+3] ) * 0x10  +
-              atoi( aStr[i+4] );
+       irop = ctoi( aStr[i+2] ) * 0x100 +
+              ctoi( aStr[i+3] ) * 0x10  +
+              ctoi( aStr[i+4] );
        i = i+5;
    }else{
       VG_(printf)("%s\n", aStr);
@@ -2487,9 +2505,9 @@ void post_decode_string_store( Char *aStr ){
    i = pChr-aStr;
 
    if( aStr[i+1] == ' '       && 
-       atoi_test( aStr[i+2] ) &&
+       ctoi_test( aStr[i+2] ) &&
        aStr[i+3] == ' '       ){
-       irtype = atoi( aStr[i+2] );
+       irtype = ctoi( aStr[i+2] );
        i = i+3;
    }else
       tl_assert(0);
@@ -2566,6 +2584,41 @@ void post_decode_string( Char *aStr ){
    }
 }
 
+
+/*-----------------------------------------------
+   Helper functions for taint information flows
+-------------------------------------------------*/
+
+// tmp variables go from t0, t1, t2,..., t255
+// reg variables go from r0, r4, r8,..., r320
+#define TVAR_I_MAX 256
+#define REG_I_MAX 321
+// These arrays are initialised to 0 in TNT_(clo_post_init)
+int tvar_i[TVAR_I_MAX];
+int reg_i[REG_I_MAX];
+
+Int get_and_check_reg( Char *reg ){
+
+   Int regnum = atoi( reg );
+//   if( regnum % 4 ){
+//      VG_(printf)("get_and_check_tvar: regnum %d mod 4 != 0\n", regnum );
+//      tl_assert( !( regnum % 4 ) );
+//   }
+   if( regnum >= REG_I_MAX ){
+      VG_(printf)("get_and_check_reg: regnum %d >= %d\n", regnum, REG_I_MAX );
+      tl_assert( regnum < REG_I_MAX );
+   }
+
+   return regnum;
+}
+
+Int get_and_check_tvar( Char *tmp ){
+
+   Int tmpnum = atoi( tmp );
+   tl_assert( tmpnum < TVAR_I_MAX );
+   return tmpnum;
+}
+
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc32) (
    UInt enc0, 
@@ -2609,7 +2662,7 @@ void TNT_(helperc_0_tainted_enc32) (
             //              ^--pGet
             //                   ^--pReg
             //                    ^--pSpace 
-            pTmp = VG_(strstr)( aTmp, " t" ); pTmp++;
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
             VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
             tmp[pEquals-pTmp] = '\0';
@@ -2619,8 +2672,12 @@ void TNT_(helperc_0_tainted_enc32) (
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
 
-            // rhs
-            VG_(printf)("%s <- r%s", tmp, reg);
+            // Get indices
+            Int regnum = get_and_check_reg( reg );
+            Int tmpnum = get_and_check_tvar( tmp );
+            tvar_i[tmpnum]++;
+
+            VG_(printf)( "t%s.%d <- r%s.%d", tmp, tvar_i[tmpnum], reg, reg_i[regnum] );
 
          }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
@@ -2631,36 +2688,70 @@ void TNT_(helperc_0_tainted_enc32) (
             //        ^--pPut
             //             ^--pReg
             //               ^--pSpace 
-            //                  ^--pSpace + 3
+            //                   ^--pSpace + 4
             pPut = VG_(strstr)( aTmp, " put " );
             pReg = pPut + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
-            VG_(strncpy)( reg, pReg, pSpace-pReg );
-            reg[pSpace-pReg] = '\0';
-            VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
-            tmp[VG_(strlen)(pSpace + 3)] = '\0';
 
-            VG_(printf)("r%s <- %s", reg, tmp);
+            if( pSpace[3] == 't' ){
+               VG_(strncpy)( reg, pReg, pSpace-pReg );
+               reg[pSpace-pReg] = '\0';
+               VG_(strncpy)( tmp, pSpace + 4, VG_(strlen)(pSpace + 4) );
+               tmp[VG_(strlen)(pSpace + 4)] = '\0';
+
+               // Get indices
+               Int regnum = get_and_check_reg( reg );
+               Int tmpnum = get_and_check_tvar( tmp );
+               reg_i[regnum]++;
+
+               VG_(printf)( "r%s.%d <- t%s.%d", reg, reg_i[regnum], tmp, tvar_i[tmpnum] );
+            }else{
+            // 0x19003 put 28 = 0xff
+            //        ^--pPut
+            //             ^--pReg
+               VG_(strncpy)( reg, pReg, pSpace-pReg );
+               reg[pSpace-pReg] = '\0';
+
+               // Get indices
+               Int regnum = get_and_check_reg( reg );
+               reg_i[regnum]++;
+
+               VG_(printf)( "r%s.%d", reg, reg_i[regnum] );
+            }
 
          }else/* if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
             Char tmp1[16], tmp2[16];
 
             // 0x15003 t28 = t61
-            //         ^--pTmp1
-            //               ^--pTmp2
-            pTmp1 = VG_(strstr)( aTmp, " t" );
+            //          ^--pTmp1
+            //                ^--pTmp2
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1 += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp2 = pEquals + 3;
+            pTmp2 = pEquals + 4;
 
-            if( pTmp1 != NULL && pEquals != NULL && pTmp2[0] == 't' ){
-               pTmp1++;
+            if( pEquals != NULL && pEquals[3] == 't' ){
 
                VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
                tmp1[pEquals-pTmp1] = '\0';
                VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
                tmp2[VG_(strlen)(pTmp2)] = '\0';
-               VG_(printf)("%s <- %s", tmp1, tmp2);
+
+               // Get indices
+               Int tmpnum1 = get_and_check_tvar( tmp1 );
+               Int tmpnum2 = get_and_check_tvar( tmp2 );
+               tvar_i[tmpnum1]++;
+               VG_(printf)("t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2]);
+            }else if( pEquals != NULL ){
+            // 0x15003 t28 = 
+            //          ^--pTmp1
+               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+               tmp1[pEquals-pTmp1] = '\0';
+
+               // Get indices
+               Int tmpnum1 = get_and_check_tvar( tmp1 );
+               tvar_i[tmpnum1]++;
+               VG_(printf)("t%s.%d", tmp1, tvar_i[tmpnum1]);
             }
          }
          VG_(printf)("\n");
@@ -2708,12 +2799,12 @@ void TNT_(helperc_0_tainted_enc64) (
             Char reg[16], tmp[16];
   
             // 0x15001 t53 = get 0 i8
-            //         ^--pTmp
+            //          ^--pTmp
             //            ^--pEquals
             //              ^--pGet
             //                   ^--pReg
             //                    ^--pSpace 
-            pTmp = VG_(strstr)( aTmp, " t" ); pTmp++;
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
             VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
             tmp[pEquals-pTmp] = '\0';
@@ -2723,7 +2814,12 @@ void TNT_(helperc_0_tainted_enc64) (
             VG_(strncpy)( reg, pReg, pSpace-pReg );
             reg[pSpace-pReg] = '\0';
 
-            VG_(printf)("%s <- r%s", tmp, reg);
+            // Get indices
+            Int regnum = get_and_check_reg( reg );
+            Int tmpnum = get_and_check_tvar( tmp );
+            tvar_i[tmpnum]++;
+
+            VG_(printf)( "t%s.%d <- r%s.%d", tmp, tvar_i[tmpnum], reg, reg_i[regnum] );
          }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
 
             Char *pPut, *pSpace, *pReg;
@@ -2733,36 +2829,70 @@ void TNT_(helperc_0_tainted_enc64) (
             //        ^--pPut
             //             ^--pReg
             //               ^--pSpace 
-            //                  ^--pSpace + 3
+            //                   ^--pSpace + 4
             pPut = VG_(strstr)( aTmp, " put " );
             pReg = pPut + 5;
             pSpace = VG_(strchr)( pReg, ' ' );
-            VG_(strncpy)( reg, pReg, pSpace-pReg );
-            reg[pSpace-pReg] = '\0';
-            VG_(strncpy)( tmp, pSpace + 3, VG_(strlen)(pSpace + 3) );
-            tmp[VG_(strlen)(pSpace + 3)] = '\0';
 
-            VG_(printf)("r%s <- %s", reg, tmp);
+            if( pSpace[3] == 't' ){
+               VG_(strncpy)( reg, pReg, pSpace-pReg );
+               reg[pSpace-pReg] = '\0';
+               VG_(strncpy)( tmp, pSpace + 4, VG_(strlen)(pSpace + 4) );
+               tmp[VG_(strlen)(pSpace + 4)] = '\0';
+
+               // Get indices
+               Int regnum = get_and_check_reg( reg );
+               Int tmpnum = get_and_check_tvar( tmp );
+               reg_i[regnum]++;
+
+               VG_(printf)("r%s.%d <- t%s.%d", reg, reg_i[regnum], tmp, tvar_i[tmpnum]);
+            }else{
+            // 0x19003 put 28 = 0xff
+            //        ^--pPut
+            //             ^--pReg
+               VG_(strncpy)( reg, pReg, pSpace-pReg );
+               reg[pSpace-pReg] = '\0';
+
+               // Get indices
+               Int regnum = get_and_check_reg( reg );
+               reg_i[regnum]++;
+
+               VG_(printf)( "r%s.%d", reg, reg_i[regnum] );
+            }
 
          }else /*if( taint )*/{
             Char *pTmp1, *pTmp2, *pEquals;
             Char tmp1[16], tmp2[16];
 
             // 0x15003 t28 = t61
-            //         ^--pTmp1
-            //               ^--pTmp2
-            pTmp1 = VG_(strstr)( aTmp, " t" );
+            //          ^--pTmp1
+            //                ^--pTmp2
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1 += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp2 = pEquals + 3;
+            pTmp2 = pEquals + 4;
 
-            if( pTmp1 != NULL && pEquals != NULL && pTmp2[0] == 't' ){
-               pTmp1++;
+            if( pEquals != NULL && pEquals[3] == 't' ){
 
                VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
                tmp1[pEquals-pTmp1] = '\0';
                VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
                tmp2[VG_(strlen)(pTmp2)] = '\0';
-               VG_(printf)("%s <- %s", tmp1, tmp2);
+
+               // Get indices
+               Int tmpnum1 = get_and_check_tvar( tmp1 );
+               Int tmpnum2 = get_and_check_tvar( tmp2 );
+               tvar_i[tmpnum1]++;
+               VG_(printf)("t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2]);
+            }else if( pEquals != NULL ){
+            // 0x15003 t28 = 
+            //          ^--pTmp1
+               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
+               tmp1[pEquals-pTmp1] = '\0';
+
+               // Get indices
+               Int tmpnum1 = get_and_check_tvar( tmp1 );
+               tvar_i[tmpnum1]++;
+               VG_(printf)("t%s.%d", tmp1, tvar_i[tmpnum1]);
             }
          }
          VG_(printf)("\n");
@@ -2836,13 +2966,16 @@ void TNT_(helperc_1_tainted_enc32) (
             // 0x15008 t35 = LD I32 0x805badc
             //         ^--pTmp
             //            ^--pEquals
-            pTmp = VG_(strstr)( aTmp, " t" );
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp++;
             VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
             tmp[pEquals-pTmp] = '\0';
 
-            VG_(printf)("%s <- %s", tmp, objname);
+            // Get index
+            Int tmpnum = get_and_check_tvar( tmp );
+            tvar_i[tmpnum]++;
+
+            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
@@ -2862,12 +2995,22 @@ void TNT_(helperc_1_tainted_enc32) (
             //                  ^--pTmp
             //                     ^--pSpace
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp = pEquals + 3;
-            pSpace = VG_(strchr)( pTmp, ' ' );
-            VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
-            tmp[pSpace-pTmp] = '\0';
+
+            if( pEquals[3] == 't' ){
+               pTmp = pEquals + 4;
+               pSpace = VG_(strchr)( pTmp, ' ' );
+               VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
+               tmp[pSpace-pTmp] = '\0';
             
-            VG_(printf)("%s <- %s", objname, tmp);
+               // Get index
+               Int tmpnum = get_and_check_tvar( tmp );
+
+               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+            }else{
+            // 0x19006 ST t80 = 0xff
+            //               ^--pEquals
+               VG_(printf)( "%s", objname );
+            }
 
          }else /*if( taint1 && taint2 )*/{
             Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
@@ -2882,9 +3025,9 @@ void TNT_(helperc_1_tainted_enc32) (
             //           ^--pEquals
             //                    ^--pHex
 
-            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1++;
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1 += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2++;
+            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2 += 2;
             pHex = VG_(strstr)( pEquals, " 0x" ); pHex++;
 
             VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
@@ -2899,7 +3042,12 @@ void TNT_(helperc_1_tainted_enc32) (
                tmp2[VG_(strlen)(pTmp2)] = '\0';
             }
 
-            VG_(printf)("%s <- %s", tmp1, tmp2);
+            // Get index
+            Int tmpnum1 = get_and_check_tvar( tmp1 );
+            Int tmpnum2 = get_and_check_tvar( tmp2 );
+            tvar_i[tmpnum1]++;
+
+            VG_(printf)( "t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2] );
          }
 
          VG_(printf)("\n");
@@ -2972,15 +3120,19 @@ void TNT_(helperc_1_tainted_enc64) (
             Char tmp[16];
 
             // 0x15008 t35 = LD I32 0x805badc
-            //         ^--pTmp
+            //          ^--pTmp
             //            ^--pEquals
-            pTmp = VG_(strstr)( aTmp, " t" );
+            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp++;
+            
             VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
             tmp[pEquals-pTmp] = '\0';
 
-            VG_(printf)("%s <- %s", tmp, objname);
+            // Get index
+            Int tmpnum = get_and_check_tvar( tmp );
+            tvar_i[tmpnum]++;
+
+            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
@@ -2997,32 +3149,42 @@ void TNT_(helperc_1_tainted_enc64) (
 
             // 0x19006 ST t80 = t85 I16
             //               ^--pEquals
-            //                  ^--pTmp
+            //                   ^--pTmp
             //                     ^--pSpace
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp = pEquals + 3;
-            pSpace = VG_(strchr)( pTmp, ' ' );
-            VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
-            tmp[pSpace-pTmp] = '\0';
+
+            if( pEquals[3] == 't' ){
+               pTmp = pEquals + 4;
+               pSpace = VG_(strchr)( pTmp, ' ' );
+               VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
+               tmp[pSpace-pTmp] = '\0';
             
-            VG_(printf)("%s <- %s", objname, tmp);
+               // Get index
+               Int tmpnum = get_and_check_tvar( tmp );
+
+               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+            }else{
+            // 0x19006 ST t80 = 0xff
+            //               ^--pEquals
+               VG_(printf)( "%s", objname );
+            }
 
          }else /*if( taint1 && taint2 )*/{
             Char *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
             Char tmp1[16], tmp2[16];
 
             // 0x15006 t7 = Shl32 t35 0x5
-            //         ^--pTmp1   ^--pTmp2
+            //          ^--pTmp1   ^--pTmp2
             //           ^--pEquals
             //                        ^--pHex
             // 0x15006 t7 = Shl32 0x5 t35 
-            //         ^--pTmp1       ^--pTmp2
+            //          ^--pTmp1       ^--pTmp2
             //           ^--pEquals
             //                    ^--pHex
 
-            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1++;
+            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1 += 2;
             pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2++;
+            pTmp2 = VG_(strstr)( pEquals, " t" ); pTmp2 += 2;
             pHex = VG_(strstr)( pEquals, " 0x" ); pHex++;
 
             VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
@@ -3037,7 +3199,12 @@ void TNT_(helperc_1_tainted_enc64) (
                tmp2[VG_(strlen)(pTmp2)] = '\0';
             }
 
-            VG_(printf)("%s <- %s", tmp1, tmp2);
+            // Get index
+            Int tmpnum1 = get_and_check_tvar( tmp1 );
+            Int tmpnum2 = get_and_check_tvar( tmp2 );
+            tvar_i[tmpnum1]++;
+
+            VG_(printf)( "t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2] );
          }
 
          VG_(printf)("\n");
@@ -3067,7 +3234,7 @@ void TNT_(helperc_0_tainted) (
           !TNT_(clo_tainted_ins_only)){
          pc = VG_(get_IP)( VG_(get_running_tid)() );
          VG_(describe_IP) ( pc, fnname, n_fnname );
-         VG_(printf)("%s | %s | 0x%x | 0x%x\n", fnname, str, value, taint );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, str, value, taint );
 
          // Information flow
          if( VG_(strstr)( str, "0x15006" ) != NULL /*&& taint*/ ){
@@ -3075,23 +3242,42 @@ void TNT_(helperc_0_tainted) (
             Char tmp1[16], tmp2[16], tmp3[16];
 
             // 0x15006 t81 = Add32 t20 t20
-            //         ^--pTmp1    ^--pTmp2
-            //            ^--pEquals   ^--pTmp3
+            //          ^--pTmp1    ^--pTmp2
+            //            ^--pEquals    ^--pTmp3
             pTmp1 = VG_(strstr)( str, " t" );
             pEquals = VG_(strstr)( str, " = " );
             pTmp2 = VG_(strstr)( pEquals, " t" );
             pTmp3 = VG_(strstr)( pTmp2+1, " t" );
-            pTmp1++; pTmp2++; pTmp3++;
+            pTmp1 += 2; pTmp2 += 2; pTmp3 += 2;
 
             VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
             tmp1[pEquals-pTmp1] = '\0';
-            VG_(strncpy)( tmp2, pTmp2, pTmp3-1-pTmp2 );
-            tmp2[pTmp3-1-pTmp2] = '\0';
+            VG_(strncpy)( tmp2, pTmp2, pTmp3-2-pTmp2 );
+            tmp2[pTmp3-2-pTmp2] = '\0';
             VG_(strncpy)( tmp3, pTmp3, VG_(strlen)(pTmp3) );
             tmp3[VG_(strlen)(pTmp3)] = '\0';
 
-            VG_(printf)("%s <- %s; %s <- %s", tmp1, tmp2, tmp1, tmp3 );
+            // Get index
+            Int tmpnum1 = get_and_check_tvar( tmp1 );
+            Int tmpnum2 = get_and_check_tvar( tmp2 );
+            Int tmpnum3 = get_and_check_tvar( tmp3 );
+            tvar_i[tmpnum1]++;
+
+            VG_(printf)( "t%s.%d <- t%s.%d; t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2], tmp1, tvar_i[tmpnum1], tmp3, tvar_i[tmpnum3] );
+         }else if( VG_(strstr)( str, " = " ) != NULL ){
+            Char *pTmp, *pEquals;
+            Char tmp[16];
+            pTmp = VG_(strstr)( str, " t" ); pTmp += 2;
+            pEquals = VG_(strstr)( str, " = " );
+            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
+            tmp[pEquals-pTmp] = '\0';
+
+            // Get index
+            Int tmpnum = get_and_check_tvar( tmp );
+            tvar_i[tmpnum]++;
+            VG_(printf)( "t%s.%d", tmp, tvar_i[tmpnum] );
          }
+         VG_(printf)("\n");
       }
    }
 }
@@ -3161,23 +3347,30 @@ void TNT_(helperc_2_tainted) (
             Char tmp1[16], tmp2[16], tmp3[16];
 
             // 0x15006 t81 = Add32 t20 t20
-            //         ^--pTmp1    ^--pTmp2
-            //            ^--pEquals   ^--pTmp3
+            //          ^--pTmp1    ^--pTmp2
+            //            ^--pEquals    ^--pTmp3
             pTmp1 = VG_(strstr)( str, " t" );
             pEquals = VG_(strstr)( str, " = " );
             pTmp2 = VG_(strstr)( pEquals, " t" );
             pTmp3 = VG_(strstr)( pTmp2+1, " t" );
-            pTmp1++; pTmp2++; pTmp3++;
+            pTmp1 += 2; pTmp2 += 2; pTmp3 += 2;
 
             VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
             tmp1[pEquals-pTmp1] = '\0';
-            VG_(strncpy)( tmp2, pTmp2, pTmp3-1-pTmp2 );
-            tmp2[pTmp3-1-pTmp2] = '\0';
+            VG_(strncpy)( tmp2, pTmp2, pTmp3-2-pTmp2 );
+            tmp2[pTmp3-2-pTmp2] = '\0';
             VG_(strncpy)( tmp3, pTmp3, VG_(strlen)(pTmp3) );
             tmp3[VG_(strlen)(pTmp3)] = '\0';
 
+            // Get index
+            Int tmpnum1 = get_and_check_tvar( tmp1 );
+            Int tmpnum2 = get_and_check_tvar( tmp2 );
+            Int tmpnum3 = get_and_check_tvar( tmp3 );
+            tvar_i[tmpnum1]++;
+
             //if( taint2 && taint3 )
-               VG_(printf)("%s <- %s; %s <- %s", tmp1, tmp2, tmp1, tmp3 );
+               VG_(printf)( "t%s.%d <- t%s.%d; t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2], tmp1, tvar_i[tmpnum1], tmp3, tvar_i[tmpnum3] );
+               //VG_(printf)("t%s.%d <- t%s.%d; t%s.%d <- t%s.%d", tmp1, tmp2, tmp1, tmp3 );
             /*else if( taint2 )
                VG_(printf)("%s <- %s", tmp1, tmp2 );
             else if( taint3 )
@@ -3456,6 +3649,13 @@ static void tnt_post_clo_init(void)
 
    if( TNT_(clo_critical_ins_only) )
       TNT_(clo_tainted_ins_only) = True;
+
+   // Initialise temporary variables/reg SSA index array
+   Int i;
+   for( i=0; i< TVAR_I_MAX; i++ )
+      tvar_i[i] = 0;
+   for( i=0; i< REG_I_MAX; i++ )
+      reg_i[i] = 0;
 }
 
 static void tnt_fini(Int exitcode)
