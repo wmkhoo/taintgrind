@@ -2975,7 +2975,21 @@ void TNT_(helperc_1_tainted_enc32) (
             Int tmpnum = get_and_check_tvar( tmp );
             tvar_i[tmpnum]++;
 
+//            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
             VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
+
+            // Pointer tainting
+            Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
+            if( pTmp2 != NULL ){
+               Char tmp2[16];
+               pTmp2 += 2;
+            // 0x15008 t35 = LD I32 t34
+            //                      ^--pTmp2
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+               Int tmpnum2 = get_and_check_tvar( tmp2 );
+               VG_(printf)( "; t%s.%d <*- t%s.%d", tmp, tvar_i[tmpnum], tmp2, tvar_i[tmpnum2] );
+            }
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
@@ -3006,6 +3020,20 @@ void TNT_(helperc_1_tainted_enc32) (
                Int tmpnum = get_and_check_tvar( tmp );
 
                VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+
+               // Pointer tainting
+               Char *pTmp2 = VG_(strstr)( aTmp, " t" );
+               if( pTmp2 != NULL && pTmp2 < pEquals ){
+                  Char tmp2[16];
+                  pTmp2 += 2;
+               // 0x15008 ST t35 = t34 I32
+               //             ^--pTmp2
+                  VG_(strncpy)( tmp2, pTmp2, pEquals-pTmp2 );
+                  tmp2[pEquals-pTmp2] = '\0';
+                  Int tmpnum2 = get_and_check_tvar( tmp2 );
+                  VG_(printf)( "; t%s.%d <&- t%s.%d", tmp2, tvar_i[tmpnum2], tmp, tvar_i[tmpnum] );
+               }
+
             }else{
             // 0x19006 ST t80 = 0xff
             //               ^--pEquals
@@ -3134,6 +3162,19 @@ void TNT_(helperc_1_tainted_enc64) (
 
             VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
 
+            // Pointer tainting
+            Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
+            if( pTmp2 != NULL ){
+               Char tmp2[16];
+               pTmp2 += 2;
+            // 0x15008 t35 = LD I32 t34
+            //                      ^--pTmp2
+               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+               tmp2[VG_(strlen)(pTmp2)] = '\0';
+               Int tmpnum2 = get_and_check_tvar( tmp2 );
+               VG_(printf)( "; t%s.%d <*- t%s.%d", tmp, tvar_i[tmpnum], tmp2, tvar_i[tmpnum2] );
+            }
+
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
             PtrdiffT pdt;
@@ -3163,6 +3204,19 @@ void TNT_(helperc_1_tainted_enc64) (
                Int tmpnum = get_and_check_tvar( tmp );
 
                VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+
+               // Pointer tainting
+               Char *pTmp2 = VG_(strstr)( aTmp, " t" );
+               if( pTmp2 != NULL && pTmp2 < pEquals ){
+                  Char tmp2[16];
+                  pTmp2 += 2;
+               // 0x15008 ST t35 = t34 I32
+               //             ^--pTmp2
+                  VG_(strncpy)( tmp2, pTmp2, pEquals-pTmp2 );
+                  tmp2[pEquals-pTmp2] = '\0';
+                  Int tmpnum2 = get_and_check_tvar( tmp2 );
+                  VG_(printf)( "; t%s.%d <&- t%s.%d", tmp2, tvar_i[tmpnum2], tmp, tvar_i[tmpnum] );
+               }
             }else{
             // 0x19006 ST t80 = 0xff
             //               ^--pEquals
