@@ -2591,8 +2591,12 @@ void post_decode_string( Char *aStr ){
 
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
-#define TVAR_I_MAX 256
-#define REG_I_MAX 321
+#ifdef VGA_amd64
+	#define REG_I_MAX 612 // see libvex_guest_amd64.h
+#else
+	#define REG_I_MAX 321
+#endif
+#define TVAR_I_MAX 384
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 int tvar_i[TVAR_I_MAX];
 int reg_i[REG_I_MAX];
