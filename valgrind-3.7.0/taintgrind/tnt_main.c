@@ -3144,13 +3144,14 @@ void TNT_(helperc_1_tainted_enc64) (
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
-            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+            TNT_(describe_data)(value2, objname, 255);
 
-            if( objname[0] == '\0' ){
-               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
-            }
+//            if( objname[0] == '\0' ){
+//               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
+//            }
 
             Char *pTmp, *pEquals;
             Char tmp[16];
@@ -3185,13 +3186,14 @@ void TNT_(helperc_1_tainted_enc64) (
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
-            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+            TNT_(describe_data)(value1, objname, 255);
 
-            if( objname[0] == '\0' ){
-               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
-            }
+//            if( objname[0] == '\0' ){
+//               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
+//            }
 
             Char *pEquals, *pTmp, *pSpace;
             Char tmp[16];
