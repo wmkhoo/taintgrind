@@ -1746,6 +1746,9 @@ typedef __vki_kernel_uid32_t vki_qid_t; /* Type in which we store ids in memory 
 #define VKI_PTRACE_GETDBREGS	   37
 #define VKI_PTRACE_SETDBREGS	   38
 
+#define	VKI_PTRACE_VM_TIMESTAMP    40
+#define	VKI_PTRACE_VM_ENTRY        41
+
 #define VKI_PTRACE_FIRSTMACH	   64
 
 struct vki_ptrace_io_desc {
@@ -1769,6 +1772,19 @@ struct vki_ptrace_lwpinfo {
 #define	VKI_FLAG_BOUND		0x02
 	vki_sigset_t pl_sigmask;
 	vki_sigset_t pl_siglist;
+};
+
+struct vki_ptrace_vm_entry {
+	int		pve_entry;	/* Entry number used for iteration. */
+	int		pve_timestamp;	/* Generation number of VM map. */
+	unsigned long	pve_start;	/* Start VA of range. */
+	unsigned long	pve_end;	/* End VA of range (incl). */
+	unsigned long	pve_offset;	/* Offset in backing object. */
+	unsigned int	pve_prot;	/* Protection of memory range. */
+	unsigned int	pve_pathlen;	/* Size of path. */
+	long		pve_fileid;	/* File ID. */
+	vki_uint32_t	pve_fsid;	/* File system ID. */
+	char		*pve_path;	/* Path name of object. */
 };
 
 #endif // __VKI_FREEBSD_H
