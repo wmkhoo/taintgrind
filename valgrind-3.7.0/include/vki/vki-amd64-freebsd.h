@@ -123,6 +123,46 @@ struct vki_user_regs_struct {
 	vki_register_t ss;
 };
 
+struct vki_reg_struct {
+	vki_register_t	r_r15;
+	vki_register_t	r_r14;
+	vki_register_t	r_r13;
+	vki_register_t	r_r12;
+	vki_register_t	r_r11;
+	vki_register_t	r_r10;
+	vki_register_t	r_r9;
+	vki_register_t	r_r8;
+	vki_register_t	r_rdi;
+	vki_register_t	r_rsi;
+	vki_register_t	r_rbp;
+	vki_register_t	r_rbx;
+	vki_register_t	r_rdx;
+	vki_register_t	r_rcx;
+	vki_register_t	r_rax;
+	vki_uint32_t	r_trapno;
+	vki_uint16_t	r_fs;
+	vki_uint16_t	r_gs;
+	vki_uint32_t	r_err;
+	vki_uint16_t	r_es;
+	vki_uint16_t	r_ds;
+	vki_register_t	r_rip;
+	vki_register_t	r_cs;
+	vki_register_t	r_rflags;
+	vki_register_t	r_rsp;
+	vki_register_t	r_ss;
+};
+
+struct vki_fpreg {
+	unsigned long	fpr_env[4];
+	unsigned char	fpr_acc[8][16];
+	unsigned char	fpr_xacc[16][16];
+	unsigned long	fpr_spare[12];
+};
+
+struct vki_dbreg {
+	unsigned long  dr[16];
+};
+
 typedef vki_register_t vki_elf_greg_t;
 typedef struct _vki_fpstate vki_elf_fpregset_t;
 
