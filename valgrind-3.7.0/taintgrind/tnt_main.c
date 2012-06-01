@@ -45,8 +45,10 @@
 #include "pub_tool_oset.h"          // OSet operations
 #include "pub_tool_threadstate.h"   // VG_(get_running_tid)
 #include "pub_tool_xarray.h"		// VG_(*XA)
+
 #include "tnt_include.h"
 #include "tnt_strings.h"
+#include "tnt_structs.h"
 
 /*------------------------------------------------------------*/
 /*--- Fast-case knobs                                      ---*/
@@ -2600,6 +2602,8 @@ void post_decode_string( Char *aStr ){
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 int tvar_i[TVAR_I_MAX];
 int reg_i[REG_I_MAX];
+struct myStringArray lvar_s;
+int lvar_i[STACK_SIZE];
 
 Int get_and_check_reg( Char *reg ){
 
@@ -2955,7 +2959,7 @@ void TNT_(helperc_1_tainted_enc32) (
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
 //            VG_(get_objname)( arg1, objname, 255 );
 //            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
@@ -2965,6 +2969,11 @@ void TNT_(helperc_1_tainted_enc32) (
 //            }
 
             TNT_(describe_data)(value2, objname, 255);
+
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
 
             Char *pTmp, *pEquals;
             Char tmp[16];
@@ -2982,7 +2991,7 @@ void TNT_(helperc_1_tainted_enc32) (
             tvar_i[tmpnum]++;
 
 //            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
-            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
+            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -3009,6 +3018,12 @@ void TNT_(helperc_1_tainted_enc32) (
 
             TNT_(describe_data)(value1, objname, 255);
 
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
+            lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ]++;
+
             Char *pEquals, *pTmp, *pSpace;
             Char tmp[16];
 
@@ -3027,7 +3042,7 @@ void TNT_(helperc_1_tainted_enc32) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3045,7 +3060,7 @@ void TNT_(helperc_1_tainted_enc32) (
             }else{
             // 0x19006 ST t80 = 0xff
             //               ^--pEquals
-               VG_(printf)( "%s", objname );
+               VG_(printf)( "%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
             }
 
          }else /*if( taint1 && taint2 )*/{
@@ -3153,6 +3168,11 @@ void TNT_(helperc_1_tainted_enc64) (
 //               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
 //            }
 
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
+
             Char *pTmp, *pEquals;
             Char tmp[16];
 
@@ -3169,7 +3189,7 @@ void TNT_(helperc_1_tainted_enc64) (
             Int tmpnum = get_and_check_tvar( tmp );
             tvar_i[tmpnum]++;
 
-            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
+            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -3195,6 +3215,12 @@ void TNT_(helperc_1_tainted_enc64) (
 //               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
 //            }
 
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
+            lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ]++;
+
             Char *pEquals, *pTmp, *pSpace;
             Char tmp[16];
 
@@ -3213,7 +3239,7 @@ void TNT_(helperc_1_tainted_enc64) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3840,6 +3866,9 @@ static void tnt_post_clo_init(void)
       tvar_i[i] = 0;
    for( i=0; i< REG_I_MAX; i++ )
       reg_i[i] = 0;
+   for( i=0; i< STACK_SIZE; i++ )
+      lvar_i[i] = 0;
+   lvar_s.size = 0;
 }
 
 static void tnt_fini(Int exitcode)
