@@ -44,9 +44,11 @@
 #include "pub_tool_options.h"       // VG_STR/BHEX/BINT_CLO
 #include "pub_tool_oset.h"          // OSet operations
 #include "pub_tool_threadstate.h"   // VG_(get_running_tid)
+#include "pub_tool_xarray.h"        // VG_(*XA)
 
 #include "tnt_include.h"
 #include "tnt_strings.h"
+#include "tnt_structs.h"
 
 /*------------------------------------------------------------*/
 /*--- Fast-case knobs                                      ---*/
@@ -2593,9 +2595,11 @@ void post_decode_string( Char *aStr ){
 // reg variables go from r0, r4, r8,..., r320
 #define TVAR_I_MAX 256
 #define REG_I_MAX 321
-// These arrays are initialised to 0 in TNT_(clo_post_init)
+// These arrays are initialised to 0 in tnt_post_clo_init
 int tvar_i[TVAR_I_MAX];
 int reg_i[REG_I_MAX];
+struct myStringArray lvar_s;
+int lvar_i[STACK_SIZE];
 
 Int get_and_check_reg( Char *reg ){
 
@@ -2951,13 +2955,19 @@ void TNT_(helperc_1_tainted_enc32) (
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
 //            VG_(get_objname)( arg1, objname, 255 );
-            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+            TNT_(describe_data)( value2, objname, 255 );
 
             if( objname[0] == '\0' ){
                VG_(sprintf)( objname, "%x_unknownobj", value2 );
+            }
+
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
             }
 
             Char *pTmp, *pEquals;
@@ -2976,7 +2986,7 @@ void TNT_(helperc_1_tainted_enc32) (
             tvar_i[tmpnum]++;
 
 //            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
-            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
+            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -2993,13 +3003,20 @@ void TNT_(helperc_1_tainted_enc32) (
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
-            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+            TNT_(describe_data)( value1, objname, 255 );
 
             if( objname[0] == '\0' ){
                VG_(sprintf)( objname, "%x_unknownobj", value1 );
             }
+
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
+            lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ]++;
 
             Char *pEquals, *pTmp, *pSpace;
             Char tmp[16];
@@ -3019,7 +3036,7 @@ void TNT_(helperc_1_tainted_enc32) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3037,7 +3054,7 @@ void TNT_(helperc_1_tainted_enc32) (
             }else{
             // 0x19006 ST t80 = 0xff
             //               ^--pEquals
-               VG_(printf)( "%s", objname );
+               VG_(printf)( "%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
             }
 
          }else /*if( taint1 && taint2 )*/{
@@ -3136,12 +3153,18 @@ void TNT_(helperc_1_tainted_enc64) (
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
-            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
+            TNT_(describe_data)( value2, objname, 255 );
 
             if( objname[0] == '\0' ){
                VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
+            }
+
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
             }
 
             Char *pTmp, *pEquals;
@@ -3160,7 +3183,7 @@ void TNT_(helperc_1_tainted_enc64) (
             Int tmpnum = get_and_check_tvar( tmp );
             tvar_i[tmpnum]++;
 
-            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
+            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -3177,13 +3200,20 @@ void TNT_(helperc_1_tainted_enc64) (
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
             Char objname[256];
-            PtrdiffT pdt;
+//            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
-            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+//            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+            TNT_(describe_data)( value1, objname, 255 );
 
             if( objname[0] == '\0' ){
                VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
             }
+
+            // Check if it hasn't been seen before
+            if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
+               myStringArray_push( &lvar_s, objname );
+            }
+            lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ]++;
 
             Char *pEquals, *pTmp, *pSpace;
             Char tmp[16];
@@ -3203,7 +3233,7 @@ void TNT_(helperc_1_tainted_enc64) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s <- t%s.%d", objname, tmp, tvar_i[tmpnum] );
+               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3500,6 +3530,124 @@ void TNT_(helperc_4_tainted) (
 }
 
 /*------------------------------------------------------------*/
+/*--- utility function for finding local/global variable ---*/
+/*--- name from data address, using debug symbol tables. ---*/
+/*------------------------------------------------------------*/
+
+void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize) {
+
+   // first try to see if it is a global var
+   PtrdiffT pdt;
+   VG_(get_datasym_and_offset)( addr, varnamebuf, bufsize, &pdt );
+
+   if( varnamebuf[0] == '\0' ){
+      // now let's try for local var
+      XArray* descr1
+         = VG_(newXA)( VG_(malloc), "tnt.da.descr1",
+                       VG_(free), sizeof(HChar) );
+      XArray* descr2
+         = VG_(newXA)( VG_(malloc), "tnt.da.descr2",
+                       VG_(free), sizeof(HChar) );
+
+      (void) VG_(get_data_description)( descr1, descr2, addr );
+      /* If there's nothing in descr1/2, free them. Why is it safe to to
+      VG_(indexXA) at zero here? Because VG_(get_data_description)
+      guarantees to zero terminate descr1/2 regardless of the outcome
+      of the call. So there's always at least one element in each XA
+      after the call.
+      */
+      if (0 == VG_(strlen)( VG_(indexXA)( descr1, 0 ))) {
+         VG_(deleteXA)( descr1 );
+         descr1 = NULL;
+      }
+      
+      if (0 == VG_(strlen)( VG_(indexXA)( descr2, 0 ))) {
+         VG_(deleteXA)( descr2 );
+         descr2 = NULL;
+      }
+      
+      /* Assume (assert) that VG_(get_data_description) fills in descr1
+      before it fills in descr2 */
+      if (descr1 == NULL)
+      tl_assert(descr2 == NULL);
+      
+      /* If we could not obtain the variable name, then just use "unknownobj" */
+      if (descr1 == NULL) {
+         VG_(sprintf)( varnamebuf, "%x_unknownobj", addr );
+      }
+      else {
+      
+         // VG_(printf)("descr1: %s descr2: %s\n", (HChar*)VG_(indexXA)(descr1,0), (HChar*)VG_(indexXA)(descr2,0));
+         
+         // descr1 will either be of the form:
+         // (1) Location 0xbef29644 is 0 bytes inside local var "n"
+         // or
+         // (2) Location 0xbed42644 is 0 bytes inside n[1],
+         // or
+         // (3) Location 0xbebb842c is 0 bytes inside args.str,
+         // or
+         // (4) Location 0xbebb842c is 0 bytes inside args[1].str,
+         // or
+         // (5) Location 0xbebb842c is 0 bytes inside args.str[0],
+         //
+         // So, the terminator for a variable name is either '"' or ','
+         
+         HChar* descr1str = (HChar*)VG_(indexXA)(descr1, 0);
+         char* commonVarPrefix = "bytes inside ";
+         char* varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix);
+         
+         tl_assert(varPrefixPtr != NULL);
+         
+         // fast forward to start of var name
+         varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
+         
+         // disambiguate between local var or others
+         char* localVarPrefix = "local var ";
+         char* varStart = VG_(strstr)(varPrefixPtr, localVarPrefix);
+         HChar* varEnd;
+         int varNameLen = 0;
+         
+         if (varStart == NULL) {
+            // case 2, 3, 4 or 5
+            varStart = varPrefixPtr;
+            varEnd = VG_(strchr)(varStart, ',');
+            // VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
+            tl_assert(varEnd != NULL);
+         }
+         else {
+            // case 1: local variable
+            varStart += ((VG_(strlen)(localVarPrefix)+1)*sizeof(HChar)); // +1 to skip first "
+            varEnd = VG_(strchr)(varStart, '"');
+         }
+      
+         tl_assert(varStart != NULL);
+         tl_assert(varEnd != NULL);
+         
+         // VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
+         // VG_(printf)("varStart: %s, varEnd: %s\n", varStart, varEnd);
+         
+         varNameLen = VG_(strlen)(varStart) - VG_(strlen)(varEnd);
+         if (varNameLen >= bufsize) {
+             varNameLen = bufsize-1;
+         }
+         // VG_(printf)("first: %s, second: %s, varnamelen: %d\n", first, second, varnamelen);
+         VG_(strncpy)(varnamebuf, varStart, varNameLen);
+         varnamebuf[varNameLen] = '\0';
+         
+         //// VG_(printf)("Addr: %x, Var: %s\n", addr, varnamebuf);
+      }
+      
+      if (descr1 != NULL) {
+      VG_(deleteXA)( descr1 );
+      }
+      
+      if (descr2 != NULL) {
+      VG_(deleteXA)( descr2 );
+      }
+   }
+}
+
+/*------------------------------------------------------------*/
 /*--- Initialisation                                       ---*/
 /*------------------------------------------------------------*/
 
@@ -3710,6 +3858,9 @@ static void tnt_post_clo_init(void)
       tvar_i[i] = 0;
    for( i=0; i< REG_I_MAX; i++ )
       reg_i[i] = 0;
+   for( i=0; i< STACK_SIZE; i++ )
+      lvar_i[i] = 0;
+   lvar_s.size = 0;
 }
 
 static void tnt_fini(Int exitcode)
