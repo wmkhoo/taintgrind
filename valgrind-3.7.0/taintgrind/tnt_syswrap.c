@@ -312,7 +312,7 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
 
 void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 //  int open (const char *filename, int flags[, mode_t mode])
-   Char fdpath[MAX_PATH];
+   HChar fdpath[MAX_PATH];
    Int fd = sr_Res(res);
 
     // Nothing to do if no file tainting
@@ -321,7 +321,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 
     if (fd > -1 && fd < MAXIMUM_FDS) {
 
-        resolve_fd(fd, fdpath, MAX_PATH-1);
+        //resolve_fd(fd, fdpath, MAX_PATH-1);
+	VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
 
         if( TNT_(clo_taint_all) ){
             // Turn instrumentation on
