@@ -577,7 +577,9 @@ LIBREPLACEMALLOC_LDFLAGS_S390X_LINUX = \
 #----------------------------------------------------------------------------
 # Headers
 #----------------------------------------------------------------------------
-pkginclude_HEADERS = 
+pkginclude_HEADERS = \
+	taintgrind.h
+
 noinst_HEADERS = \
 	tnt_include.h \
 	tnt_strings.h

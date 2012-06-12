@@ -145,8 +145,8 @@ typedef
       UInt  guest_ECX;
       UInt  guest_EDX;
       UInt  guest_EBX;
-      UInt  guest_ESP;
-      UInt  guest_EBP;
+      UInt  guest_ESP;		   /* 16 */
+      UInt  guest_EBP;		   /* 20 */
       UInt  guest_ESI;
       UInt  guest_EDI;         /* 28 */
 

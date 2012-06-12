@@ -94,6 +94,18 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
       tl_assert(0);
 }
 
+void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs) {
+	   Int   fd           = args[0];
+	   if (in_sandbox) {
+		   if (shared_fds[fd] != fd) {
+			   HChar fdpath[MAX_PATH];
+			   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
+	           VG_(printf)("*** Thread %d read from %s (fd: %d), but it is not allowed to. ***\n", tid, fdpath, fd);
+			   return;
+		   }
+	   }
+}
+
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // ssize_t  read(int fildes, void *buf, size_t nbyte);
@@ -366,6 +378,7 @@ void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
      if (tainted_fds[tid][fd] == True)
          VG_(printf)("syscall close %d %d\n", tid, fd);
 
+     shared_fds[fd] = 0;
      tainted_fds[tid][fd] = False;
    }
 }

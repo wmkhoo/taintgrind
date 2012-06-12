@@ -31,6 +31,8 @@
 #ifndef __TNT_INCLUDE_H
 #define __TNT_INCLUDE_H
 
+#include "taintgrind.h"
+
 #define TNT_(str)    VGAPPEND(vgTaintgrind_,str)
 
 /*------------------------------------------------------------*/
@@ -247,6 +249,7 @@ extern void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res
 extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs);
 
 /* Functions defined in tnt_translate.c */
 
@@ -256,6 +259,12 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
                         VexGuestExtents* vge,
                         IRType gWordTy, IRType hWordTy );
 
+
+/* Client request handler */
+extern Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret );
+
+extern int in_sandbox;
+extern int shared_fds[];
 
 #endif /* ndef __TNT_INCLUDE_H */
 
