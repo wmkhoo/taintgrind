@@ -1,8 +1,10 @@
 #ifndef __TNT_STRUCTS_H__
 #define __TNT_STRUCTS_H__
 
+//#include <stdlib.h>
+
 #define MAX_LEN 256
-#define STACK_SIZE 1024
+#define STACK_SIZE 102400
 
 //int myStringArray_getIndex( struct myStringArray *a, char *string );
 //void myStringArray_push( struct myStringArray *a, char *item );
@@ -73,6 +75,7 @@ int myStringArray_getIndex(struct myStringArray *a, char *string){
 void myStringArray_push( struct myStringArray *a, char *item ){
    if( a->size >= STACK_SIZE ){
       VG_(printf)("***Error - myStringArray.push: max stack limit reached %d\n", STACK_SIZE);
+      //exit(-1);
       return;
    }
 

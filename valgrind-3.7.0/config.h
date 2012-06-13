@@ -38,7 +38,7 @@
 /* #undef GLIBC_2_12 */
 
 /* Define to 1 if you're using glibc 2.13.x */
-/* #undef GLIBC_2_13 */
+#define GLIBC_2_13 1
 
 /* Define to 1 if you're using glibc 2.14.x */
 /* #undef GLIBC_2_14 */

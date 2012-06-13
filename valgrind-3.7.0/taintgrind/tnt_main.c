@@ -2605,6 +2605,16 @@ int reg_i[REG_I_MAX];
 struct myStringArray lvar_s;
 int lvar_i[STACK_SIZE];
 
+enum VariableType { Local = 3, Global = 4 };
+enum VariableLocation { GlobalFromApplication = 5, GlobalFromElsewhere = 6 };
+
+#define FD_MAX 100
+int shared_fds[FD_MAX];
+int in_sandbox = 0;
+int have_forked_sandbox = 0;
+struct myStringArray shared_vars;
+Char* binary_name = NULL;
+
 Int get_and_check_reg( Char *reg ){
 
    Int regnum = atoi( reg );
@@ -2925,6 +2935,51 @@ void TNT_(helperc_1_tainted_enc32) (
    Char  aTmp[128];
    UInt  enc[4] = { enc0, enc1, enc2/*0xffffffff*/, 0xffffffff };
 
+   ThreadId tid = VG_(get_running_tid());
+
+   pc = VG_(get_IP)( tid );
+   VG_(describe_IP) ( pc, fnname, n_fnname );
+
+   decode_string( enc, aTmp );
+   //VG_(printf)("decoded string %s\n", aTmp);
+   post_decode_string( aTmp );
+
+   Char objname[256];
+   VG_(memset)( objname, 0, 255 );
+
+   enum VariableType type = 0;
+
+   char* just_fnname = VG_(strstr)(fnname, ":");
+   just_fnname += 2;
+
+   enum VariableLocation var_loc;
+   if( VG_(strstr)( aTmp, " LD " ) != NULL) {
+	   TNT_(describe_data)(value2, objname, 255, &type, &var_loc);
+	   if (in_sandbox && type == Global && var_loc == GlobalFromApplication) {
+		   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
+			   VG_(printf)("*** Thread %d read shared variable \"%s\" in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+		   }
+	   }
+   }
+   else if( VG_(strstr)( aTmp, " ST " ) != NULL) {
+	   TNT_(describe_data)(value1, objname, 255, &type, &var_loc);
+	   if (type == Global && var_loc == GlobalFromApplication) {
+		   if (in_sandbox) {
+			   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
+				   VG_(printf)("*** Thread %d wrote to shared variable %s in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+			   }
+		   }
+		   else if (have_forked_sandbox) {
+			   if (myStringArray_getIndex(&shared_vars, objname) >= 0) {
+				   VG_(printf)("*** Shared variable %s is being written to in method %s after a sandbox has been forked and so the sandbox will not see this new value. ***\n", objname, just_fnname);
+			   }
+		   }
+	   }
+   }
+
+   // if we are in sandbox mode, then check if the sandbox is allowed to
+   // load/store the global
+
    if( TNT_(clo_critical_ins_only)           &&
        ( enc[0] & 0xf8000000 ) != 0x68000000 &&
        ( enc[0] & 0xf8000000 ) != 0x80000000 )
@@ -2946,29 +3001,28 @@ void TNT_(helperc_1_tainted_enc32) (
    if(TNT_(do_print)){
       if((TNT_(clo_tainted_ins_only) && (taint1 || taint2)) ||
           !TNT_(clo_tainted_ins_only)){
-         pc = VG_(get_IP)( VG_(get_running_tid)() );
-         VG_(describe_IP) ( pc, fnname, n_fnname );
 
-         decode_string( enc, aTmp );
+//         decode_string( enc, aTmp );
          //VG_(printf)("decoded string %s\n", aTmp);
-         post_decode_string( aTmp );
+//         post_decode_string( aTmp );
 
          VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
             fnname, aTmp, value1, value2, taint1, taint2 );
 
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
-            Char objname[256];
-//            PtrdiffT pdt;
-            VG_(memset)( objname, 0, 255 );
-//            VG_(get_objname)( arg1, objname, 255 );
-//            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
 
-//            if( objname[0] == '\0' ){
-//               VG_(sprintf)( objname, "%x_unknownobj", value2 );
-//            }
-
-            TNT_(describe_data)(value2, objname, 255);
+//        	 Char objname[256];
+// //            PtrdiffT pdt;
+//             VG_(memset)( objname, 0, 255 );
+// //            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+//
+// //            if( objname[0] == '\0' ){
+// //               VG_(sprintf)( objname, "%x_unknownobj", value1 );
+// //            }
+//
+//             enum VariableType type;
+//             TNT_(describe_data)(value2, objname, 255, &type);
 
             // Check if it hasn't been seen before
             if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
@@ -2991,7 +3045,7 @@ void TNT_(helperc_1_tainted_enc32) (
             tvar_i[tmpnum]++;
 
 //            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
-            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
+            VG_(printf)( "(%d) t%s.%d <- %s.%d", type, tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -3005,18 +3059,32 @@ void TNT_(helperc_1_tainted_enc32) (
                Int tmpnum2 = get_and_check_tvar( tmp2 );
                VG_(printf)( "; t%s.%d <*- t%s.%d", tmp, tvar_i[tmpnum], tmp2, tvar_i[tmpnum2] );
             }
+            else {
+            	// loading from hardcoded address
+            	pTmp2 = VG_(strstr)( pTmp + 1, " 0x" );
+            	if (pTmp2 != NULL) {
+					Char tmp2[16];
+					pTmp2 += 1;
+            	// 0x15008 t4 = LD I32 0x80a42e0
+				 //                   ^--pTmp2
+					VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
+					tmp2[VG_(strlen)(pTmp2)] = '\0';
+					VG_(printf)( "; t%s.%d <*- %s", tmp, tvar_i[tmpnum], tmp2 );
+            	}
+            }
 
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
-            Char objname[256];
-//            PtrdiffT pdt;
-            VG_(memset)( objname, 0, 255 );
-//            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
-
-//            if( objname[0] == '\0' ){
-//               VG_(sprintf)( objname, "%x_unknownobj", value1 );
-//            }
-
-            TNT_(describe_data)(value1, objname, 255);
+//            Char objname[256];
+////            PtrdiffT pdt;
+//            VG_(memset)( objname, 0, 255 );
+////            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
+//
+////            if( objname[0] == '\0' ){
+////               VG_(sprintf)( objname, "%x_unknownobj", value1 );
+////            }
+//
+//            enum VariableType type;
+//            TNT_(describe_data)(value1, objname, 255, &type);
 
             // Check if it hasn't been seen before
             if( myStringArray_getIndex( &lvar_s, objname ) == -1 ){
@@ -3042,7 +3110,7 @@ void TNT_(helperc_1_tainted_enc32) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
+               VG_(printf)( "(%d) %s.%d <- t%s.%d", type, objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3056,7 +3124,23 @@ void TNT_(helperc_1_tainted_enc32) (
                   Int tmpnum2 = get_and_check_tvar( tmp2 );
                   VG_(printf)( "; t%s.%d <&- t%s.%d", tmp2, tvar_i[tmpnum2], tmp, tvar_i[tmpnum] );
                }
-
+               else {
+            	  // store to hardcoded address
+            	  // 0x19006 ST 0x80ac360 = t18 I32
+            	  //        ^--pAddr
+            	  //           ^--pTmp2
+            	  Char *pAddr = VG_(strstr)( aTmp, " ST " );
+            	  pTmp2 = VG_(strstr)( pAddr, " 0x" );
+            	  if (pTmp2 != NULL) {
+            		  Char tmp2[16];
+            		  pTmp2 += 1;
+            		  // 0x15008 ST t35 = t34 I32
+            		  //             ^--pTmp2
+            		  VG_(strncpy)( tmp2, pTmp2, pEquals-pTmp2 );
+            		  tmp2[pEquals-pTmp2] = '\0';
+                      VG_(printf)( "; %s <&- t%s.%d", tmp2, tmp, tvar_i[tmpnum] );
+            	  }
+               }
             }else{
             // 0x19006 ST t80 = 0xff
             //               ^--pEquals
@@ -3162,7 +3246,8 @@ void TNT_(helperc_1_tainted_enc64) (
 //            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
 //            VG_(get_datasym_and_offset)( value2, objname, 255, &pdt );
-            TNT_(describe_data)(value2, objname, 255);
+            enum VariableType type;
+            TNT_(describe_data)(value2, objname, 255, &type);
 
 //            if( objname[0] == '\0' ){
 //               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int) value2 );
@@ -3189,7 +3274,7 @@ void TNT_(helperc_1_tainted_enc64) (
             Int tmpnum = get_and_check_tvar( tmp );
             tvar_i[tmpnum]++;
 
-            VG_(printf)( "t%s.%d <- %s.%d", tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
+            VG_(printf)( "(%d) t%s.%d <- %s.%d", type, tmp, tvar_i[tmpnum], objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ] );
 
             // Pointer tainting
             Char *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
@@ -3209,7 +3294,8 @@ void TNT_(helperc_1_tainted_enc64) (
 //            PtrdiffT pdt;
             VG_(memset)( objname, 0, 255 );
 //            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
-            TNT_(describe_data)(value1, objname, 255);
+            enum VariableType type;
+            TNT_(describe_data)(value1, objname, 255, &type);
 
 //            if( objname[0] == '\0' ){
 //               VG_(sprintf)( objname, "%lx_unknownobj", (long unsigned int)  value1 );
@@ -3239,7 +3325,7 @@ void TNT_(helperc_1_tainted_enc64) (
                // Get index
                Int tmpnum = get_and_check_tvar( tmp );
 
-               VG_(printf)( "%s.%d <- t%s.%d", objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
+               VG_(printf)( "(%d) %s.%d <- t%s.%d", type, objname, lvar_i[ myStringArray_getIndex( &lvar_s, objname ) ], tmp, tvar_i[tmpnum] );
 
                // Pointer tainting
                Char *pTmp2 = VG_(strstr)( aTmp, " t" );
@@ -3540,7 +3626,7 @@ void TNT_(helperc_4_tainted) (
 /*--- name from data address, using debug symbol tables.   ---*/
 /*------------------------------------------------------------*/
 
-void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize) {
+void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
 
 	// first try to see if it is a global var
 	PtrdiffT pdt;
@@ -3579,7 +3665,7 @@ void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize) {
 
 		   /* If we could not obtain the variable name, then just use "unknownobj" */
 		   if (descr1 == NULL) {
-			   VG_(sprintf)( varnamebuf, "%x_unknownobj", addr );
+			   VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
 		   }
 		   else {
 
@@ -3650,6 +3736,22 @@ void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize) {
 		   if (descr2 != NULL) {
 			   VG_(deleteXA)( descr2 );
 		   }
+
+		   *type = Local;
+	}
+	else {
+		// it's a global variable
+		*type = Global;
+
+		if (have_forked_sandbox) {
+			tl_assert(binary_name != NULL);
+//
+//			// let's determine it's location
+			UInt pc = VG_(get_IP)(VG_(get_running_tid)());
+			Char binarynamebuf[1024];
+			VG_(get_objname)(pc, binarynamebuf, 1024);
+			*loc = (VG_(strcmp)(binarynamebuf, binary_name) == 0) ? GlobalFromApplication : GlobalFromElsewhere;
+		}
 	}
 }
 
@@ -3712,6 +3814,15 @@ static
 void tnt_pre_syscall(ThreadId tid, UInt syscallno,
                            UWord* args, UInt nArgs)
 {
+	switch ((int)syscallno) {
+#ifdef VGP_x86_linux
+    	case 3: //__NR_read:
+    		TNT_(syscall_read_check)(tid, args, nArgs);
+    		break;
+#else
+#error Unknown platform
+#endif
+	}
 }
 
 static
@@ -3768,6 +3879,40 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
 #error Unknown platform
 #endif
   }
+}
+
+Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
+	switch (arg[0]) {
+		case VG_USERREQ__TAINTGRIND_ENTERSANDBOX: {
+			in_sandbox = 1;
+			have_forked_sandbox = 1;
+			if (binary_name == NULL) {
+				UInt pc = VG_(get_IP)(tid);
+				binary_name = (Char*)VG_(malloc)("binary_name",sizeof(Char)*1024);
+				VG_(get_objname)(pc, binary_name, 1024);
+				VG_(printf)("binary_name: %s\n", binary_name);
+			}
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_EXITSANDBOX: {
+			in_sandbox = 0;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_SHAREDFD: {
+			Int fd = arg[1];
+			if (fd >= 0) {
+				shared_fds[fd] = fd;
+			}
+			*ret = fd;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_SHAREDVAR: {
+			Char* var = arg[1];
+			myStringArray_push(&shared_vars, var);
+			break;
+		}
+	}
+	return True;
 }
 
 /*
@@ -3910,6 +4055,8 @@ static void tnt_pre_clo_init(void)
                                    TNT_(realloc),
                                    TNT_(malloc_usable_size),
                                    TNT_MALLOC_REDZONE_SZB );
+
+   VG_(needs_client_requests)  (TNT_(handle_client_requests));
 
    // Taintgrind: Needed for tnt_malloc_wrappers.c
    TNT_(malloc_list)  = VG_(HT_construct)( "TNT_(malloc_list)" );
