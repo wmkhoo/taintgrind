@@ -3815,12 +3815,15 @@ void tnt_pre_syscall(ThreadId tid, UInt syscallno,
                            UWord* args, UInt nArgs)
 {
 	switch ((int)syscallno) {
-#ifdef VGP_x86_linux
+#if defined VGP_x86_linux || VGP_amd64_freebsd || defined VGP_x86_freebsd
     	case 3: //__NR_read:
     		TNT_(syscall_read_check)(tid, args, nArgs);
     		break;
+    	case 4: //__NR_write:
+    		TNT_(syscall_write_check)(tid, args, nArgs);
+    		break;
 #else
-#error Unknown platform
+//#error "Unknown platform"
 #endif
 	}
 }
@@ -3885,6 +3888,13 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 	switch (arg[0]) {
 		case VG_USERREQ__TAINTGRIND_ENTERSANDBOX: {
 			in_sandbox = 1;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_EXITSANDBOX: {
+			in_sandbox = 0;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_FORKSANDBOX: {
 			have_forked_sandbox = 1;
 			if (binary_name == NULL) {
 				UInt pc = VG_(get_IP)(tid);
@@ -3892,10 +3902,6 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 				VG_(get_objname)(pc, binary_name, 1024);
 				VG_(printf)("binary_name: %s\n", binary_name);
 			}
-			break;
-		}
-		case VG_USERREQ__TAINTGRIND_EXITSANDBOX: {
-			in_sandbox = 0;
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_SHAREDFD: {

@@ -100,7 +100,29 @@ void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs) {
 		   if (shared_fds[fd] != fd) {
 			   HChar fdpath[MAX_PATH];
 			   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
-	           VG_(printf)("*** Thread %d read from %s (fd: %d), but it is not allowed to. ***\n", tid, fdpath, fd);
+			   HChar fnname[128];
+			   UInt pc = VG_(get_IP)(tid);
+			   VG_(describe_IP) ( pc, fnname, 128 );
+			   char* just_fnname = VG_(strstr)(fnname, ":");
+			   just_fnname += 2;
+	           VG_(printf)("*** Thread %d read from %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
+			   return;
+		   }
+	   }
+}
+
+void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs) {
+	   Int   fd           = args[0];
+	   if (in_sandbox) {
+		   if (shared_fds[fd] != fd) {
+			   HChar fdpath[MAX_PATH];
+			   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
+			   UInt pc = VG_(get_IP)(tid);
+			   HChar fnname[128];
+			   VG_(describe_IP) ( pc, fnname, 128 );
+			   char* just_fnname = VG_(strstr)(fnname, ":");
+			   just_fnname += 2;
+	           VG_(printf)("*** Thread %d wrote to %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
 			   return;
 		   }
 	   }

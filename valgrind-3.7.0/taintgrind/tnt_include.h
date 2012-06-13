@@ -250,6 +250,7 @@ extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes re
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs);
+extern void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs);
 
 /* Functions defined in tnt_translate.c */
 
