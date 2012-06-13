@@ -2606,12 +2606,14 @@ struct myStringArray lvar_s;
 int lvar_i[STACK_SIZE];
 
 enum VariableType { Local = 3, Global = 4 };
+enum VariableLocation { GlobalFromApplication = 5, GlobalFromElsewhere = 6 };
 
 #define FD_MAX 100
 int shared_fds[FD_MAX];
 int in_sandbox = 0;
 int have_forked_sandbox = 0;
 struct myStringArray shared_vars;
+Char* binary_name = NULL;
 
 Int get_and_check_reg( Char *reg ){
 
@@ -2950,17 +2952,18 @@ void TNT_(helperc_1_tainted_enc32) (
    char* just_fnname = VG_(strstr)(fnname, ":");
    just_fnname += 2;
 
+   enum VariableLocation var_loc;
    if( VG_(strstr)( aTmp, " LD " ) != NULL) {
-	   TNT_(describe_data)(value2, objname, 255, &type);
-	   if (in_sandbox && type == Global) {
+	   TNT_(describe_data)(value2, objname, 255, &type, &var_loc);
+	   if (in_sandbox && type == Global && var_loc == GlobalFromApplication) {
 		   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
 			   VG_(printf)("*** Thread %d read shared variable \"%s\" in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
 		   }
 	   }
    }
    else if( VG_(strstr)( aTmp, " ST " ) != NULL) {
-	   TNT_(describe_data)(value1, objname, 255, &type);
-	   if (type == Global) {
+	   TNT_(describe_data)(value1, objname, 255, &type, &var_loc);
+	   if (type == Global && var_loc == GlobalFromApplication) {
 		   if (in_sandbox) {
 			   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
 				   VG_(printf)("*** Thread %d wrote to shared variable %s in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
@@ -3623,7 +3626,7 @@ void TNT_(helperc_4_tainted) (
 /*--- name from data address, using debug symbol tables.   ---*/
 /*------------------------------------------------------------*/
 
-void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize, enum VariableType* type) {
+void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
 
 	// first try to see if it is a global var
 	PtrdiffT pdt;
@@ -3739,6 +3742,16 @@ void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize, enum Variabl
 	else {
 		// it's a global variable
 		*type = Global;
+
+		if (have_forked_sandbox) {
+			tl_assert(binary_name != NULL);
+//
+//			// let's determine it's location
+			UInt pc = VG_(get_IP)(VG_(get_running_tid)());
+			Char binarynamebuf[1024];
+			VG_(get_objname)(pc, binarynamebuf, 1024);
+			*loc = (VG_(strcmp)(binarynamebuf, binary_name) == 0) ? GlobalFromApplication : GlobalFromElsewhere;
+		}
 	}
 }
 
@@ -3873,6 +3886,12 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 		case VG_USERREQ__TAINTGRIND_ENTERSANDBOX: {
 			in_sandbox = 1;
 			have_forked_sandbox = 1;
+			if (binary_name == NULL) {
+				UInt pc = VG_(get_IP)(tid);
+				binary_name = (Char*)VG_(malloc)("binary_name",sizeof(Char)*1024);
+				VG_(get_objname)(pc, binary_name, 1024);
+				VG_(printf)("binary_name: %s\n", binary_name);
+			}
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_EXITSANDBOX: {
