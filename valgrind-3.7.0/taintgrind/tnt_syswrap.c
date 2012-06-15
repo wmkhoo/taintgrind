@@ -94,6 +94,19 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
       tl_assert(0);
 }
 
+Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
+	if (in_sandbox && !allowed_syscalls[syscallno]) {
+		HChar fnname[128];
+		UInt pc = VG_(get_IP)(tid);
+		VG_(describe_IP) ( pc, fnname, 128 );
+		char* just_fnname = VG_(strstr)(fnname, ":");
+		just_fnname += 2;
+		VG_(printf)("*** Thread %d performed system call %d in method %s, but it is not allowed to. ***\n\n", tid, syscallno, just_fnname);
+		return False;
+	}
+	return True;
+}
+
 void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs) {
 	   Int   fd           = args[0];
 	   if (in_sandbox) {
@@ -105,7 +118,7 @@ void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs) {
 			   VG_(describe_IP) ( pc, fnname, 128 );
 			   char* just_fnname = VG_(strstr)(fnname, ":");
 			   just_fnname += 2;
-	           VG_(printf)("*** Thread %d read from %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
+	           VG_(printf)("*** Thread %d read from %s (fd: %d) in method %s, but it is not allowed to. ***\n\n", tid, fdpath, fd, just_fnname);
 			   return;
 		   }
 	   }
@@ -122,7 +135,7 @@ void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs) {
 			   VG_(describe_IP) ( pc, fnname, 128 );
 			   char* just_fnname = VG_(strstr)(fnname, ":");
 			   just_fnname += 2;
-	           VG_(printf)("*** Thread %d wrote to %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
+	           VG_(printf)("*** Thread %d wrote to %s (fd: %d) in method %s, but it is not allowed to. ***\n\n", tid, fdpath, fd, just_fnname);
 			   return;
 		   }
 	   }

@@ -151,6 +151,8 @@ extern Int   TNT_(clo_before_bb);
 extern Bool  TNT_(clo_tainted_ins_only);
 extern Bool  TNT_(clo_critical_ins_only);
 extern Int   TNT_(do_print);
+extern Char* TNT_(clo_allowed_syscalls);
+extern Bool  TNT_(read_syscalls_file);
 
 extern Bool TNT_(instrument_start);
 
@@ -251,7 +253,7 @@ extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes r
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs);
 extern void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs);
-
+extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
 /* Functions defined in tnt_translate.c */
 
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,
@@ -266,6 +268,7 @@ extern Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret 
 
 extern int in_sandbox;
 extern int shared_fds[];
+extern Bool allowed_syscalls[];
 
 #endif /* ndef __TNT_INCLUDE_H */
 

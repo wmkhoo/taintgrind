@@ -2614,6 +2614,9 @@ int in_sandbox = 0;
 int have_forked_sandbox = 0;
 struct myStringArray shared_vars;
 Char* binary_name = NULL;
+Char* next_shared_variable_to_update = NULL;
+#define SYSCALLS_MAX 100
+Bool allowed_syscalls[SYSCALLS_MAX];
 
 Int get_and_check_reg( Char *reg ){
 
@@ -2957,7 +2960,7 @@ void TNT_(helperc_1_tainted_enc32) (
 	   TNT_(describe_data)(value2, objname, 255, &type, &var_loc);
 	   if (in_sandbox && type == Global && var_loc == GlobalFromApplication) {
 		   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
-			   VG_(printf)("*** Thread %d read shared variable \"%s\" in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+			   VG_(printf)("*** Thread %d read global variable \"%s\" in method %s, but it is not allowed to. ***\n\n", tid, objname, just_fnname);
 		   }
 	   }
    }
@@ -2966,14 +2969,18 @@ void TNT_(helperc_1_tainted_enc32) (
 	   if (type == Global && var_loc == GlobalFromApplication) {
 		   if (in_sandbox) {
 			   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
-				   VG_(printf)("*** Thread %d wrote to shared variable %s in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+				   VG_(printf)("*** Thread %d wrote to global variable %s in method %s, but it is not allowed to. ***\n\n", tid, objname, just_fnname);
+			   }
+			   else if (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, objname) != 0) {
+				   VG_(printf)("*** Thread %d is allowed to write to global variable %s in method %s, but you have not explicitly declared this. ***\n\n", tid, objname, just_fnname);
 			   }
 		   }
 		   else if (have_forked_sandbox) {
-			   if (myStringArray_getIndex(&shared_vars, objname) >= 0) {
-				   VG_(printf)("*** Shared variable %s is being written to in method %s after a sandbox has been forked and so the sandbox will not see this new value. ***\n", objname, just_fnname);
+			   if (myStringArray_getIndex(&shared_vars, objname) >= 0 && (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, objname) != 0)) {
+				   VG_(printf)("*** Global variable %s is being written to in method %s after a sandbox has been forked and so the sandbox will not see this new value. Please wrap it with a macro. ***\n\n", objname, just_fnname);
 			   }
 		   }
+		   next_shared_variable_to_update = NULL;
 	   }
    }
 
@@ -3743,14 +3750,18 @@ void TNT_(describe_data)(Addr addr, Char* varnamebuf, UInt bufsize, enum Variabl
 		// it's a global variable
 		*type = Global;
 
-		if (have_forked_sandbox) {
+		if (have_forked_sandbox || in_sandbox) {
 			tl_assert(binary_name != NULL);
 //
-//			// let's determine it's location
+//			// let's determine it's location:
+			// It is external from this application if:
+			//   1) The binary in which it is declared is not the same as the
+			//      binary we are currently executing
+			//   2) var name contains @@ in the name
 			UInt pc = VG_(get_IP)(VG_(get_running_tid)());
 			Char binarynamebuf[1024];
 			VG_(get_objname)(pc, binarynamebuf, 1024);
-			*loc = (VG_(strcmp)(binarynamebuf, binary_name) == 0) ? GlobalFromApplication : GlobalFromElsewhere;
+			*loc = (VG_(strcmp)(binarynamebuf, binary_name) == 0 && VG_(strstr)(varnamebuf, "\@\@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
 		}
 	}
 }
@@ -3804,6 +3815,31 @@ static void init_shadow_memory ( void )
 #endif
 }
 
+static void read_allowed_syscalls() {
+	char* filename = TNT_(clo_allowed_syscalls);
+	int fd = VG_(fd_open)(filename, VKI_O_RDONLY, 0);
+	if (fd != -1) {
+		Bool finished = False;
+		char c;
+		int syscallno = 0;
+		int i=0;
+		while (VG_(read)(fd, &c, 1)) {
+			if (c != '\n') {
+				syscallno = 10*syscallno + ctoi(c);
+			}
+			else {
+				// end of line
+				VG_(printf)("allowed_syscall: %d\n", syscallno);
+				allowed_syscalls[syscallno] = True;
+				syscallno = 0;
+			}
+		}
+		VG_(close)(fd);
+	}
+	else {
+		VG_(printf)("Error reading allowed syscalls file: %s\n", filename);
+	}
+}
 
 
 /*------------------------------------------------------------*/
@@ -3814,6 +3850,12 @@ static
 void tnt_pre_syscall(ThreadId tid, UInt syscallno,
                            UWord* args, UInt nArgs)
 {
+	// first of all, check if this system call is allowed
+	if (TNT_(read_syscalls_file)) {
+		if (!TNT_(syscall_allowed_check)(tid, syscallno)) {
+			return;
+		}
+	}
 	switch ((int)syscallno) {
 #if defined VGP_x86_linux || VGP_amd64_freebsd || defined VGP_x86_freebsd
     	case 3: //__NR_read:
@@ -3896,12 +3938,6 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 		}
 		case VG_USERREQ__TAINTGRIND_FORKSANDBOX: {
 			have_forked_sandbox = 1;
-			if (binary_name == NULL) {
-				UInt pc = VG_(get_IP)(tid);
-				binary_name = (Char*)VG_(malloc)("binary_name",sizeof(Char)*1024);
-				VG_(get_objname)(pc, binary_name, 1024);
-				VG_(printf)("binary_name: %s\n", binary_name);
-			}
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_SHAREDFD: {
@@ -3911,12 +3947,26 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			}
 			*ret = fd;
 			break;
+
 		}
 		case VG_USERREQ__TAINTGRIND_SHAREDVAR: {
 			Char* var = arg[1];
 			myStringArray_push(&shared_vars, var);
 			break;
 		}
+		case VG_USERREQ__TAINTGRIND_UPDATESHAREDVAR: {
+			// record next shared var to be updated so that we can
+			// check that the user has annotated a global variable write
+			next_shared_variable_to_update = arg[1];
+			break;
+		}
+	}
+	// initialise binary_name on first client request
+	if (binary_name == NULL) {
+		UInt pc = VG_(get_IP)(tid);
+		binary_name = (Char*)VG_(malloc)("binary_name",sizeof(Char)*1024);
+		VG_(get_objname)(pc, binary_name, 1024);
+		VG_(printf)("binary_name: %s\n", binary_name);
 	}
 	return True;
 }
@@ -3935,6 +3985,8 @@ Int           TNT_(clo_before_bb)              = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = True;
 Int           TNT_(do_print)                   = 0;
+Char*         TNT_(clo_allowed_syscalls)       = "";
+Bool          TNT_(read_syscalls_file)         = False;
 
 static Bool tnt_process_cmd_line_options(Char* arg) {
    if VG_STR_CLO(arg, "--file-filter", TNT_(clo_file_filter)) {
@@ -3947,6 +3999,9 @@ static Bool tnt_process_cmd_line_options(Char* arg) {
    else if VG_BINT_CLO(arg, "--before-bb", TNT_(clo_before_bb), 0, 1000000) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
+   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
+	   TNT_(read_syscalls_file) = True;
+   }
    else
       return VG_(replacement_malloc_process_cmd_line_option)(arg);
 
@@ -4020,6 +4075,10 @@ static void tnt_post_clo_init(void)
    for( i=0; i< STACK_SIZE; i++ )
       lvar_i[i] = 0;
    lvar_s.size = 0;
+
+   if (TNT_(read_syscalls_file)) {
+	   read_allowed_syscalls();
+   }
 }
 
 static void tnt_fini(Int exitcode)
