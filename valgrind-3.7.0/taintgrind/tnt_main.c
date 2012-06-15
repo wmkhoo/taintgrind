@@ -3829,7 +3829,7 @@ static void read_allowed_syscalls() {
 			}
 			else {
 				// end of line
-				VG_(printf)("allowed_syscall: %d\n", syscallno);
+				VG_(printf)("allowed_syscall: %s (%d)\n", syscallnames[syscallno], syscallno);
 				allowed_syscalls[syscallno] = True;
 				syscallno = 0;
 			}

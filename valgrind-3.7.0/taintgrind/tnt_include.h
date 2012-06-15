@@ -270,6 +270,9 @@ extern int in_sandbox;
 extern int shared_fds[];
 extern Bool allowed_syscalls[];
 
+/* System call array */
+extern const char* syscallnames[];
+
 #endif /* ndef __TNT_INCLUDE_H */
 
 /*--------------------------------------------------------------------*/

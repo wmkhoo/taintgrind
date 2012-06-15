@@ -101,7 +101,7 @@ Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
 		VG_(describe_IP) ( pc, fnname, 128 );
 		char* just_fnname = VG_(strstr)(fnname, ":");
 		just_fnname += 2;
-		VG_(printf)("*** Thread %d performed system call %d in method %s, but it is not allowed to. ***\n\n", tid, syscallno, just_fnname);
+		VG_(printf)("*** Thread %d performed system call %s (%d) in method %s, but it is not allowed to. ***\n\n", tid, syscallnames[syscallno], syscallno, just_fnname);
 		return False;
 	}
 	return True;
