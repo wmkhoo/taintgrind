@@ -33,6 +33,8 @@
 
 #include "taintgrind.h"
 
+#define STACK_TRACE_SIZE 20
+
 #define TNT_(str)    VGAPPEND(vgTaintgrind_,str)
 
 /*------------------------------------------------------------*/
@@ -151,8 +153,8 @@ extern Int   TNT_(clo_before_bb);
 extern Bool  TNT_(clo_tainted_ins_only);
 extern Bool  TNT_(clo_critical_ins_only);
 extern Int   TNT_(do_print);
-extern Char* TNT_(clo_allowed_syscalls);
-extern Bool  TNT_(read_syscalls_file);
+//extern Char* TNT_(clo_allowed_syscalls);
+//extern Bool  TNT_(read_syscalls_file);
 
 extern Bool TNT_(instrument_start);
 
@@ -247,12 +249,11 @@ SizeT TNT_(malloc_usable_size)   ( ThreadId tid, void* p );
 /* Functions defined in tnt_syswrap.c */
 /* System call wrappers */
 extern void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
-extern void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs);
-extern void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
 /* Functions defined in tnt_translate.c */
 
@@ -269,6 +270,8 @@ extern Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret 
 extern int in_sandbox;
 extern int shared_fds[];
 extern Bool allowed_syscalls[];
+extern int have_forked_sandbox;
+extern int shared_open;
 
 /* System call array */
 extern const char* syscallnames[];

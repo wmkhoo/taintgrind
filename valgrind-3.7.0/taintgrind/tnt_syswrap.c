@@ -42,6 +42,7 @@
 #include "pub_tool_machine.h"
 #include "pub_tool_aspacemgr.h"
 #include "pub_tool_threadstate.h"
+#include "pub_tool_stacktrace.h"   // for VG_(get_and_pp_StackTrace)
 
 #include "valgrind.h"
 
@@ -101,44 +102,13 @@ Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
 		VG_(describe_IP) ( pc, fnname, 128 );
 		char* just_fnname = VG_(strstr)(fnname, ":");
 		just_fnname += 2;
-		VG_(printf)("*** Thread %d performed system call %s (%d) in method %s, but it is not allowed to. ***\n\n", tid, syscallnames[syscallno], syscallno, just_fnname);
+//		VALGRIND_PRINTF_BACKTRACE("*** Thread %d performed system call %s (%d) in method %s, but it is not allowed to. ***\n\n", tid, syscallnames[syscallno], syscallno, just_fnname);
+		VG_(printf)("*** Thread %d performed system call %s (%d) in a sandbox, but it is not allowed to. ***\n", tid, syscallnames[syscallno], syscallno);
+		VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+		VG_(printf)("\n");
 		return False;
 	}
 	return True;
-}
-
-void TNT_(syscall_read_check)(ThreadId tid, UWord* args, UInt nArgs) {
-	   Int   fd           = args[0];
-	   if (in_sandbox) {
-		   if (shared_fds[fd] != fd) {
-			   HChar fdpath[MAX_PATH];
-			   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
-			   HChar fnname[128];
-			   UInt pc = VG_(get_IP)(tid);
-			   VG_(describe_IP) ( pc, fnname, 128 );
-			   char* just_fnname = VG_(strstr)(fnname, ":");
-			   just_fnname += 2;
-	           VG_(printf)("*** Thread %d read from %s (fd: %d) in method %s, but it is not allowed to. ***\n\n", tid, fdpath, fd, just_fnname);
-			   return;
-		   }
-	   }
-}
-
-void TNT_(syscall_write_check)(ThreadId tid, UWord* args, UInt nArgs) {
-	   Int   fd           = args[0];
-	   if (in_sandbox) {
-		   if (shared_fds[fd] != fd) {
-			   HChar fdpath[MAX_PATH];
-			   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
-			   UInt pc = VG_(get_IP)(tid);
-			   HChar fnname[128];
-			   VG_(describe_IP) ( pc, fnname, 128 );
-			   char* just_fnname = VG_(strstr)(fnname, ":");
-			   just_fnname += 2;
-	           VG_(printf)("*** Thread %d wrote to %s (fd: %d) in method %s, but it is not allowed to. ***\n\n", tid, fdpath, fd, just_fnname);
-			   return;
-		   }
-	   }
 }
 
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
@@ -153,6 +123,22 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
    UWord addr;
    Int   len;
    Int   i;
+
+   if (in_sandbox) {
+	   if (shared_fds[fd] != fd) {
+		   HChar fdpath[MAX_PATH];
+		   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
+		   HChar fnname[128];
+		   UInt pc = VG_(get_IP)(tid);
+		   VG_(describe_IP) ( pc, fnname, 128 );
+		   char* just_fnname = VG_(strstr)(fnname, ":");
+		   just_fnname += 2;
+           VG_(printf)("*** Thread %d read from %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
+           VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+           VG_(printf)("\n");
+		   return;
+	   }
+   }
 
    if (curr_len == 0) return;
 
@@ -362,6 +348,21 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
    HChar fdpath[MAX_PATH];
    Int fd = sr_Res(res);
 
+   // check if we have already forked a sandbox
+   if (shared_open) {
+	   shared_open = 0;
+   }
+   else if (have_forked_sandbox && !in_sandbox) {
+	   UInt pc = VG_(get_IP)(tid);
+	   HChar fnname[128];
+	   VG_(describe_IP) ( pc, fnname, 128 );
+	   char* just_fnname = VG_(strstr)(fnname, ":");
+	   just_fnname += 2;
+	   VG_(printf)("*** Thread %d opened a file after the sandbox was created, hence it will not be accessible to the sandbox. Please annotate it. ***\n", tid, just_fnname);
+	   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+	   VG_(printf)("\n");
+   }
+
     // Nothing to do if no file tainting
     if ( VG_(strlen)( TNT_(clo_file_filter)) == 0 )
         return;
@@ -417,6 +418,29 @@ void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
      tainted_fds[tid][fd] = False;
    }
 }
+
+void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+
+	Int fd = args[0];
+	if (in_sandbox) {
+	   if (shared_fds[fd] != fd) {
+		   HChar fdpath[MAX_PATH];
+		   VG_(resolve_filename)(fd, fdpath, MAX_PATH-1);
+		   UInt pc = VG_(get_IP)(tid);
+		   HChar fnname[128];
+		   VG_(describe_IP) ( pc, fnname, 128 );
+		   char* just_fnname = VG_(strstr)(fnname, ":");
+		   just_fnname += 2;
+		   VG_(printf)("*** Thread %d wrote to %s (fd: %d) in method %s, but it is not allowed to. ***\n", tid, fdpath, fd, just_fnname);
+		   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+		   VG_(printf)("\n");
+		   return;
+	   }
+	}
+
+}
+
+
 
 
 /*--------------------------------------------------------------------*/

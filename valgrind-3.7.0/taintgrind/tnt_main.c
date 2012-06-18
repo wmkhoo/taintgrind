@@ -2617,6 +2617,7 @@ Char* binary_name = NULL;
 Char* next_shared_variable_to_update = NULL;
 #define SYSCALLS_MAX 100
 Bool allowed_syscalls[SYSCALLS_MAX];
+int shared_open = 0;
 
 Int get_and_check_reg( Char *reg ){
 
@@ -2960,7 +2961,9 @@ void TNT_(helperc_1_tainted_enc32) (
 	   TNT_(describe_data)(value2, objname, 255, &type, &var_loc);
 	   if (in_sandbox && type == Global && var_loc == GlobalFromApplication) {
 		   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
-			   VG_(printf)("*** Thread %d read global variable \"%s\" in method %s, but it is not allowed to. ***\n\n", tid, objname, just_fnname);
+			   VG_(printf)("*** Thread %d read global variable \"%s\" in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+			   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+			   VG_(printf)("\n");
 		   }
 	   }
    }
@@ -2969,15 +2972,21 @@ void TNT_(helperc_1_tainted_enc32) (
 	   if (type == Global && var_loc == GlobalFromApplication) {
 		   if (in_sandbox) {
 			   if (myStringArray_getIndex(&shared_vars, objname) == -1) {
-				   VG_(printf)("*** Thread %d wrote to global variable %s in method %s, but it is not allowed to. ***\n\n", tid, objname, just_fnname);
+				   VG_(printf)("*** Thread %d wrote to global variable %s in method %s, but it is not allowed to. ***\n", tid, objname, just_fnname);
+				   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+				   VG_(printf)("\n");
 			   }
 			   else if (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, objname) != 0) {
-				   VG_(printf)("*** Thread %d is allowed to write to global variable %s in method %s, but you have not explicitly declared this. ***\n\n", tid, objname, just_fnname);
+				   VG_(printf)("*** Thread %d is allowed to write to global variable %s in method %s, but you have not explicitly declared this. ***\n", tid, objname, just_fnname);
+				   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+				   VG_(printf)("\n");
 			   }
 		   }
 		   else if (have_forked_sandbox) {
 			   if (myStringArray_getIndex(&shared_vars, objname) >= 0 && (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, objname) != 0)) {
-				   VG_(printf)("*** Global variable %s is being written to in method %s after a sandbox has been forked and so the sandbox will not see this new value. Please wrap it with a macro. ***\n\n", objname, just_fnname);
+				   VG_(printf)("*** Global variable %s is being written to in method %s after a sandbox has been forked and so the sandbox will not see this new value. Please wrap it with a macro. ***\n", objname, just_fnname);
+				   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
+				   VG_(printf)("\n");
 			   }
 		   }
 		   next_shared_variable_to_update = NULL;
@@ -3815,31 +3824,31 @@ static void init_shadow_memory ( void )
 #endif
 }
 
-static void read_allowed_syscalls() {
-	char* filename = TNT_(clo_allowed_syscalls);
-	int fd = VG_(fd_open)(filename, VKI_O_RDONLY, 0);
-	if (fd != -1) {
-		Bool finished = False;
-		char c;
-		int syscallno = 0;
-		int i=0;
-		while (VG_(read)(fd, &c, 1)) {
-			if (c != '\n') {
-				syscallno = 10*syscallno + ctoi(c);
-			}
-			else {
-				// end of line
-				VG_(printf)("allowed_syscall: %s (%d)\n", syscallnames[syscallno], syscallno);
-				allowed_syscalls[syscallno] = True;
-				syscallno = 0;
-			}
-		}
-		VG_(close)(fd);
-	}
-	else {
-		VG_(printf)("Error reading allowed syscalls file: %s\n", filename);
-	}
-}
+//static void read_allowed_syscalls() {
+//	char* filename = TNT_(clo_allowed_syscalls);
+//	int fd = VG_(fd_open)(filename, VKI_O_RDONLY, 0);
+//	if (fd != -1) {
+//		Bool finished = False;
+//		char c;
+//		int syscallno = 0;
+//		int i=0;
+//		while (VG_(read)(fd, &c, 1)) {
+//			if (c != '\n') {
+//				syscallno = 10*syscallno + ctoi(c);
+//			}
+//			else {
+//				// end of line
+//				VG_(printf)("allowed_syscall: %s (%d)\n", syscallnames[syscallno], syscallno);
+//				allowed_syscalls[syscallno] = True;
+//				syscallno = 0;
+//			}
+//		}
+//		VG_(close)(fd);
+//	}
+//	else {
+//		VG_(printf)("Error reading allowed syscalls file: %s\n", filename);
+//	}
+//}
 
 
 /*------------------------------------------------------------*/
@@ -3850,34 +3859,21 @@ static
 void tnt_pre_syscall(ThreadId tid, UInt syscallno,
                            UWord* args, UInt nArgs)
 {
-	// first of all, check if this system call is allowed
-	if (TNT_(read_syscalls_file)) {
-		if (!TNT_(syscall_allowed_check)(tid, syscallno)) {
-			return;
-		}
-	}
-	switch ((int)syscallno) {
-#if defined VGP_x86_linux || VGP_amd64_freebsd || defined VGP_x86_freebsd
-    	case 3: //__NR_read:
-    		TNT_(syscall_read_check)(tid, args, nArgs);
-    		break;
-    	case 4: //__NR_write:
-    		TNT_(syscall_write_check)(tid, args, nArgs);
-    		break;
-#else
-//#error "Unknown platform"
-#endif
-	}
 }
 
 static
 void tnt_post_syscall(ThreadId tid, UInt syscallno,
                             UWord* args, UInt nArgs, SysRes res)
 {
-  switch ((int)syscallno) {
+	TNT_(syscall_allowed_check)(tid, syscallno);
+
+	switch ((int)syscallno) {
 #ifdef VGP_x86_linux
     case 3: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
+      break;
+    case 4: // __NR_write
+      TNT_(syscall_write)(tid, args, nArgs, res);
       break;
     case 5: //__NR_open:
       TNT_(syscall_open)(tid, args, nArgs, res);
@@ -3904,9 +3900,12 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
     case 17: //__NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
-#elif defined VGP_amd64_freebsd || defined VGP_x86_freebsd
+#elif defined VGO_freebsd
     case 3: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
+      break;
+    case 4: // __NR_write
+      TNT_(syscall_write)(tid, args, nArgs, res);
       break;
     case 5: //__NR_open:
       TNT_(syscall_open)(tid, args, nArgs, res);
@@ -3949,6 +3948,10 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			break;
 
 		}
+		case VG_USERREQ__TAINTGRIND_SHAREDOPEN: {
+			shared_open = 1;
+			break;
+		}
 		case VG_USERREQ__TAINTGRIND_SHAREDVAR: {
 			Char* var = arg[1];
 			myStringArray_push(&shared_vars, var);
@@ -3958,6 +3961,11 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			// record next shared var to be updated so that we can
 			// check that the user has annotated a global variable write
 			next_shared_variable_to_update = arg[1];
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_ALLOWSYSCALL: {
+			int syscallno = arg[1];
+			allowed_syscalls[syscallno] = True;
 			break;
 		}
 	}
@@ -3985,8 +3993,8 @@ Int           TNT_(clo_before_bb)              = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = True;
 Int           TNT_(do_print)                   = 0;
-Char*         TNT_(clo_allowed_syscalls)       = "";
-Bool          TNT_(read_syscalls_file)         = False;
+//Char*         TNT_(clo_allowed_syscalls)       = "";
+//Bool          TNT_(read_syscalls_file)         = False;
 
 static Bool tnt_process_cmd_line_options(Char* arg) {
    if VG_STR_CLO(arg, "--file-filter", TNT_(clo_file_filter)) {
@@ -3999,9 +4007,9 @@ static Bool tnt_process_cmd_line_options(Char* arg) {
    else if VG_BINT_CLO(arg, "--before-bb", TNT_(clo_before_bb), 0, 1000000) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
-   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
-	   TNT_(read_syscalls_file) = True;
-   }
+//   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
+//	   TNT_(read_syscalls_file) = True;
+//   }
    else
       return VG_(replacement_malloc_process_cmd_line_option)(arg);
 
@@ -4076,9 +4084,9 @@ static void tnt_post_clo_init(void)
       lvar_i[i] = 0;
    lvar_s.size = 0;
 
-   if (TNT_(read_syscalls_file)) {
-	   read_allowed_syscalls();
-   }
+//   if (TNT_(read_syscalls_file)) {
+//	   read_allowed_syscalls();
+//   }
 }
 
 static void tnt_fini(Int exitcode)
