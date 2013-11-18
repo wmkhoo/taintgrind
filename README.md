@@ -18,7 +18,7 @@ Installation
 2. Git clone and build Taintgrind
 
 
-		[me@machine ~/valgrind-X.X.X] git clone http://github.com/CTSRD-SOAAP/taintgrind.git
+		[me@machine ~/valgrind-X.X.X] git clone http://github.com/wmkhoo/taintgrind.git
 		[me@machine ~/valgrind-X.X.X] cd taintgrind 
 		[me@machine ~/valgrind-X.X.X/taintgrind] ../autogen.sh
 		[me@machine ~/valgrind-X.X.X/taintgrind] ./configure --prefix=`pwd`/../inst

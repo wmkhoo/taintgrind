@@ -1,2 +1,0 @@
-prog: condloadstore
-prereq: test -x condloadstore

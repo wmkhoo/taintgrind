@@ -1,3 +1,0 @@
-prereq: ../../../tests/check_vmx_cap
-prog: bug129390-ppc32
-vgopts: -q

@@ -1,2 +1,0 @@
-prog: xor_EI
-prereq: test -x xor_EI

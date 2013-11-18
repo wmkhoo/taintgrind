@@ -1,3 +1,0 @@
-prog: shell
-stderr_filter: filter_shell_output
-vgopts: -q

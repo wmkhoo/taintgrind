@@ -1,3 +1,0 @@
-prereq: ./is_arch_supported
-vgopts: --num-callers=3
-prog: stackerr

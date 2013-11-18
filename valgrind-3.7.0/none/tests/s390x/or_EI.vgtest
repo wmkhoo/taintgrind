@@ -1,2 +1,0 @@
-prog: or_EI
-prereq: test -x or_EI

@@ -1,2 +1,0 @@
-prog: add_GE
-prereq: test -x add_GE
