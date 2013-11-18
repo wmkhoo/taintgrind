@@ -145,7 +145,7 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
    return sm >= &sm_distinguished[0] && sm <= &sm_distinguished[2];
 }
 
-// Forward declaration
+// -Start- Forward declarations for Taintgrind
 Int  ctoi( HChar c );
 Int  ctoi_test( HChar c );
 Int  atoi( HChar *s );
@@ -159,6 +159,8 @@ void post_decode_string_store( HChar *aStr );
 void post_decode_string_ite( HChar *aStr );
 Int get_and_check_reg( HChar *reg );
 Int get_and_check_tvar( HChar *tmp );
+void infer_client_binary_name(UInt pc);
+// -End- Forward declarations for Taintgrind
 
 static void update_SM_counts(SecMap* oldSM, SecMap* newSM); //285
 
@@ -899,7 +901,7 @@ ULong tnt_LOADVn_slow ( Addr a, SizeT nBits, Bool bigendian )
    SSizeT i;                        // Must be signed.
    SizeT n_addrs_bad = 0;
    Addr  ai;
-   Bool  partial_load_exemption_applies;
+   //Bool  partial_load_exemption_applies;
    UChar vbits8;
    Bool  ok;
 
@@ -961,10 +963,10 @@ ULong tnt_LOADVn_slow ( Addr a, SizeT nBits, Bool bigendian )
       - it's a word-sized, word-aligned load
       - at least one of the addresses in the word *is* valid
    */
-   partial_load_exemption_applies
-      = /*TNT_(clo_partial_loads_ok)*/ 0 && szB == VG_WORDSIZE
-                                   && VG_IS_WORD_ALIGNED(a)
-                                   && n_addrs_bad < VG_WORDSIZE;
+   //partial_load_exemption_applies
+      //= /*TNT_(clo_partial_loads_ok)*/ 0 && szB == VG_WORDSIZE
+      //                             && VG_IS_WORD_ALIGNED(a)
+      //                             && n_addrs_bad < VG_WORDSIZE;
 
 //   Taintgrind: TODO
 //   if (n_addrs_bad > 0 && !partial_load_exemption_applies)
@@ -1102,7 +1104,7 @@ static void set_address_range_perms ( Addr a, SizeT lenT, UWord vabits16,
 
    if (lenT > 256 * 1024 * 1024) {
       if (VG_(clo_verbosity) > 0 && !VG_(clo_xml)) {
-         Char* s = "unknown???";
+         const HChar* s = "unknown???";
          if (vabits16 == VA_BITS16_NOACCESS ) s = "noaccess";
          if (vabits16 == VA_BITS16_TAINTED  ) s = "tainted";
          if (vabits16 == VA_BITS16_UNTAINTED) s = "untainted";
@@ -1434,7 +1436,7 @@ void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx, //3873
 //3311
 void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
 {
-   UInt otag;
+   //UInt otag;
    tl_assert(sizeof(UWord) == sizeof(SizeT));
    if (0)
       VG_(printf)("helperc_MAKE_STACK_UNINIT (%#lx,%lu,nia=%#lx)\n",
@@ -1446,7 +1448,7 @@ void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
       otag = ecu | MC_OKIND_STACK;
    } else {*/
       tl_assert(nia == 0);
-      otag = 0;
+      //otag = 0;
 /*   }*/
 
    /* Idea is: go fast when
@@ -3697,7 +3699,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 			   // So, the terminator for a variable name is either '"' or ','
 
 			   HChar* descr1str =  (HChar*)VG_(indexXA)(descr1, 0);
-			   char* commonVarPrefix = "bytes inside ";
+			   const char* commonVarPrefix = "bytes inside ";
 			   char* varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix);
 
 			   tl_assert(varPrefixPtr != NULL);
@@ -3706,7 +3708,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 			   varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
 
 			   // disambiguate between local var or others
-			   char* localVarPrefix = "local var ";
+			   const char* localVarPrefix = "local var ";
 			   char* varStart = VG_(strstr)(varPrefixPtr, localVarPrefix);
 			   HChar* varEnd;
 			   int varNameLen = 0;
@@ -4003,8 +4005,10 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
    Taintgrind args
 */
 
+// Defined in tnt_include.h
+//#define MAX_PATH 256
 //static Char   TNT_(default_file_filter)[]      = "";
-HChar*        TNT_(clo_file_filter)            = "";
+HChar         TNT_(clo_file_filter)[MAX_PATH]  ;
 Int           TNT_(clo_taint_start)            = 0;
 Int           TNT_(clo_taint_len)              = 0x800000;
 Bool          TNT_(clo_taint_all)              = False;
@@ -4018,8 +4022,11 @@ Int           TNT_(do_print)                   = 0;
 
 void init_soaap_data(void);
 
-static Bool tnt_process_cmd_line_options(HChar* arg) {
-   if VG_STR_CLO(arg, "--file-filter", TNT_(clo_file_filter)) {
+static Bool tnt_process_cmd_line_options(const HChar* arg) {
+   const HChar* tmp_str;
+
+   if VG_STR_CLO(arg, "--file-filter", tmp_str) {
+      VG_(strncpy)(TNT_(clo_file_filter), tmp_str, MAX_PATH);
       TNT_(do_print) = 0;
    }
    else if VG_BHEX_CLO(arg, "--taint-start", TNT_(clo_taint_start), 0x0000, 0x8000000) {}
@@ -4064,7 +4071,6 @@ static void tnt_print_debug_usage(void)
 */                                                     
 
 Bool TNT_(instrument_start) = False;
-#define MAX_PATH 256
 static void tnt_post_clo_init(void)
 {
    if(*TNT_(clo_file_filter) == '\0'){
@@ -4176,7 +4182,7 @@ void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request, enum 
 		// first check if this access is allowed
 		Bool allowed = var_idx != -1 && (shared_vars_perms[var_idx] & var_request);
 		if (IN_SANDBOX && !allowed) {
-			HChar* access_str;
+			const HChar* access_str;
 			switch (var_request) {
 				case VAR_READ: {
 					access_str = "read";

@@ -144,7 +144,8 @@ void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len,
                                                  Addr nia );
 
 /* Taintgrind args */
-extern HChar* TNT_(clo_file_filter);
+#define MAX_PATH 256
+extern HChar  TNT_(clo_file_filter)[MAX_PATH];
 extern Int    TNT_(clo_taint_start);
 extern Int    TNT_(clo_taint_len);
 extern Bool   TNT_(clo_taint_all);

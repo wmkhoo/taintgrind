@@ -107,7 +107,7 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // ssize_t  read(int fildes, void *buf, size_t nbyte);
    Int   fd           = args[0];
-   Char *data         = (Char *)args[1];
+   HChar *data        = (HChar *)args[1];
    UInt  curr_offset  = read_offset;
    Int   curr_len     = sr_Res(res);
    UInt  taint_offset = TNT_(clo_taint_start);
@@ -129,8 +129,13 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
       VG_(printf)("syscall read %d %d ", tid, fd);
-      VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, curr_len, (Int)data,
-          *(Char *)data);
+#ifdef VGA_amd64
+      VG_(printf)("0x%x 0x%x 0x%llx 0x%x\n", curr_offset, curr_len, (ULong)data,
+          *(HChar *)data);
+#else
+      VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, curr_len, (UInt)data,
+          *(HChar *)data);
+#endif
    }
 
    if( TNT_(clo_taint_all) ){
@@ -220,7 +225,7 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // ssize_t pread(int fildes, void *buf, size_t nbyte, size_t offset);
    Int   fd           = args[0];
-   Char *data         = (Char *)args[1];
+   HChar *data        = (HChar *)args[1];
    UInt  curr_offset  = (Int)args[3];
    Int   curr_len     = sr_Res(res);
    UInt  taint_offset = TNT_(clo_taint_start);
@@ -240,7 +245,13 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
       VG_(printf)("syscall pread %d %d ", tid, fd);
-      VG_(printf)("0x%x 0x%x 0x%x\n", curr_offset, curr_len, (Int)data);
+
+#ifdef VGA_amd64
+      VG_(printf)("0x%x 0x%x 0x%llx\n", curr_offset, curr_len, (ULong)data);
+#else
+      VG_(printf)("0x%x 0x%x 0x%x\n", curr_offset, curr_len, (UInt)data);
+#endif
+
    }
 
    if( TNT_(clo_taint_all) ){
@@ -418,7 +429,7 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 		Bool allowed = shared_fds[fd] & fd_request;
 //		VG_(printf)("checking if allowed to %s from fd %d ... %d\n", (fd_request == FD_READ ? "read" : "write"), fd, allowed);
 		if (!allowed) {
-			HChar* access_str;
+			const HChar* access_str;
 			switch (fd_request) {
 				case FD_READ: {
 					access_str = "read from";

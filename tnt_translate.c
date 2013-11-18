@@ -3681,7 +3681,7 @@ IRAtom* expr2vbits_Load_WRK ( MCEnv* mce,  //2766
                               IRAtom* addr, UInt bias )
 {
    void*    helper;
-   HChar*    hname;
+   const HChar*    hname;
    IRDirty* di;
    IRTemp   datavbits;
    IRAtom*  addrAct;
@@ -3992,7 +3992,7 @@ void do_shadow_Store ( MCEnv* mce,   // 3032
    IROp     mkAdd;
    IRType   ty, tyAddr;
    void*    helper = NULL;
-   HChar*   hname = NULL;
+   const HChar*   hname = NULL;
 //   IRConst* c;
    IRDirty* di2;
 
@@ -5188,7 +5188,7 @@ void encode_string( HChar *aStr, UInt *enc, UInt enc_size ){
 IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
 //         ppIRExpr output: PUT(<offset>) = data
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5237,7 +5237,7 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
 IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias, IRExpr* data ){
 // ppIRExpr output: PUTI(<descr.base:descr.nElems:descr.elemTy>)[ix, bias] = data
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
 //   Char*    aStr;
@@ -5307,7 +5307,7 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
                              IRExpr* addr, IRExpr* data ){
 //         ppIRExpr output: ST<end>(<addr>) = <data>
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5388,7 +5388,7 @@ typedef
    IRCAS;
 */
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar*   aStr;
@@ -5511,7 +5511,7 @@ typedef
    IRDirty;
 */
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    //Int      arg_index[4];
@@ -5622,7 +5622,7 @@ typedef
 IRDirty* create_dirty_EXIT( MCEnv* mce, IRExpr* guard, IRJumpKind jk, IRConst* dst ){
 // ppIRStmt output:  if(<guard>) goto {<jk>} <dst>
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5673,7 +5673,7 @@ IRDirty* create_dirty_EXIT( MCEnv* mce, IRExpr* guard, IRJumpKind jk, IRConst* d
 IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 // ppIRStmt output:  jmp <next>
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5823,7 +5823,7 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
 IRDirty* create_dirty_GET( MCEnv* mce, IRTemp tmp, Int offset, IRType ty ){
 // ppIRStmt output: t<tmp> = GET(<offset>:<ty>)
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5870,7 +5870,7 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRTemp tmp, Int offset, IRType ty ){
 IRDirty* create_dirty_GETI( MCEnv* mce, IRTemp tmp, IRRegArray* descr, IRExpr* ix, Int bias ){
 // ppIRStmt output:  t<tmp> = GETI(<base>)[<ix>, <bias>]
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
 //   Char*    aStr;
@@ -5942,7 +5942,7 @@ IRDirty* create_dirty_GETI( MCEnv* mce, IRTemp tmp, IRRegArray* descr, IRExpr* i
 IRDirty* create_dirty_RDTMP( MCEnv* mce, IRTemp tmp, IRTemp data ){
 // ppIRStmt output:  t<tmp> = t<data>
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -5987,7 +5987,7 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRTemp tmp, IROp op,
                            IRExpr* arg3, IRExpr* arg4 ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3, arg4 )
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    IRExpr** di_args;
@@ -6064,7 +6064,7 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp tmp, IROp op,
                              IRExpr* arg3 ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3 )
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    IRExpr** di_args;
@@ -6137,7 +6137,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
                              IRExpr* arg1, IRExpr* arg2 ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2 )
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    Int      arg_index[2];
@@ -6260,7 +6260,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
 IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
 // ppIRStmt output:  t<tmp> = op( arg )
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    Int      num_args = 0;
@@ -6343,7 +6343,7 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
                             IRType ty, IRAtom* addr ){
 //         ppIRExpr output: tmp = LD<end>:<ty>(<addr>), eg. t0 = LDle:I32(t1)
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    HChar    aTmp[128];
@@ -6397,7 +6397,7 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
 IRDirty* create_dirty_CCALL( MCEnv* mce, IRTemp tmp, IRCallee* cee, IRType retty, IRExpr** args ){
 // ppIRStmt output: t<tmp> = CCALL <callee>:<retty>(<args>)
    Int      nargs = 3;
-   HChar*   nm = "";
+   const HChar*   nm = "";
    void*    fn = (void *)0;
    IRExpr** di_args;
    //Int      arg_index[4];
@@ -6474,7 +6474,7 @@ IRDirty* create_dirty_ITE( MCEnv* mce, IRTemp tmp,
                            IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse ){
 // ppIRStmt output: t<tmp> = ITE <cond> (<iftrue>, <iffalse>)
    Int      nargs = 3;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** args;
    IRExpr** ite_args;
@@ -6533,7 +6533,7 @@ IRDirty* create_dirty_ITE( MCEnv* mce, IRTemp tmp,
 IRDirty* create_dirty_from_dirty( IRDirty* di_old ){
    Int      nargs = 0;
    Int      regparms = 0;
-   HChar*   nm;
+   const HChar*   nm;
    void*    fn;
    IRExpr** di_args;
    Int      i;
