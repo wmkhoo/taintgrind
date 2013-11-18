@@ -1,7 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
-This text is available in [Czech](http://czlib.bizcow.com/post/taintgrind-a-valgrind-poskvrnit-nastroj-pro-analyzu) (kindly translated by [Alex Novak](http://bizcow.com)
+
+2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
+
+
+This text is available in [Czech](http://czlib.bizcow.com/post/taintgrind-a-valgrind-poskvrnit-nastroj-pro-analyzu) (kindly translated by [Alex Novak](http://bizcow.com))
 
 Installation
 ------------
@@ -97,8 +101,6 @@ Taintgrind is based on [Valgrind](http://valgrind/org)'s MemCheck and work by Wi
 Taintgrind borrows the bit-precise shadow memory from MemCheck and only propagates explicit data flow. This means that Taintgrind will not propagate taint in control structures such as if-else, for-loops and while-loops. Taintgrind will also not propagate taint in dereferenced tainted pointers.
 
 Run without any parameters, Taintgrind will not taint anything and the program output should be printed. Run with the "--file-filter=[file]" option, Taintgrind will output an execution trace starting at the point [file] is read, with all bytes of [file] tainted. The taint can be restricted at the byte level using the "--taint-start" and "--taint-len" options. Running with the "--tainted-ins-only=yes" option restricts the output to instructions with tainted data only.
-
-Currently tested on x86\_linux and amd64\_linux.
 
 The output of Taintgrind can be *huge*. You might consider piping the output to gzip.
 
