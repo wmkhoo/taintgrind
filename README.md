@@ -13,7 +13,7 @@ Installation
 1. Download [Valgrind](http://valgrind.org) and build
 
 
-		[me@machine ~/] tar jxvf valgrind-X.X.X
+		[me@machine ~/] tar jxvf valgrind-X.X.X.tar.bz2
 		[me@machine ~/] cd valgrind-X.X.X
 		[me@machine ~/valgrind-X.X.X] ./autogen.sh
 		[me@machine ~/valgrind-X.X.X] ./configure --prefix=`pwd`/inst
