@@ -58,6 +58,8 @@ static IRExpr *i128_const_zero(void);
 
 // Taintgrind: count the number of BBs read. For turning on/off instrumentation
 Int numBBs = 0;
+// Kilo-BBs
+Int numKBBs = 0;
 
 /* Carries info about a particular tmp.  The tmp's number is not
    recorded, as this is implied by (equal to) its index in the tmpMap
@@ -7163,15 +7165,18 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
    // Check if instrumentation is turned on
    // i.e. have we read tainted bytes from a file?
    numBBs++;
-   if( numBBs % 1000 == 0 )
-      VG_(printf)("BBs read: %d ", numBBs);
+   if( numBBs % 1000 == 0 ) {
+      numBBs = 0;
+      numKBBs++;
+      VG_(printf)("kBBs read: %d ", numKBBs);
+   }
 
-   if( TNT_(clo_after_bb) != 0 && numBBs < TNT_(clo_after_bb) ){
+   if( TNT_(clo_after_kbb) != 0 && numKBBs < TNT_(clo_after_kbb) ){
       if( numBBs % 1000 == 0 )
          VG_(printf)("Off\n");
       return sb_in;
    }
-   if( TNT_(clo_before_bb) != -1 && numBBs > TNT_(clo_before_bb) ){
+   if( TNT_(clo_before_kbb) != -1 && numKBBs > TNT_(clo_before_kbb) ){
       if( numBBs % 1000 == 0 )
          VG_(printf)("Off\n");
       return sb_in;

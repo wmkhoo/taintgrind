@@ -4194,8 +4194,8 @@ HChar         TNT_(clo_file_filter)[MAX_PATH]  ;
 Int           TNT_(clo_taint_start)            = 0;
 Int           TNT_(clo_taint_len)              = 0x800000;
 Bool          TNT_(clo_taint_all)              = False;
-Int           TNT_(clo_after_bb)               = 0;
-Int           TNT_(clo_before_bb)              = -1;
+Int           TNT_(clo_after_kbb)              = 0;
+Int           TNT_(clo_before_kbb)             = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = True;
 Int           TNT_(do_print)                   = 0;
@@ -4214,8 +4214,8 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
    else if VG_BHEX_CLO(arg, "--taint-start", TNT_(clo_taint_start), 0x0000, 0x8000000) {}
    else if VG_BHEX_CLO(arg, "--taint-len", TNT_(clo_taint_len), 0x0000, 0x800000) {}
    else if VG_BOOL_CLO(arg, "--taint-all", TNT_(clo_taint_all)) {}
-   else if VG_BINT_CLO(arg, "--after-bb", TNT_(clo_after_bb), 0, 1000000) {}
-   else if VG_BINT_CLO(arg, "--before-bb", TNT_(clo_before_bb), 0, 1000000) {}
+   else if VG_BINT_CLO(arg, "--after-kbb", TNT_(clo_after_kbb), 0, 1000000) {}
+   else if VG_BINT_CLO(arg, "--before-kbb", TNT_(clo_before_kbb), 0, 1000000) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
 //   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
@@ -4233,8 +4233,8 @@ static void tnt_print_usage(void) {
 "    --taint-start=[0,800000]    starting byte to taint (in hex) [0]\n"
 "    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]\n"
 "    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]\n"
-"    --after-bb=[0,1000000]      start instrumentation after [0]\n"
-"    --before-bb=[0,1000000]     stop instrumentation after [-1]\n"
+"    --after-kbb=[0,1000000]     start instrumentation after # of BBs, in thousands [0]\n"
+"    --before-kbb=[0,1000000]    stop instrumentation after # of BBs, in thousands [-1]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [yes]\n"
    );
