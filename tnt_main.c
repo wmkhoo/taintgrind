@@ -4066,6 +4066,7 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
 	TNT_(syscall_allowed_check)(tid, syscallno);
 
 	switch ((int)syscallno) {
+// strace/linux/x32/syscallent.h
 #ifdef VGP_x86_linux
     case 3: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
@@ -4074,6 +4075,7 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_write)(tid, args, nArgs, res);
       break;
     case 5: //__NR_open:
+    case 257: //__NR_openat:
       TNT_(syscall_open)(tid, args, nArgs, res);
       break;
     case 6: //__NR_close:
@@ -4085,11 +4087,13 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
     case 180: //__NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
+// strace/linux/x86_64/syscallent.h
 #elif VGP_amd64_linux
     case 0: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
       break;
     case 2: //__NR_open:
+    case 257: //__NR_openat:
       TNT_(syscall_open)(tid, args, nArgs, res);
       break;
     case 3: //__NR_close:
