@@ -130,15 +130,19 @@ VG_REGPARM(2) void TNT_(helperc_STOREV32be) ( Addr, UWord );
 VG_REGPARM(2) void TNT_(helperc_STOREV32le) ( Addr, UWord );
 VG_REGPARM(2) void TNT_(helperc_STOREV16be) ( Addr, UWord );
 VG_REGPARM(2) void TNT_(helperc_STOREV16le) ( Addr, UWord );
-VG_REGPARM(2) void TNT_(helperc_STOREV8)   ( Addr, UWord );
+VG_REGPARM(2) void TNT_(helperc_STOREV8)    ( Addr, UWord );
 
-VG_REGPARM(1) ULong TNT_(helperc_LOADV64be) ( Addr );
-VG_REGPARM(1) ULong TNT_(helperc_LOADV64le) ( Addr );
-VG_REGPARM(1) UWord TNT_(helperc_LOADV32be) ( Addr );
-VG_REGPARM(1) UWord TNT_(helperc_LOADV32le) ( Addr );
-VG_REGPARM(1) UWord TNT_(helperc_LOADV16be) ( Addr );
-VG_REGPARM(1) UWord TNT_(helperc_LOADV16le) ( Addr );
-VG_REGPARM(1) UWord TNT_(helperc_LOADV8)    ( Addr );
+VG_REGPARM(2) void  TNT_(helperc_LOADV256be) ( /*OUT*/V256*, Addr );
+VG_REGPARM(2) void  TNT_(helperc_LOADV256le) ( /*OUT*/V256*, Addr );
+VG_REGPARM(2) void  TNT_(helperc_LOADV128be) ( /*OUT*/V128*, Addr );
+VG_REGPARM(2) void  TNT_(helperc_LOADV128le) ( /*OUT*/V128*, Addr );
+VG_REGPARM(1) ULong TNT_(helperc_LOADV64be)  ( Addr );
+VG_REGPARM(1) ULong TNT_(helperc_LOADV64le)  ( Addr );
+VG_REGPARM(1) UWord TNT_(helperc_LOADV32be)  ( Addr );
+VG_REGPARM(1) UWord TNT_(helperc_LOADV32le)  ( Addr );
+VG_REGPARM(1) UWord TNT_(helperc_LOADV16be)  ( Addr );
+VG_REGPARM(1) UWord TNT_(helperc_LOADV16le)  ( Addr );
+VG_REGPARM(1) UWord TNT_(helperc_LOADV8)     ( Addr );
 
 void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len,
                                                  Addr nia );

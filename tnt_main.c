@@ -90,6 +90,8 @@
 /* Do not change this. */
 #define MAX_PRIMARY_ADDRESS (Addr)((((Addr)65536) * N_PRIMARY_MAP)-1)
 
+// Taintgrind: UNDEFINED -> TAINTED, DEFINED -> UNTAINTED,
+//             PARTDEFINED -> PARTUNTAINTED
 // These represent eight bits of memory.
 #define VA_BITS2_NOACCESS      0x0      // 00b
 #define VA_BITS2_TAINTED       0x1      // 01b
@@ -885,6 +887,118 @@ static INLINE UWord byte_offset_w ( UWord wordszB, Bool bigendian, //1019
 
 
 /* --------------- Load/store slow cases. --------------- *///1147
+static
+__attribute__((noinline))
+void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
+                                Addr a, SizeT nBits, Bool bigendian )
+{
+   ULong  pessim[4];     /* only used when p-l-ok=yes */
+   SSizeT szB            = nBits / 8;
+   SSizeT szL            = szB / 8;  /* Size in Longs (64-bit units) */
+   SSizeT i, j;          /* Must be signed. */
+   SizeT  n_addrs_bad = 0;
+   Addr   ai;
+   UChar  vbits8;
+   Bool   ok;
+
+   /* Code below assumes load size is a power of two and at least 64
+      bits. */
+   tl_assert((szB & (szB-1)) == 0 && szL > 0);
+
+   /* If this triggers, you probably just need to increase the size of
+      the pessim array. */
+   tl_assert(szL <= sizeof(pessim) / sizeof(pessim[0]));
+
+   for (j = 0; j < szL; j++) {
+      pessim[j] = V_BITS64_UNTAINTED;
+      res[j] = V_BITS64_TAINTED;
+   }
+
+   /* Make up a result V word, which contains the loaded data for
+      valid addresses and Defined for invalid addresses.  Iterate over
+      the bytes in the word, from the most significant down to the
+      least.  The vbits to return are calculated into vbits128.  Also
+      compute the pessimising value to be used when
+      --partial-loads-ok=yes.  n_addrs_bad is redundant (the relevant
+      info can be gleaned from the pessim array) but is used as a
+      cross-check. */
+   for (j = szL-1; j >= 0; j--) {
+      ULong vbits64    = V_BITS64_TAINTED;
+      ULong pessim64   = V_BITS64_UNTAINTED;
+      UWord long_index = byte_offset_w(szL, bigendian, j);
+      for (i = 8-1; i >= 0; i--) {
+         PROF_EVENT(31, "tnt_LOADV_128_or_256_slow(loop)");
+         ai = a + 8*long_index + byte_offset_w(8, bigendian, i);
+         ok = get_vbits8(ai, &vbits8);
+         vbits64 <<= 8;
+         vbits64 |= vbits8;
+         if (!ok) n_addrs_bad++;
+         pessim64 <<= 8;
+         pessim64 |= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
+      }
+      res[long_index] = vbits64;
+      pessim[long_index] = pessim64;
+   }
+
+   /* In the common case, all the addresses involved are valid, so we
+      just return the computed V bits and have done. */
+   if (LIKELY(n_addrs_bad == 0))
+      return;
+
+   /* If there's no possibility of getting a partial-loads-ok
+      exemption, report the error and quit. */
+   //if (!MC_(clo_partial_loads_ok)) {
+   //   MC_(record_address_error)( VG_(get_running_tid)(), a, szB, False );
+   //   return;
+   //}
+
+   /* The partial-loads-ok excemption might apply.  Find out if it
+      does.  If so, don't report an addressing error, but do return
+      Undefined for the bytes that are out of range, so as to avoid
+      false negatives.  If it doesn't apply, just report an addressing
+      error in the usual way. */
+
+   /* Some code steps along byte strings in aligned chunks
+      even when there is only a partially defined word at the end (eg,
+      optimised strlen).  This is allowed by the memory model of
+      modern machines, since an aligned load cannot span two pages and
+      thus cannot "partially fault".
+
+      Therefore, a load from a partially-addressible place is allowed
+      if all of the following hold:
+      - the command-line flag is set [by default, it isn't]
+      - it's an aligned load
+      - at least one of the addresses in the word *is* valid
+
+      Since this suppresses the addressing error, we avoid false
+      negatives by marking bytes undefined when they come from an
+      invalid address.
+   */
+
+   /* "at least one of the addresses is invalid" */
+   ok = False;
+   for (j = 0; j < szL; j++)
+      ok |= pessim[j] != V_BITS8_UNTAINTED;
+   tl_assert(ok);
+
+   if (0 == (a & (szB - 1)) && n_addrs_bad < szB) {
+      /* Exemption applies.  Use the previously computed pessimising
+         value and return the combined result, but don't flag an
+         addressing error.  The pessimising value is Defined for valid
+         addresses and Undefined for invalid addresses. */
+      /* for assumption that doing bitwise or implements UifU */
+      tl_assert(V_BIT_TAINTED == 1 && V_BIT_UNTAINTED == 0);
+      /* (really need "UifU" here...)
+         vbits[j] UifU= pessim[j]  (is pessimised by it, iow) */
+      for (j = szL-1; j >= 0; j--)
+         res[j] |= pessim[j];
+      return;
+   }
+
+   /* Exemption doesn't apply.  Flag an addressing error in the normal
+      way. */
+   //MC_(record_address_error)( VG_(get_running_tid)(), a, szB, False );
+}
 
 static
 #ifndef PERF_FAST_LOADV
@@ -1578,6 +1692,74 @@ void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
 /* MASK only exists so as to define this macro. */
 #define UNALIGNED_OR_HIGH(_a,_szInBits) \
    ((_a) & MASK((_szInBits>>3)))
+
+/* ------------------------ Size = 16 ------------------------ */
+
+static INLINE
+void tnt_LOADV_128_or_256 ( /*OUT*/ULong* res,
+                           Addr a, SizeT nBits, Bool isBigEndian )
+{
+   PROF_EVENT(200, "tnt_LOADV_128_or_256");
+
+#ifndef PERF_FAST_LOADV
+   tnt_LOADV_128_or_256_slow( res, a, nBits, isBigEndian );
+   return;
+#else
+   {
+      UWord   sm_off16, vabits16, j;
+      UWord   nBytes  = nBits / 8;
+      UWord   nULongs = nBytes / 8;
+      SecMap* sm;
+
+      if (UNLIKELY( UNALIGNED_OR_HIGH(a,nBits) )) {
+         PROF_EVENT(201, "tnt_LOADV_128_or_256-slow1");
+         tnt_LOADV_128_or_256_slow( res, a, nBits, isBigEndian );
+         return;
+      }
+
+      /* Handle common cases quickly: a (and a+8 and a+16 etc.) is
+         suitably aligned, is mapped, and addressible. */
+      for (j = 0; j < nULongs; j++) {
+         sm       = get_secmap_for_reading_low(a + 8*j);
+         sm_off16 = SM_OFF_16(a + 8*j);
+         vabits16 = ((UShort*)(sm->vabits8))[sm_off16];
+
+         // Convert V bits from compact memory form to expanded
+         // register form.
+         if (LIKELY(vabits16 == VA_BITS16_UNTAINTED)) {
+            res[j] = V_BITS64_UNTAINTED;
+         } else if (LIKELY(vabits16 == VA_BITS16_TAINTED)) {
+            res[j] = V_BITS64_TAINTED;
+         } else {
+            /* Slow case: some block of 8 bytes are not all-defined or
+               all-undefined. */
+            PROF_EVENT(202, "tnt_LOADV_128_or_256-slow2");
+            tnt_LOADV_128_or_256_slow( res, a, nBits, isBigEndian );
+            return;
+         }
+      }
+      return;
+   }
+#endif
+}
+
+VG_REGPARM(2) void TNT_(helperc_LOADV256be) ( /*OUT*/V256* res, Addr a )
+{
+   tnt_LOADV_128_or_256(&res->w64[0], a, 256, True);
+}
+VG_REGPARM(2) void TNT_(helperc_LOADV256le) ( /*OUT*/V256* res, Addr a )
+{
+   tnt_LOADV_128_or_256(&res->w64[0], a, 256, False);
+}
+
+VG_REGPARM(2) void TNT_(helperc_LOADV128be) ( /*OUT*/V128* res, Addr a )
+{
+   tnt_LOADV_128_or_256(&res->w64[0], a, 128, True);
+}
+VG_REGPARM(2) void TNT_(helperc_LOADV128le) ( /*OUT*/V128* res, Addr a )
+{
+   tnt_LOADV_128_or_256(&res->w64[0], a, 128, False);
+}
 
 /* ------------------------ Size = 8 ------------------------ */
 
