@@ -27,7 +27,7 @@
 #include "pub_tool_basics.h"
 #include "pub_tool_tooliface.h"
 
-#include "pub_tool_vki.h"           // keeps libcproc.h happy
+#include "pub_tool_vki.h"           // keeps libcproc.h happy, syscall nums
 #include "pub_tool_aspacemgr.h"     // VG_(am_shadow_alloc)
 #include "pub_tool_debuginfo.h"     // VG_(get_fnname_w_offset), VG_(get_fnname)
 #include "pub_tool_hashtable.h"     // For tnt_include.h, VgHashtable
@@ -3423,11 +3423,17 @@ void TNT_(helperc_1_tainted_enc64) (
    if(!TNT_(do_print) && (taint1 || taint2))
       TNT_(do_print) = 1;
 
+
+//   if( tnt_read ) {
+
    if(TNT_(do_print)){
       if((TNT_(clo_tainted_ins_only) && (taint1 || taint2)) ||
           !TNT_(clo_tainted_ins_only)){
          pc = VG_(get_IP)( VG_(get_running_tid)() );
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         // DEBUG
+         //if ( VG_(strstr)( fnname, "tar" ) == NULL ) return;
 
          decode_string( enc, aTmp );
          post_decode_string( aTmp );
@@ -3586,6 +3592,7 @@ void TNT_(helperc_1_tainted_enc64) (
          VG_(printf)("\n");
       }
    }
+//   }
 }
 
 
@@ -4066,43 +4073,7 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
 	TNT_(syscall_allowed_check)(tid, syscallno);
 
 	switch ((int)syscallno) {
-// strace/linux/x32/syscallent.h
-#ifdef VGP_x86_linux
-    case 3: //__NR_read:
-      TNT_(syscall_read)(tid, args, nArgs, res);
-      break;
-    case 4: // __NR_write
-      TNT_(syscall_write)(tid, args, nArgs, res);
-      break;
-    case 5: //__NR_open:
-    case 257: //__NR_openat:
-      TNT_(syscall_open)(tid, args, nArgs, res);
-      break;
-    case 6: //__NR_close:
-      TNT_(syscall_close)(tid, args, nArgs, res);
-      break;
-    case 140: //__NR_llseek:
-      TNT_(syscall_llseek)(tid, args, nArgs, res);
-      break;
-    case 180: //__NR_pread64:
-      TNT_(syscall_pread)(tid, args, nArgs, res);
-      break;
-// strace/linux/x86_64/syscallent.h
-#elif VGP_amd64_linux
-    case 0: //__NR_read:
-      TNT_(syscall_read)(tid, args, nArgs, res);
-      break;
-    case 2: //__NR_open:
-    case 257: //__NR_openat:
-      TNT_(syscall_open)(tid, args, nArgs, res);
-      break;
-    case 3: //__NR_close:
-      TNT_(syscall_close)(tid, args, nArgs, res);
-      break;
-    case 17: //__NR_pread64:
-      TNT_(syscall_pread)(tid, args, nArgs, res);
-      break;
-#elif defined VGO_freebsd
+#if defined VGO_freebsd
     case 3: //__NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
       break;
@@ -4122,7 +4093,29 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_llseek)(tid, args, nArgs, res);
       break;
 #else
-#error Unknown platform
+    // Should be defined by respective vki/vki-arch-os.h
+    case __NR_read:
+      TNT_(syscall_read)(tid, args, nArgs, res);
+      break;
+    case __NR_write:
+      TNT_(syscall_write)(tid, args, nArgs, res);
+      break;
+    case __NR_open:
+    case __NR_openat:
+      TNT_(syscall_open)(tid, args, nArgs, res);
+      break;
+    case __NR_close:
+      TNT_(syscall_close)(tid, args, nArgs, res);
+      break;
+    case __NR_lseek:
+#ifdef __NR_llseek
+    case __NR_llseek:
+#endif
+      TNT_(syscall_llseek)(tid, args, nArgs, res);
+      break;
+    case __NR_pread64:
+      TNT_(syscall_pread)(tid, args, nArgs, res);
+      break;
 #endif
   }
 }
@@ -4301,6 +4294,9 @@ static void tnt_post_clo_init(void)
 //   if (TNT_(read_syscalls_file)) {
 //	   read_allowed_syscalls();
 //   }
+
+   // DEBUG
+   //tnt_read = 0;
 }
 
 static void tnt_fini(Int exitcode)
