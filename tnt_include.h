@@ -97,6 +97,9 @@ HChar* TNT_(event_ctr_name)[N_PROF_EVENTS];
 /*--- Instrumentation                                      ---*/
 /*------------------------------------------------------------*/
 
+// Debug variable
+//int tnt_read;
+
 /* Functions/vars defined in tnt_main.c */
 UChar get_vabits2( Addr a ); // Taintgrind: needed by TNT_(instrument)
 void TNT_(make_mem_noaccess)( Addr a, SizeT len );
@@ -160,8 +163,6 @@ extern Bool   TNT_(clo_critical_ins_only);
 extern Int    TNT_(do_print);
 //extern Char* TNT_(clo_allowed_syscalls);
 //extern Bool  TNT_(read_syscalls_file);
-
-extern Bool TNT_(instrument_start);
 
 /* Functions defined in malloc_wrappers.c */
 #define TNT_MALLOC_REDZONE_SZB    16
@@ -260,8 +261,8 @@ extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes re
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
-/* Functions defined in tnt_translate.c */
 
+/* Functions defined in tnt_translate.c */
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,
                         IRSB* bb_in,
                         VexGuestLayout* layout,

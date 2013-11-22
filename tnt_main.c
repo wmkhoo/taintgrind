@@ -4249,7 +4249,6 @@ static void tnt_print_debug_usage(void)
    Valgrind core functions
 */                                                     
 
-Bool TNT_(instrument_start) = False;
 static void tnt_post_clo_init(void)
 {
    if(*TNT_(clo_file_filter) == '\0'){

@@ -7185,9 +7185,6 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
       VG_(printf)("On\n");
    
 
-//   if( !TNT_(instrument_start) )
-//      return sb_in;
-
    if (gWordTy != hWordTy) {
       /* We don't currently support this case. */
       VG_(tool_panic)("host/guest word size mismatch");
