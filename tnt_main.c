@@ -2783,7 +2783,8 @@ void post_decode_string( HChar *aStr ){
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
 #ifdef VGA_amd64
-	#define REG_I_MAX 612 // see libvex_guest_amd64.h
+	//#define REG_I_MAX 612 // see libvex_guest_amd64.h
+	#define REG_I_MAX 740 
 #else
 	#define REG_I_MAX 321
 #endif
@@ -3019,7 +3020,9 @@ void TNT_(helperc_0_tainted_enc64) (
          pc = VG_(get_IP)( VG_(get_running_tid)() );
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
 
+
          decode_string( enc, aTmp );
+         //VG_(printf)("%s\n", aTmp );
          post_decode_string( aTmp );
          VG_(printf)("%s | %s | 0x%lx | 0x%lx | ", fnname, aTmp,
                            (long unsigned int)value,

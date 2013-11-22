@@ -1076,7 +1076,6 @@ void do_shadow_PUT ( MCEnv* mce,  Int offset,  //1191
                      IRAtom* atom, IRAtom* vatom, IRExpr *guard )
 {
    IRType ty;
-   IRDirty* di2;
 
    // Don't do shadow PUTs if we're not doing undefined value checking.
    // Their absence lets Vex's optimiser remove all the shadow computation
@@ -1117,8 +1116,10 @@ void do_shadow_PUT ( MCEnv* mce,  Int offset,  //1191
       stmt( 'V', mce, IRStmt_Put( offset + mce->layout->total_sizeB, vatom ) );
 
       // Taintgrind: include this check only if we're not tracking critical ins
+      // For why total_sizeB is added to offset, 
+      // see VEX/pub/libvex.h "A note about guest state layout"
       if( atom && !TNT_(clo_critical_ins_only) ){
-         di2 = create_dirty_PUT( mce, offset, atom );
+         IRDirty* di2 = create_dirty_PUT( mce, offset, atom );
          complainIfTainted( mce, NULL /*atom*/, di2 ); 
       }
 //   }
