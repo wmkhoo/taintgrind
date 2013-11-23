@@ -18,7 +18,7 @@ AM_MAINTAINER_MODE
 #----------------------------------------------------------------------------
 # Valgrind header and lib dependencies
 #----------------------------------------------------------------------------
-CFLAGS="-I../include -I../include/vki -I../VEX/pub -L.."
+CFLAGS="$CFLAGS -I../include -I../include/vki -I../VEX/pub -L.."
 
 #----------------------------------------------------------------------------
 # Checks for various programs.
