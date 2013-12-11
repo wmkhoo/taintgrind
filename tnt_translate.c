@@ -5885,6 +5885,20 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
                              convert_Value( mce, data ),
                              //convert_Value( mce, atom2vbits( mce, addr ) ), 
                              convert_Value( mce, atom2vbits( mce, data ) ) );
+      } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
+         fn    = &TNT_(h32_store_tc);
+         nm    = "TNT_(h32_store_tc)";
+
+         UInt tt = extract_IRAtom( addr ) & 0xfffffff;
+         tt = tt | (typeOfIRExpr(mce->sb->tyenv, data) << 28);
+
+         // Sacrifice tainted-ness of addr if we're to keep within 4 args
+         args  = mkIRExprVec_4( mkU32( tt ),
+                                mkU32( extract_IRAtom( data ) ),
+                             //convert_Value( mce, addr ),
+                             convert_Value( mce, data ),
+                             //convert_Value( mce, atom2vbits( mce, addr ) ), 
+                             convert_Value( mce, atom2vbits( mce, data ) ) );
       } else {
          VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 32-bit cfg");
       //fn    = &TNT_(helperc_1_tainted_enc32);
@@ -6943,17 +6957,43 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
    encode_string( aTmp, enc, 3 );
 
    if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_1_tainted_enc32);
-      nm    = "TNT_(helperc_1_tainted_enc32)";
+      if ( addr->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h32_load_t);
+         nm    = "TNT_(h32_load_t)";
 
-      args  = mkIRExprVec_7( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             /*mkU32( enc[3] ),*/
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, addr ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-                             convert_Value( mce, atom2vbits( mce, addr ) ) );
+         UInt tt = extract_IRAtom( addr ) & 0xfff;
+         tt = (tt << 16) | tmp;
+         tt = tt | ( (ty & 0xf) << 28);
+
+         // Sacrifice tainted-ness of addr if we're to keep within 4 args
+         args  = mkIRExprVec_3( mkU32( tt ),
+                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      } else {
+         fn    = &TNT_(h32_load_c);
+         nm    = "TNT_(h32_load_c)";
+
+         UInt tt = tmp & 0xfffffff;
+         tt = tt | ( (ty & 0xf) << 28);
+
+         args  = mkIRExprVec_4( mkU32( tt ),
+                 mkU32( extract_IRAtom( addr ) ),
+                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      }
+       //VG_(tool_panic)("tnt_translate.c: create_dirty_LOAD: unk 32-bit cfg");
+
+      //fn    = &TNT_(helperc_1_tainted_enc32);
+      //nm    = "TNT_(helperc_1_tainted_enc32)";
+
+      //args  = mkIRExprVec_7( mkU32( enc[0] ),
+      //                       mkU32( enc[1] ),
+      //                       mkU32( enc[2] ),
+      //                       /*mkU32( enc[3] ),*/
+      //                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+      //                       convert_Value( mce, addr ),
+      //                       convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
+      //                       convert_Value( mce, atom2vbits( mce, addr ) ) );
    }else if(mce->hWordTy == Ity_I64){
       enc64[0] |= enc[0];
       enc64[0] = (enc64[0] << 32) | enc[1];
