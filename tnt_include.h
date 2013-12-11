@@ -107,6 +107,10 @@ void TNT_(make_mem_tainted)( Addr a, SizeT len );
 void TNT_(make_mem_defined)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
+VG_REGPARM(3) void TNT_(h32_exit) ( UInt, UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_next) ( UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h32_store_tt) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(helperc_1_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt, UInt );
