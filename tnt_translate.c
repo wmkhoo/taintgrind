@@ -1120,7 +1120,7 @@ void do_shadow_PUT ( MCEnv* mce,  Int offset,  //1191
       // see VEX/pub/libvex.h "A note about guest state layout"
       if( atom && !TNT_(clo_critical_ins_only) ){
          IRDirty* di2 = create_dirty_PUT( mce, offset, atom );
-         complainIfTainted( mce, NULL /*atom*/, di2 ); 
+         if ( di2 ) complainIfTainted( mce, NULL /*atom*/, di2 ); 
       }
 //   }
 }
@@ -5736,21 +5736,32 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
       VG_(sprintf)( aTmp, "%st%d!", aTmp, extract_IRAtom( data ) );
    }else if(data->tag == Iex_Const){
       VG_(sprintf)( aTmp, "%s0x%x!", aTmp, extract_IRAtom( data ) );
+      return NULL;
    }
 
    enc[0] = 0x38000000;
    encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
+      fn    = &TNT_(h32_put);
+      nm    = "TNT_(h32_put)";
 
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
+      UInt tmp = extract_IRAtom( data );
+      UInt tt = 0 | (tmp << 16);
+      tt |= offset;
+
+      args  = mkIRExprVec_3( mkU32( tt ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
+      //fn    = &TNT_(helperc_0_tainted_enc32);
+      //nm    = "TNT_(helperc_0_tainted_enc32)";
+
+      //args  = mkIRExprVec_6( mkU32( enc[0] ),
+      //                       mkU32( enc[1] ),
+      //                       mkU32( enc[2] ),
+      //                       mkU32( enc[3] ),
+      //                       convert_Value( mce, data ),
+      //                       convert_Value( mce, atom2vbits( mce, data ) ) );
    }else if(mce->hWordTy == Ity_I64){
       enc64[0] |= enc[0];
       enc64[0] = (enc64[0] << 32) | enc[1];
@@ -6434,15 +6445,24 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRTemp tmp, Int offset, IRType ty ){
    encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
+      fn    = &TNT_(h32_get);
+      nm    = "TNT_(h32_get)";
 
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
+      UInt tt = (tmp << 16) | offset;
+      tt |= (ty << 24);
+
+      args  = mkIRExprVec_3( mkU32( tt ),
                              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+      //fn    = &TNT_(helperc_0_tainted_enc32);
+      //nm    = "TNT_(helperc_0_tainted_enc32)";
+
+      //args  = mkIRExprVec_6( mkU32( enc[0] ),
+      //                       mkU32( enc[1] ),
+      //                       mkU32( enc[2] ),
+      //                       mkU32( enc[3] ),
+      //                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+      //                       convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
    }else if(mce->hWordTy == Ity_I64){
       enc64[0] |= enc[0];
       enc64[0] = (enc64[0] << 32) | enc[1];

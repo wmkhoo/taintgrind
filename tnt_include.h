@@ -114,6 +114,8 @@ VG_REGPARM(3) void TNT_(h32_store_tt) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_store_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_load_t) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_load_c) ( UInt, UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_get) ( UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_put) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(helperc_1_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt, UInt );

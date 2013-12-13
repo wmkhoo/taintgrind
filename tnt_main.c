@@ -3373,6 +3373,80 @@ void TNT_(h32_load_c) (
 }
 
 VG_REGPARM(3)
+void TNT_(h32_get) (
+   UInt tt, 
+   UInt value, 
+   UInt taint ) {
+
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt ty = (tt >> 24) & 0xff;
+         UInt tmp = (tt >> 16) & 0xff;
+         UInt reg = tt & 0xffff;
+
+         VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty&0xff] );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+
+         tl_assert( reg < REG_I_MAX );
+         tl_assert( tmp < TVAR_I_MAX );
+
+         VG_(printf)( "t%d.%d <- r%d.%d", tmp, tvar_i[tmp], reg, reg_i[reg] );
+      }
+   }
+}
+
+
+VG_REGPARM(3)
+void TNT_(h32_put) (
+   UInt tt, 
+   UInt value, 
+   UInt taint ) {
+
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   // hack to get name of application binary
+   infer_client_binary_name(pc);
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if (TNT_(do_print)) {
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt reg = tt & 0xffff;
+         UInt tmp = (tt >> 16) & 0xffff;
+
+         VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+
+         tl_assert( reg < REG_I_MAX );
+         tl_assert( tmp < TVAR_I_MAX );
+         reg_i[reg]++;
+
+         VG_(printf)("r%d.%d <- t%d.%d", reg, reg_i[reg], tmp, tvar_i[tmp]);
+      }
+   }
+}
+
+
+VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (
    ULong enc0, 
    ULong enc1, 
