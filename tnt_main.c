@@ -2886,75 +2886,6 @@ void TNT_(helperc_0_tainted_enc32) (
          post_decode_string( aTmp );
          VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         if( VG_(strstr)( aTmp, " get " ) != NULL /*&& taint*/ ){
-
-            HChar *pTmp, *pEquals, *pGet, *pSpace, *pReg;
-            HChar reg[16], tmp[16];
-  
-            // 0x15001 t53 = get 0 i8
-            //         ^--pTmp
-            //            ^--pEquals
-            //              ^--pGet
-            //                   ^--pReg
-            //                    ^--pSpace 
-            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
-            pEquals = VG_(strstr)( aTmp, " = " );
-            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
-            tmp[pEquals-pTmp] = '\0';
-            pGet = VG_(strstr)( aTmp, " get " );
-            pReg = pGet + 5;
-            pSpace = VG_(strchr)( pReg, ' ' );
-            VG_(strncpy)( reg, pReg, pSpace-pReg );
-            reg[pSpace-pReg] = '\0';
-
-            // Get indices
-            Int regnum = get_and_check_reg( reg );
-            Int tmpnum = get_and_check_tvar( tmp );
-            tvar_i[tmpnum]++;
-
-            VG_(printf)( "t%s.%d <- r%s.%d", tmp, tvar_i[tmpnum], reg, reg_i[regnum] );
-
-         }else if( VG_(strstr)( aTmp, " put " ) != NULL /*&& taint*/ ){
-
-            HChar *pPut, *pSpace, *pReg;
-            HChar reg[16], tmp[16];
-  
-            // 0x19003 put 28 = t24
-            //        ^--pPut
-            //             ^--pReg
-            //               ^--pSpace 
-            //                   ^--pSpace + 4
-            pPut = VG_(strstr)( aTmp, " put " );
-            pReg = pPut + 5;
-            pSpace = VG_(strchr)( pReg, ' ' );
-
-            if( pSpace[3] == 't' ){
-               VG_(strncpy)( reg, pReg, pSpace-pReg );
-               reg[pSpace-pReg] = '\0';
-               VG_(strncpy)( tmp, pSpace + 4, VG_(strlen)(pSpace + 4) );
-               tmp[VG_(strlen)(pSpace + 4)] = '\0';
-
-               // Get indices
-               Int regnum = get_and_check_reg( reg );
-               Int tmpnum = get_and_check_tvar( tmp );
-               reg_i[regnum]++;
-
-               VG_(printf)( "r%s.%d <- t%s.%d", reg, reg_i[regnum], tmp, tvar_i[tmpnum] );
-            }else{
-            // 0x19003 put 28 = 0xff
-            //        ^--pPut
-            //             ^--pReg
-               VG_(strncpy)( reg, pReg, pSpace-pReg );
-               reg[pSpace-pReg] = '\0';
-
-               // Get indices
-               Int regnum = get_and_check_reg( reg );
-               reg_i[regnum]++;
-
-               VG_(printf)( "r%s.%d", reg, reg_i[regnum] );
-            }
-
-         }else/* if( taint )*/{
             HChar *pTmp1, *pTmp2, *pEquals;
             HChar tmp1[16], tmp2[16];
 
@@ -2988,7 +2919,6 @@ void TNT_(helperc_0_tainted_enc32) (
                tvar_i[tmpnum1]++;
                VG_(printf)("t%s.%d", tmp1, tvar_i[tmpnum1]);
             }
-         }
          VG_(printf)("\n");
       }
    }
@@ -3445,6 +3375,234 @@ void TNT_(h32_put) (
    }
 }
 
+VG_REGPARM(3)
+void TNT_(h32_unop) (
+   UInt tt, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt op  = (tt >> 8)  & 0xffff;
+         UInt tmp2 = tt & 0xff;
+         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d",
+                       Iex_Binop, tmp, IROp_string[op], tmp2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_binop_tc) (
+   UInt tt, 
+   UInt c, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt op  = (tt >> 8)  & 0xffff;
+         UInt tmp2 = tt & 0xff;
+         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d 0x%x",
+                       Iex_Binop, tmp, IROp_string[op], tmp2, c );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_binop_ct) (
+   UInt tt, 
+   UInt c, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt op  = (tt >> 8)  & 0xffff;
+         UInt tmp2 = tt & 0xff;
+         VG_(sprintf)( aTmp, "0x%x t%d = %s 0x%x t%d",
+                       Iex_Binop, tmp, IROp_string[op], c, tmp2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_binop_tt) (
+   UInt tt, 
+   UInt tt2, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 16) & 0xffff;
+         UInt tmp2 = tt & 0xffff;
+         UInt tmp3 = (tt2 >> 16) & 0xffff;
+         UInt op = tt2  & 0xffff;
+         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d t%d",
+                       Iex_Binop, tmp, IROp_string[op], tmp2, tmp3 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tl_assert( tmp3 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_rdtmp) (
+   UInt tt, 
+   UInt value, 
+   UInt taint ) {
+
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); 
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   // hack to get name of application binary
+   infer_client_binary_name(pc);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt tmp = tt >> 16;
+         UInt tmp2 = tt & 0xffff;
+
+         VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+         VG_(printf)("t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
+         VG_(printf)("\n");
+      }
+   }
+}
 
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (
@@ -3665,142 +3823,7 @@ void TNT_(helperc_1_tainted_enc32) (
 
          // Information flow
          if( VG_(strstr)( aTmp, " LD " ) != NULL /*&& taint1*/ ){
-
-//        	 Char objname[256];
-// //            PtrdiffT pdt;
-//             VG_(memset)( objname, 0, 255 );
-// //            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
-//
-// //            if( objname[0] == '\0' ){
-// //               VG_(sprintf)( objname, "%x_unknownobj", value1 );
-// //            }
-//
-//             enum VariableType type;
-//             TNT_(describe_data)(value2, objname, 255, &type);
-
-            // Check if it hasn't been seen before
-            if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-               myStringArray_push( &lvar_s, varname );
-            }
-
-            HChar *pTmp, *pEquals;
-            HChar tmp[16];
-
-            // 0x15008 t35 = LD I32 0x805badc
-            //         ^--pTmp
-            //            ^--pEquals
-            pTmp = VG_(strstr)( aTmp, " t" ); pTmp += 2;
-            pEquals = VG_(strstr)( aTmp, " = " );
-            VG_(strncpy)( tmp, pTmp, pEquals-pTmp );
-            tmp[pEquals-pTmp] = '\0';
-
-            // Get index
-            Int tmpnum = get_and_check_tvar( tmp );
-            tvar_i[tmpnum]++;
-
-//            VG_(printf)( "t%s.%d <- %s", tmp, tvar_i[tmpnum], objname );
-            VG_(printf)( "(%d) t%s.%d <- %s.%d", type, tmp, tvar_i[tmpnum], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-
-            // Pointer tainting
-            HChar *pTmp2 = VG_(strstr)( pTmp + 1, " t" );
-            if( pTmp2 != NULL ){
-               HChar tmp2[16];
-               pTmp2 += 2;
-            // 0x15008 t35 = LD I32 t34
-            //                      ^--pTmp2
-               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
-               tmp2[VG_(strlen)(pTmp2)] = '\0';
-               Int tmpnum2 = get_and_check_tvar( tmp2 );
-               VG_(printf)( "; t%s.%d <*- t%s.%d", tmp, tvar_i[tmpnum], tmp2, tvar_i[tmpnum2] );
-            }
-            else {
-            	// loading from hardcoded address
-            	pTmp2 = VG_(strstr)( pTmp + 1, " 0x" );
-            	if (pTmp2 != NULL) {
-					HChar tmp2[16];
-					pTmp2 += 1;
-            	// 0x15008 t4 = LD I32 0x80a42e0
-				 //                   ^--pTmp2
-					VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
-					tmp2[VG_(strlen)(pTmp2)] = '\0';
-					VG_(printf)( "; t%s.%d <*- %s", tmp, tvar_i[tmpnum], tmp2 );
-            	}
-            }
-
          }else if( VG_(strstr)( aTmp, " ST " ) != NULL /*&& taint2*/ ){
-//            Char objname[256];
-////            PtrdiffT pdt;
-//            VG_(memset)( objname, 0, 255 );
-////            VG_(get_datasym_and_offset)( value1, objname, 255, &pdt );
-//
-////            if( objname[0] == '\0' ){
-////               VG_(sprintf)( objname, "%x_unknownobj", value1 );
-////            }
-//
-//            enum VariableType type;
-//            TNT_(describe_data)(value1, objname, 255, &type);
-
-            // Check if it hasn't been seen before
-            if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-               myStringArray_push( &lvar_s, varname );
-            }
-            lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-            HChar *pEquals, *pTmp, *pSpace;
-            HChar tmp[16];
-
-            // 0x19006 ST t80 = t85 I16
-            //               ^--pEquals
-            //                  ^--pTmp
-            //                     ^--pSpace
-            pEquals = VG_(strstr)( aTmp, " = " );
-
-            if( pEquals[3] == 't' ){
-               pTmp = pEquals + 4;
-               pSpace = VG_(strchr)( pTmp, ' ' );
-               VG_(strncpy)( tmp, pTmp, pSpace-pTmp );
-               tmp[pSpace-pTmp] = '\0';
-            
-               // Get index
-               Int tmpnum = get_and_check_tvar( tmp );
-
-               VG_(printf)( "(%d) %s.%d <- t%s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], tmp, tvar_i[tmpnum] );
-
-               // Pointer tainting
-               HChar *pTmp2 = VG_(strstr)( aTmp, " t" );
-               if( pTmp2 != NULL && pTmp2 < pEquals ){
-                  HChar tmp2[16];
-                  pTmp2 += 2;
-               // 0x15008 ST t35 = t34 I32
-               //             ^--pTmp2
-                  VG_(strncpy)( tmp2, pTmp2, pEquals-pTmp2 );
-                  tmp2[pEquals-pTmp2] = '\0';
-                  Int tmpnum2 = get_and_check_tvar( tmp2 );
-                  VG_(printf)( "; t%s.%d <&- t%s.%d", tmp2, tvar_i[tmpnum2], tmp, tvar_i[tmpnum] );
-               }
-               else {
-            	  // store to hardcoded address
-            	  // 0x19006 ST 0x80ac360 = t18 I32
-            	  //        ^--pAddr
-            	  //           ^--pTmp2
-            	  HChar *pAddr = VG_(strstr)( aTmp, " ST " );
-            	  pTmp2 = VG_(strstr)( pAddr, " 0x" );
-            	  if (pTmp2 != NULL) {
-            		  HChar tmp2[16];
-            		  pTmp2 += 1;
-            		  // 0x15008 ST t35 = t34 I32
-            		  //             ^--pTmp2
-            		  VG_(strncpy)( tmp2, pTmp2, pEquals-pTmp2 );
-            		  tmp2[pEquals-pTmp2] = '\0';
-                      VG_(printf)( "; %s <&- t%s.%d", tmp2, tmp, tvar_i[tmpnum] );
-            	  }
-               }
-            }else{
-            // 0x19006 ST t80 = 0xff
-            //               ^--pEquals
-               VG_(printf)( "%s.%d", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-            }
-
          }else /*if( taint1 && taint2 )*/{
             HChar *pTmp1, *pTmp2, *pEquals, *pHex, *pSpace;
             HChar tmp1[16], tmp2[16];
