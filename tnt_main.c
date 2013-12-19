@@ -3605,6 +3605,152 @@ void TNT_(h32_rdtmp) (
 }
 
 VG_REGPARM(3)
+void TNT_(h32_ite_tc) (
+   UInt tt, 
+   UInt c, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt cond = (tt >> 12) & 0xfff;
+         UInt tmp2  = tt & 0xfff;
+         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%x",
+                       Iex_ITE, tmp, cond, tmp2, c );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_ite_ct) (
+   UInt tt, 
+   UInt c, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt cond = (tt >> 12) & 0xfff;
+         UInt tmp2  = tt & 0xfff;
+         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%x : t%d",
+                       Iex_ITE, tmp, cond, c, tmp2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_ite_tt) (
+   UInt tt, 
+   UInt tt2, 
+   UInt value, 
+   UInt taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   UInt pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt tmp = (tt >> 16) & 0xffff;
+         UInt cond = tt & 0xffff;
+         UInt tmp2 = (tt2 >> 16) & 0xffff;
+         UInt tmp3 = tt2 & 0xffff;
+         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
+                       Iex_ITE, tmp, cond, tmp2, tmp3 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tl_assert( tmp3 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+
+         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+         VG_(printf)("\n");
+
+      }
+   }
+}
+
+VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (
    ULong enc0, 
    ULong enc1, 

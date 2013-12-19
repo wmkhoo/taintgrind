@@ -7184,8 +7184,8 @@ IRDirty* create_dirty_ITE( MCEnv* mce, IRTemp tmp,
 
    ite_args = mkIRExprVec_3( cond, iftrue, iffalse );
 
-   if( ite_args[0]->tag == Iex_Const )
-      VG_(sprintf)( aTmp, "t%d=0x%x", tmp, extract_IRAtom( ite_args[0] ) );
+   if( ite_args[0]->tag == Iex_Const ) return NULL;
+      //VG_(sprintf)( aTmp, "t%d=0x%x", tmp, extract_IRAtom( ite_args[0] ) );
    else if( ite_args[0]->tag == Iex_RdTmp )
       VG_(sprintf)( aTmp, "t%d=t%d", tmp, extract_IRAtom( ite_args[0] ) );
 
@@ -7197,19 +7197,52 @@ IRDirty* create_dirty_ITE( MCEnv* mce, IRTemp tmp,
    }
    VG_(sprintf)( aTmp, "%s!", aTmp );
 
+   if ( ite_args[1]->tag == Iex_Const && ite_args[2]->tag == Iex_Const )
+      return NULL;
+
    enc[0] = 0xa0000000;
    encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
+      if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
+         fn    = &TNT_(h32_ite_tc);
+         nm    = "TNT_(h32_ite_tc)";
 
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+         UInt tt = (tmp << 24);
+         tt |= ( extract_IRAtom( cond ) << 12 );
+         tt |= extract_IRAtom( iftrue );
+
+         args  = mkIRExprVec_4( mkU32( tt ),
+                                mkU32( extract_IRAtom( iffalse ) ),
+                                convert_Value( mce, IRExpr_RdTmp(tmp) ),
+                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+      } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h32_ite_ct);
+         nm    = "TNT_(h32_ite_ct)";
+
+         UInt tt = (tmp << 24);
+         tt |= ( extract_IRAtom( cond ) << 12 );
+         tt |= extract_IRAtom( iffalse );
+
+         args  = mkIRExprVec_4( mkU32( tt ),
+                                mkU32( extract_IRAtom( iftrue ) ),
+                                convert_Value( mce, IRExpr_RdTmp(tmp) ),
+                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+      } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h32_ite_tt);
+         nm    = "TNT_(h32_ite_tt)";
+
+         UInt tt = (tmp << 16);
+         tt |= extract_IRAtom( cond );
+         UInt tt2 = ( extract_IRAtom( iftrue ) << 16 );
+         tt2 |= extract_IRAtom( iffalse );
+
+         args  = mkIRExprVec_4( mkU32( tt ),
+                                mkU32( tt2 ),
+                                convert_Value( mce, IRExpr_RdTmp(tmp) ),
+                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+      } else
+         VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 32-bit mode");
       //fn    = &TNT_(helperc_0_tainted_enc32);
       //nm    = "TNT_(helperc_0_tainted_enc32)";
 
