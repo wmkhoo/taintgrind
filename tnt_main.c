@@ -2961,8 +2961,7 @@ void TNT_(h32_exit) (
 
          tl_assert( guard < TVAR_I_MAX );
 
-         VG_(printf)( "t%d.%d", guard, tvar_i[guard] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d\n", guard, tvar_i[guard] );
       }
    }
 }
@@ -3000,8 +2999,7 @@ void TNT_(h32_next) (
 
          tl_assert( next < TVAR_I_MAX );
 
-         VG_(printf)( "t%d.%d", next, tvar_i[next] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d\n", next, tvar_i[next] );
       }
    }
 }
@@ -3039,8 +3037,7 @@ void TNT_(h64_next) (
 
          tl_assert( next < TVAR_I_MAX );
 
-         VG_(printf)( "t%lld.%d", next, tvar_i[next] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%lld.%d\n", next, tvar_i[next] );
       }
    }
 }
@@ -3104,8 +3101,7 @@ void TNT_(h32_store_tt) (
          tl_assert( t2 < TVAR_I_MAX );
 
          VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], t2, tvar_i[t2] );
-         VG_(printf)( "; t%d.%d <&- t%d.%d", t1, tvar_i[t1], t2, tvar_i[t2] );
-         VG_(printf)("\n");
+         VG_(printf)( "; t%d.%d <&- t%d.%d\n", t1, tvar_i[t1], t2, tvar_i[t2] );
       }
    }
 }
@@ -3168,8 +3164,7 @@ void TNT_(h32_store_tc) (
          tl_assert( addr < TVAR_I_MAX );
 
          VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d", addr, tvar_i[addr] );
-         VG_(printf)("\n");
+         VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
       }
    }
 }
@@ -3233,8 +3228,7 @@ void TNT_(h32_load_t) (
          tl_assert( addr < TVAR_I_MAX );
 
          VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- t%d.%d", tmp, tvar_i[tmp], addr, tvar_i[addr] );
-         VG_(printf)("\n");
+         VG_(printf)( "; t%d.%d <*- t%d.%d\n", tmp, tvar_i[tmp], addr, tvar_i[addr] );
       }
    }
 }
@@ -3296,8 +3290,7 @@ void TNT_(h32_load_c) (
          tl_assert( tmp < TVAR_I_MAX );
 
          VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- 0x%x", tmp, tvar_i[tmp], addr );
-         VG_(printf)("\n");
+         VG_(printf)( "; t%d.%d <*- 0x%x\n", tmp, tvar_i[tmp], addr );
       }
    }
 }
@@ -3333,7 +3326,7 @@ void TNT_(h32_get) (
          tl_assert( reg < REG_I_MAX );
          tl_assert( tmp < TVAR_I_MAX );
 
-         VG_(printf)( "t%d.%d <- r%d.%d", tmp, tvar_i[tmp], reg, reg_i[reg] );
+         VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
       }
    }
 }
@@ -3370,7 +3363,7 @@ void TNT_(h32_put) (
          tl_assert( tmp < TVAR_I_MAX );
          reg_i[reg]++;
 
-         VG_(printf)("r%d.%d <- t%d.%d", reg, reg_i[reg], tmp, tvar_i[tmp]);
+         VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
       }
    }
 }
@@ -3403,6 +3396,7 @@ void TNT_(h32_unop) (
 
          UInt tmp = (tt >> 24) & 0xff;
          UInt op  = (tt >> 8)  & 0xffff;
+         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
          UInt tmp2 = tt & 0xff;
          VG_(sprintf)( aTmp, "0x%x t%d = %s t%d",
                        Iex_Binop, tmp, IROp_string[op], tmp2 );
@@ -3414,8 +3408,7 @@ void TNT_(h32_unop) (
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 
       }
    }
@@ -3451,6 +3444,7 @@ void TNT_(h32_binop_tc) (
 
          UInt tmp = (tt >> 24) & 0xff;
          UInt op  = (tt >> 8)  & 0xffff;
+         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
          UInt tmp2 = tt & 0xff;
          VG_(sprintf)( aTmp, "0x%x t%d = %s t%d 0x%x",
                        Iex_Binop, tmp, IROp_string[op], tmp2, c );
@@ -3462,8 +3456,7 @@ void TNT_(h32_binop_tc) (
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 
       }
    }
@@ -3499,6 +3492,7 @@ void TNT_(h32_binop_ct) (
 
          UInt tmp = (tt >> 24) & 0xff;
          UInt op  = (tt >> 8)  & 0xffff;
+         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
          UInt tmp2 = tt & 0xff;
          VG_(sprintf)( aTmp, "0x%x t%d = %s 0x%x t%d",
                        Iex_Binop, tmp, IROp_string[op], c, tmp2 );
@@ -3510,8 +3504,7 @@ void TNT_(h32_binop_ct) (
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 
       }
    }
@@ -3549,6 +3542,13 @@ void TNT_(h32_binop_tt) (
          UInt tmp2 = tt & 0xffff;
          UInt tmp3 = (tt2 >> 16) & 0xffff;
          UInt op = tt2  & 0xffff;
+
+         if ( op >= ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) ) {
+            VG_(printf)("op = 0x%x, max 0x%x\n", op,
+                        ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+            tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+         }
+
          VG_(sprintf)( aTmp, "0x%x t%d = %s t%d t%d",
                        Iex_Binop, tmp, IROp_string[op], tmp2, tmp3 );
          VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
@@ -3560,8 +3560,7 @@ void TNT_(h32_binop_tt) (
          tl_assert( tmp3 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
 
       }
    }
@@ -3598,8 +3597,7 @@ void TNT_(h32_rdtmp) (
          tl_assert( tmp < TVAR_I_MAX );
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
-         VG_(printf)("t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
-         VG_(printf)("\n");
+         VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
       }
    }
 }
@@ -3645,8 +3643,7 @@ void TNT_(h32_ite_tc) (
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 
       }
    }
@@ -3693,8 +3690,7 @@ void TNT_(h32_ite_ct) (
          tl_assert( tmp2 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 
       }
    }
@@ -3743,8 +3739,7 @@ void TNT_(h32_ite_tt) (
          tl_assert( tmp3 < TVAR_I_MAX );
          tvar_i[tmp]++;
 
-         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
-         VG_(printf)("\n");
+         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
 
       }
    }

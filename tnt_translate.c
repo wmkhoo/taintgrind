@@ -6809,6 +6809,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
          nm       = "TNT_(h32_binop_tc)";
 
          UInt tt = extract_IRAtom(args[0]);
+         op -= Iop_INVALID;
          tt |= (op << 8);
          tt |= (tmp << 24);
 
@@ -6821,6 +6822,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
          nm       = "TNT_(h32_binop_ct)";
 
          UInt tt = extract_IRAtom(args[1]);
+         op -= Iop_INVALID;
          tt |= (op << 8);
          tt |= (tmp << 24);
 
@@ -6848,6 +6850,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
       UInt tt = (tmp << 16);
       tt |= extract_IRAtom( args[0] );
       UInt tt2 = (extract_IRAtom( args[1] ) << 16);
+      op -= Iop_INVALID;
       tt2 |= op;
 
       di_args  = mkIRExprVec_4( mkU32( tt ),
@@ -6958,6 +6961,7 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
       nm    = "TNT_(h32_unop)";
 
       UInt tt = (tmp << 24);
+      op -= Iop_INVALID;
       tt |= (op << 8);
       tt |= extract_IRAtom( arg ) & 0xff;
 
