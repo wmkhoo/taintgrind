@@ -2,6 +2,7 @@ Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
 
+2013-12-20 Experimental support for 32-bit ARM, tested on Android 4.4 emulator with API 19
 2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
 
 
