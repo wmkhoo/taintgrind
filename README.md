@@ -98,7 +98,7 @@ Details of VEX-IDs and VEX-IRStmts can be found in VEX/pub/libvex\_ir.h .
 
 Notes
 -----
-Taintgrind is based on [Valgrind](http://valgrind/org)'s MemCheck and work by Will Drewry on [Flayer](http://code.google.com/p/flayer/).
+Taintgrind is based on [Valgrind](http://valgrind.org)'s MemCheck and work by Will Drewry on [Flayer](http://code.google.com/p/flayer/).
 
 Taintgrind borrows the bit-precise shadow memory from MemCheck and only propagates explicit data flow. This means that Taintgrind will not propagate taint in control structures such as if-else, for-loops and while-loops. Taintgrind will also not propagate taint in dereferenced tainted pointers.
 
