@@ -1004,7 +1004,8 @@ static void complainIfTainted ( MCEnv* mce, IRAtom* atom, IRDirty* di2 )
 //   cond = mkPCastTo( mce, Ity_I1, vatom );
    /* cond will be 0 if all defined, and 1 if any not defined. */
 
-   tl_assert(di2);
+   if( !di2 ) return;
+
 //   di2->guard = cond;
    // Taintgrind: unconditional
 //   di2->guard = NULL;
@@ -4431,7 +4432,7 @@ void do_shadow_Store ( MCEnv* mce,   // 3032
    //          vdata cases (CAS, Dirty) are handled by their resp. shadow routines
    if( data ){
       di2 = create_dirty_STORE( mce, end, 0/*resSC*/, addr, data );
-      complainIfTainted( mce, addr, di2 );
+      if ( di2 ) complainIfTainted( mce, addr, di2 );
    }
 
    /* Now decide which helper function to call to write the data V
