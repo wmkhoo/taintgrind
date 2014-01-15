@@ -109,13 +109,13 @@ void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
 VG_REGPARM(3) void TNT_(h32_exit) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_next) ( UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h32_store_tt) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_store_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_load_t) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_load_c) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_get) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_put) ( UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_puti) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_unop) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_binop_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_binop_ct) ( UInt, UInt, UInt, UInt );
@@ -124,6 +124,11 @@ VG_REGPARM(3) void TNT_(h32_rdtmp) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_ct) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tt) ( UInt, UInt, UInt, UInt );
+
+VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_put) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_puti) ( ULong, ULong, ULong, ULong );
+
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(helperc_1_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt, UInt );

@@ -2924,6 +2924,9 @@ void TNT_(helperc_0_tainted_enc32) (
    }
 }
 
+
+/**** 32-bit helpers ****/
+
 VG_REGPARM(3)
 void TNT_(h32_exit) (
    UInt guard, 
@@ -3000,44 +3003,6 @@ void TNT_(h32_next) (
          tl_assert( next < TVAR_I_MAX );
 
          VG_(printf)( "t%d.%d\n", next, tvar_i[next] );
-      }
-   }
-}
-
-VG_REGPARM(3)
-void TNT_(h64_next) (
-   ULong next, 
-   ULong value, 
-   ULong taint ) {
-
-   ULong  pc; 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-
-   pc = VG_(get_IP)( VG_(get_running_tid)() );
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
-
-   // Always true
-   //if( TNT_(clo_critical_ins_only) &&
-   //    ( enc[0] & 0xf8000000 ) != 0xB8000000 )
-   //   return;
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
-
-         VG_(sprintf)( aTmp, "0x%x JMP t%lld", Ist_Exit, next );
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
-
-         tl_assert( next < TVAR_I_MAX );
-
-         VG_(printf)( "t%lld.%d\n", next, tvar_i[next] );
       }
    }
 }
@@ -3364,6 +3329,46 @@ void TNT_(h32_put) (
          reg_i[reg]++;
 
          VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h32_puti) (
+   UInt tt1, 
+   UInt tt2, 
+   UInt value, 
+   UInt taint ) {
+
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if (TNT_(do_print)) {
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt elemTy = (tt1 >> 16) & 0xffff;
+         UInt ix = tt1 & 0xffff;
+         UInt bias = (tt2 >> 16) & 0xffff;
+         UInt tmp = tt2 & 0xffff;
+
+         VG_(sprintf)(aTmp, "0x%x PUTI<%s>[%x,%x] = t%d", Ist_PutI, IRType_string[elemTy], ix, bias, tmp);
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+
+         // TODO: Info flow
+         //tl_assert( reg < REG_I_MAX );
+         //tl_assert( tmp < TVAR_I_MAX );
+         //reg_i[reg]++;
+
+         //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+         VG_(printf)("\n");
       }
    }
 }
@@ -3744,6 +3749,127 @@ void TNT_(h32_ite_tt) (
       }
    }
 }
+
+/**** 64-bit helpers ****/
+
+VG_REGPARM(3)
+void TNT_(h64_next) (
+   ULong next, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong  pc; 
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+
+   pc = VG_(get_IP)( VG_(get_running_tid)() );
+   
+   // hack to get name of application binary
+   infer_client_binary_name(pc);
+
+   // Always true
+   //if( TNT_(clo_critical_ins_only) &&
+   //    ( enc[0] & 0xf8000000 ) != 0xB8000000 )
+   //   return;
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         VG_(sprintf)( aTmp, "0x%x JMP t%lld", Ist_Exit, next );
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         tl_assert( next < TVAR_I_MAX );
+
+         VG_(printf)( "t%lld.%d\n", next, tvar_i[next] );
+      }
+   }
+}
+
+
+VG_REGPARM(3)
+void TNT_(h64_put) (
+   ULong tt, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   // hack to get name of application binary
+   infer_client_binary_name(pc);
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if (TNT_(do_print)) {
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt reg = tt & 0xffffffff;
+         UInt tmp = (tt >> 32) & 0xffffffff;
+
+         VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         tl_assert( reg < REG_I_MAX );
+         tl_assert( tmp < TVAR_I_MAX );
+         reg_i[reg]++;
+
+         VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+      }
+   }
+}
+
+
+VG_REGPARM(3)
+void TNT_(h64_puti) (
+   ULong tt1, 
+   ULong tt2, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if (TNT_(do_print)) {
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt base = (tt1 >> 32) & 0xffffffff;
+         UInt elemTy = (tt1 >> 16) & 0xffff;
+         UInt nElems = tt1 & 0xffff;
+         UInt ix = (tt2 >> 32) & 0xffffffff;
+         UInt bias = (tt2 >> 16) & 0xffff;
+         UInt tmp = tt2 & 0xffff;
+
+         VG_(sprintf)(aTmp, "0x%x PUTI<%d:%s:%d>[%x,%x] = t%d", Ist_PutI, base, IRType_string[elemTy], nElems, ix, bias, tmp);
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         // TODO: Info flow
+         //tl_assert( reg < REG_I_MAX );
+         //tl_assert( tmp < TVAR_I_MAX );
+         //reg_i[reg]++;
+
+         //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+         VG_(printf)("\n");
+      }
+   }
+}
+
 
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (

@@ -5727,21 +5727,9 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
 
-   VG_(sprintf)( aTmp, "PUT %d=", offset );
-
-   if(data->tag == Iex_RdTmp){
-      VG_(sprintf)( aTmp, "%st%d!", aTmp, extract_IRAtom( data ) );
-   }else if(data->tag == Iex_Const){
-      VG_(sprintf)( aTmp, "%s0x%x!", aTmp, extract_IRAtom( data ) );
+   if(data->tag == Iex_Const)
       return NULL;
-   }
-
-   enc[0] = 0x38000000;
-   encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
       fn    = &TNT_(h32_put);
@@ -5754,29 +5742,19 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
       args  = mkIRExprVec_3( mkU32( tt ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
-      //fn    = &TNT_(helperc_0_tainted_enc32);
-      //nm    = "TNT_(helperc_0_tainted_enc32)";
-
-      //args  = mkIRExprVec_6( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
-      //                       mkU32( enc[3] ),
-      //                       convert_Value( mce, data ),
-      //                       convert_Value( mce, atom2vbits( mce, data ) ) );
    }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
+      fn    = &TNT_(h64_put);
+      nm    = "TNT_(h64_put)";
 
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
+      UInt tmp = extract_IRAtom( data );
+      ULong tt = 0 | ((ULong)tmp << 32);
+      tt |= offset;
+
+      args  = mkIRExprVec_3( mkU64( tt ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_PUT: Unknown platform");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_PUT: Unknown type");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -5787,65 +5765,42 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-//   Char*    aStr;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
 
-//   aStr = (Char*)VG_(malloc)( "create_dirty_PUTI", sizeof(Char)*128 );
-//   aStr = (Char*)VG_(cli_malloc)( VG_(clo_alignment), sizeof(Char)*128 );
-//   aStr = TNT_string[0x9400 | ( descr->base/4 & 0xff )];
-/*   aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   while( aStr[0] != '\0' ){
-      aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   }*/
-
-//   VG_(sprintf)( aStr, "0x19004 PUTI %d 0x%x %d", descr->base, descr->elemTy, descr->nElems);
-   VG_(sprintf)( aTmp, "PUTI" );
-
-   if(ix->tag == Iex_RdTmp)
-      VG_(sprintf)( aTmp, "%s t%d=", aTmp, extract_IRAtom( ix ) );
-   else if(ix->tag == Iex_Const)
-      VG_(sprintf)( aTmp, "%s 0x%x=", aTmp, extract_IRAtom( ix ) );
-
-   if(data->tag == Iex_RdTmp)
-      VG_(sprintf)( aTmp, "%st%d!", aTmp, extract_IRAtom( data ) );
-   else if(data->tag == Iex_Const)
-      VG_(sprintf)( aTmp, "%s0x%x!", aTmp, extract_IRAtom( data ) );
-
-   enc[0] = 0x48000000;
-   encode_string( aTmp, enc, 4 );
+   if(data->tag == Iex_Const)
+      return NULL;
 
    if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
-//   fn    = &TNT_(helperc_0_tainted);
-//   nm    = "TNT_(helperc_0_tainted)";
+      fn    = &TNT_(h32_puti);
+      nm    = "TNT_(h32_puti)";
 
-//      args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
-//                             convert_Value( mce, data ),
-//                             convert_Value( mce, atom2vbits( mce, data ) ) );
+      // There are too many bits to fit into 64 bits
+      // We choose: elemTy, ix, bias, data
+      UInt tt1 = descr->elemTy << 16;
+           tt1 |= extract_IRAtom( ix ) & 0xffff;
+      UInt tt2 = bias << 16;
+           tt2 |= extract_IRAtom( data ) & 0xffff;
 
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
+      args  = mkIRExprVec_4( mkU32( tt1 ),
+                             mkU32( tt2 ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
    }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
+      fn    = &TNT_(h64_puti);
+      nm    = "TNT_(h64_puti)";
 
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
+      ULong tt1 = (ULong)descr->base << 32;
+            tt1 |= (ULong)descr->elemTy << 16;
+            tt1 |= (ULong)descr->nElems & 0xffff;
+      ULong tt2 = extract_IRAtom( ix ) << 32;
+            tt2 |= bias << 16;
+            tt2 |= extract_IRAtom( data ) & 0xffff;
+
+      args  = mkIRExprVec_4( mkU64( tt1 ),
+                             mkU64( tt2 ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown platform");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown type");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
