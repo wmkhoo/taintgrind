@@ -3281,8 +3281,8 @@ void TNT_(h32_get) (
           !TNT_(clo_tainted_ins_only)){
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
 
-         UInt ty = (tt >> 24) & 0xff;
-         UInt tmp = (tt >> 16) & 0xff;
+         UInt tmp = (tt >> 24) & 0xff;
+         UInt ty = (tt >> 16) & 0xff;
          UInt reg = tt & 0xffff;
 
          VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty&0xff] );
@@ -3354,7 +3354,7 @@ void TNT_(h32_puti) (
           !TNT_(clo_tainted_ins_only)){
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
 
-         UInt elemTy = (tt1 >> 16) & 0xffff;
+         UInt elemTy = (tt1 >> 16) & 0xff;
          UInt ix = tt1 & 0xffff;
          UInt bias = (tt2 >> 16) & 0xffff;
          UInt tmp = tt2 & 0xffff;
@@ -3792,6 +3792,43 @@ void TNT_(h64_next) (
 
 
 VG_REGPARM(3)
+void TNT_(h64_get) (
+   ULong tt, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt tmp = (tt >> 48) & 0xffff;
+         UInt ty = (tt >> 32) & 0xff;
+         UInt reg = tt & 0xffffffff;
+
+         VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty] );
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         tl_assert( reg < REG_I_MAX );
+         tl_assert( tmp < TVAR_I_MAX );
+
+         VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
+      }
+   }
+}
+
+
+VG_REGPARM(3)
 void TNT_(h64_put) (
    ULong tt, 
    ULong value, 
@@ -3850,7 +3887,7 @@ void TNT_(h64_puti) (
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
 
          UInt base = (tt1 >> 32) & 0xffffffff;
-         UInt elemTy = (tt1 >> 16) & 0xffff;
+         UInt elemTy = (tt1 >> 16) & 0xff;
          UInt nElems = tt1 & 0xffff;
          UInt ix = (tt2 >> 32) & 0xffffffff;
          UInt bias = (tt2 >> 16) & 0xffff;
