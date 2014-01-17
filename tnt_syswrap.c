@@ -174,7 +174,7 @@ void read_common ( UInt curr_offset, Int curr_len,
    TNT_(make_mem_tainted)( addr, len );
 
    for( i=0; i<len; i++) 
-      VG_(printf)("taint_byte 0x%08lx 0x%x\n", addr+i, *(Char *)(addr+i));
+      VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));
 }
 
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
