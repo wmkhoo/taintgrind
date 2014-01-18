@@ -104,8 +104,8 @@ Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
 }
 
 static
-void read_common ( UInt curr_offset, Int curr_len,
-                   UInt taint_offset, Int taint_len,
+void read_common ( UInt taint_offset, Int taint_len,
+                   UInt curr_offset, Int curr_len,
                    HChar *data ) {
    UWord addr;
    Int   len;
@@ -115,6 +115,11 @@ void read_common ( UInt curr_offset, Int curr_len,
       addr = (UWord)data;
       len  = curr_len;
    }else
+
+      //VG_(printf)("curr_offset 0x%x\n", curr_offset);
+      //VG_(printf)("curr_len    0x%x\n", curr_len);
+      //VG_(printf)("tnt_offset 0x%x\n", taint_offset);
+      //VG_(printf)("tnt_len    0x%x\n", taint_len);
 
    /* Here we determine what bytes to taint
       We have 4 variables -
