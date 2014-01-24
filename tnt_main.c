@@ -931,10 +931,14 @@ void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
          ai = a + 8*long_index + byte_offset_w(8, bigendian, i);
          ok = get_vbits8(ai, &vbits8);
          vbits64 <<= 8;
-         vbits64 |= vbits8;
+         // Taintgrind: Optimistically untainted?
+         //vbits64 |= vbits8;
+         vbits64 &= vbits8;
          if (!ok) n_addrs_bad++;
          pessim64 <<= 8;
-         pessim64 |= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
+         // Taintgrind: Optimistically untainted?
+         //pessim64 |= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
+         pessim64 &= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
       }
       res[long_index] = vbits64;
       pessim[long_index] = pessim64;
@@ -979,7 +983,8 @@ void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
    ok = False;
    for (j = 0; j < szL; j++)
       ok |= pessim[j] != V_BITS8_UNTAINTED;
-   tl_assert(ok);
+   // Taintgrind: We're ok with ok not being ok
+   //tl_assert(ok);
 
    if (0 == (a & (szB - 1)) && n_addrs_bad < szB) {
       /* Exemption applies.  Use the previously computed pessimising
@@ -1548,131 +1553,131 @@ void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx, //3873
 }*/
 
 //3311
-void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
-{
-   //UInt otag;
-   tl_assert(sizeof(UWord) == sizeof(SizeT));
-   if (0)
-      VG_(printf)("helperc_MAKE_STACK_UNINIT (%#lx,%lu,nia=%#lx)\n",
-                  base, len, nia );
-
-/*   if (UNLIKELY( MC_(clo_mc_level) == 3 )) {
-      UInt ecu = convert_nia_to_ecu ( nia );
-      tl_assert(VG_(is_plausible_ECU)(ecu));
-      otag = ecu | MC_OKIND_STACK;
-   } else {*/
-      tl_assert(nia == 0);
-      //otag = 0;
-/*   }*/
-
-   /* Idea is: go fast when
-         * 8-aligned and length is 128
-         * the sm is available in the main primary map
-         * the address range falls entirely with a single secondary map
-      If all those conditions hold, just update the V+A bits by writing
-      directly into the vabits array.  (If the sm was distinguished, this
-      will make a copy and then write to it.)
-   */
-
-   if (LIKELY( len == 128 && VG_IS_8_ALIGNED(base) )) {
-      /* Now we know the address range is suitably sized and aligned. */
-      UWord a_lo = (UWord)(base);
-      UWord a_hi = (UWord)(base + 128 - 1);
-      tl_assert(a_lo < a_hi);             // paranoia: detect overflow
-      if (a_hi <= MAX_PRIMARY_ADDRESS) {
-         // Now we know the entire range is within the main primary map.
-         SecMap* sm    = get_secmap_for_writing_low(a_lo);
-         SecMap* sm_hi = get_secmap_for_writing_low(a_hi);
-         /* Now we know that the entire address range falls within a
-            single secondary map, and that that secondary 'lives' in
-            the main primary map. */
-         if (LIKELY(sm == sm_hi)) {
-            // Finally, we know that the range is entirely within one secmap.
-            UWord   v_off = SM_OFF(a_lo);
-            UShort* p     = (UShort*)(&sm->vabits8[v_off]);
-            p[ 0] = VA_BITS16_TAINTED;
-            p[ 1] = VA_BITS16_TAINTED;
-            p[ 2] = VA_BITS16_TAINTED;
-            p[ 3] = VA_BITS16_TAINTED;
-            p[ 4] = VA_BITS16_TAINTED;
-            p[ 5] = VA_BITS16_TAINTED;
-            p[ 6] = VA_BITS16_TAINTED;
-            p[ 7] = VA_BITS16_TAINTED;
-            p[ 8] = VA_BITS16_TAINTED;
-            p[ 9] = VA_BITS16_TAINTED;
-            p[10] = VA_BITS16_TAINTED;
-            p[11] = VA_BITS16_TAINTED;
-            p[12] = VA_BITS16_TAINTED;
-            p[13] = VA_BITS16_TAINTED;
-            p[14] = VA_BITS16_TAINTED;
-            p[15] = VA_BITS16_TAINTED;
-            return;
-         }
-      }
-   }
-
-   /* 288 bytes (36 ULongs) is the magic value for ELF ppc64. */
-   if (LIKELY( len == 288 && VG_IS_8_ALIGNED(base) )) {
-      /* Now we know the address range is suitably sized and aligned. */
-      UWord a_lo = (UWord)(base);
-      UWord a_hi = (UWord)(base + 288 - 1);
-      tl_assert(a_lo < a_hi);             // paranoia: detect overflow
-      if (a_hi <= MAX_PRIMARY_ADDRESS) {
-         // Now we know the entire range is within the main primary map.
-         SecMap* sm    = get_secmap_for_writing_low(a_lo);
-         SecMap* sm_hi = get_secmap_for_writing_low(a_hi);
-         /* Now we know that the entire address range falls within a
-            single secondary map, and that that secondary 'lives' in
-            the main primary map. */
-         if (LIKELY(sm == sm_hi)) {
-            // Finally, we know that the range is entirely within one secmap.
-            UWord   v_off = SM_OFF(a_lo);
-            UShort* p     = (UShort*)(&sm->vabits8[v_off]);
-            p[ 0] = VA_BITS16_TAINTED;
-            p[ 1] = VA_BITS16_TAINTED;
-            p[ 2] = VA_BITS16_TAINTED;
-            p[ 3] = VA_BITS16_TAINTED;
-            p[ 4] = VA_BITS16_TAINTED;
-            p[ 5] = VA_BITS16_TAINTED;
-            p[ 6] = VA_BITS16_TAINTED;
-            p[ 7] = VA_BITS16_TAINTED;
-            p[ 8] = VA_BITS16_TAINTED;
-            p[ 9] = VA_BITS16_TAINTED;
-            p[10] = VA_BITS16_TAINTED;
-            p[11] = VA_BITS16_TAINTED;
-            p[12] = VA_BITS16_TAINTED;
-            p[13] = VA_BITS16_TAINTED;
-            p[14] = VA_BITS16_TAINTED;
-            p[15] = VA_BITS16_TAINTED;
-            p[16] = VA_BITS16_TAINTED;
-            p[17] = VA_BITS16_TAINTED;
-            p[18] = VA_BITS16_TAINTED;
-            p[19] = VA_BITS16_TAINTED;
-            p[20] = VA_BITS16_TAINTED;
-            p[21] = VA_BITS16_TAINTED;
-            p[22] = VA_BITS16_TAINTED;
-            p[23] = VA_BITS16_TAINTED;
-            p[24] = VA_BITS16_TAINTED;
-            p[25] = VA_BITS16_TAINTED;
-            p[26] = VA_BITS16_TAINTED;
-            p[27] = VA_BITS16_TAINTED;
-            p[28] = VA_BITS16_TAINTED;
-            p[29] = VA_BITS16_TAINTED;
-            p[30] = VA_BITS16_TAINTED;
-            p[31] = VA_BITS16_TAINTED;
-            p[32] = VA_BITS16_TAINTED;
-            p[33] = VA_BITS16_TAINTED;
-            p[34] = VA_BITS16_TAINTED;
-            p[35] = VA_BITS16_TAINTED;
-            return;
-         }
-      }
-   }
-
-   /* else fall into slow case */
-//   TNT_(make_mem_undefined_w_otag)(base, len, otag);
-   TNT_(make_mem_tainted)(base, len);
-}
+//void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
+//{
+//   //UInt otag;
+//   tl_assert(sizeof(UWord) == sizeof(SizeT));
+//   if (0)
+//      VG_(printf)("helperc_MAKE_STACK_UNINIT (%#lx,%lu,nia=%#lx)\n",
+//                  base, len, nia );
+//
+///*   if (UNLIKELY( MC_(clo_mc_level) == 3 )) {
+//      UInt ecu = convert_nia_to_ecu ( nia );
+//      tl_assert(VG_(is_plausible_ECU)(ecu));
+//      otag = ecu | MC_OKIND_STACK;
+//   } else {*/
+//      tl_assert(nia == 0);
+//      //otag = 0;
+///*   }*/
+//
+//   /* Idea is: go fast when
+//         * 8-aligned and length is 128
+//         * the sm is available in the main primary map
+//         * the address range falls entirely with a single secondary map
+//      If all those conditions hold, just update the V+A bits by writing
+//      directly into the vabits array.  (If the sm was distinguished, this
+//      will make a copy and then write to it.)
+//   */
+//
+//   if (LIKELY( len == 128 && VG_IS_8_ALIGNED(base) )) {
+//      /* Now we know the address range is suitably sized and aligned. */
+//      UWord a_lo = (UWord)(base);
+//      UWord a_hi = (UWord)(base + 128 - 1);
+//      tl_assert(a_lo < a_hi);             // paranoia: detect overflow
+//      if (a_hi <= MAX_PRIMARY_ADDRESS) {
+//         // Now we know the entire range is within the main primary map.
+//         SecMap* sm    = get_secmap_for_writing_low(a_lo);
+//         SecMap* sm_hi = get_secmap_for_writing_low(a_hi);
+//         /* Now we know that the entire address range falls within a
+//            single secondary map, and that that secondary 'lives' in
+//            the main primary map. */
+//         if (LIKELY(sm == sm_hi)) {
+//            // Finally, we know that the range is entirely within one secmap.
+//            UWord   v_off = SM_OFF(a_lo);
+//            UShort* p     = (UShort*)(&sm->vabits8[v_off]);
+//            p[ 0] = VA_BITS16_TAINTED;
+//            p[ 1] = VA_BITS16_TAINTED;
+//            p[ 2] = VA_BITS16_TAINTED;
+//            p[ 3] = VA_BITS16_TAINTED;
+//            p[ 4] = VA_BITS16_TAINTED;
+//            p[ 5] = VA_BITS16_TAINTED;
+//            p[ 6] = VA_BITS16_TAINTED;
+//            p[ 7] = VA_BITS16_TAINTED;
+//            p[ 8] = VA_BITS16_TAINTED;
+//            p[ 9] = VA_BITS16_TAINTED;
+//            p[10] = VA_BITS16_TAINTED;
+//            p[11] = VA_BITS16_TAINTED;
+//            p[12] = VA_BITS16_TAINTED;
+//            p[13] = VA_BITS16_TAINTED;
+//            p[14] = VA_BITS16_TAINTED;
+//            p[15] = VA_BITS16_TAINTED;
+//            return;
+//         }
+//      }
+//   }
+//
+//   /* 288 bytes (36 ULongs) is the magic value for ELF ppc64. */
+//   if (LIKELY( len == 288 && VG_IS_8_ALIGNED(base) )) {
+//      /* Now we know the address range is suitably sized and aligned. */
+//      UWord a_lo = (UWord)(base);
+//      UWord a_hi = (UWord)(base + 288 - 1);
+//      tl_assert(a_lo < a_hi);             // paranoia: detect overflow
+//      if (a_hi <= MAX_PRIMARY_ADDRESS) {
+//         // Now we know the entire range is within the main primary map.
+//         SecMap* sm    = get_secmap_for_writing_low(a_lo);
+//         SecMap* sm_hi = get_secmap_for_writing_low(a_hi);
+//         /* Now we know that the entire address range falls within a
+//            single secondary map, and that that secondary 'lives' in
+//            the main primary map. */
+//         if (LIKELY(sm == sm_hi)) {
+//            // Finally, we know that the range is entirely within one secmap.
+//            UWord   v_off = SM_OFF(a_lo);
+//            UShort* p     = (UShort*)(&sm->vabits8[v_off]);
+//            p[ 0] = VA_BITS16_TAINTED;
+//            p[ 1] = VA_BITS16_TAINTED;
+//            p[ 2] = VA_BITS16_TAINTED;
+//            p[ 3] = VA_BITS16_TAINTED;
+//            p[ 4] = VA_BITS16_TAINTED;
+//            p[ 5] = VA_BITS16_TAINTED;
+//            p[ 6] = VA_BITS16_TAINTED;
+//            p[ 7] = VA_BITS16_TAINTED;
+//            p[ 8] = VA_BITS16_TAINTED;
+//            p[ 9] = VA_BITS16_TAINTED;
+//            p[10] = VA_BITS16_TAINTED;
+//            p[11] = VA_BITS16_TAINTED;
+//            p[12] = VA_BITS16_TAINTED;
+//            p[13] = VA_BITS16_TAINTED;
+//            p[14] = VA_BITS16_TAINTED;
+//            p[15] = VA_BITS16_TAINTED;
+//            p[16] = VA_BITS16_TAINTED;
+//            p[17] = VA_BITS16_TAINTED;
+//            p[18] = VA_BITS16_TAINTED;
+//            p[19] = VA_BITS16_TAINTED;
+//            p[20] = VA_BITS16_TAINTED;
+//            p[21] = VA_BITS16_TAINTED;
+//            p[22] = VA_BITS16_TAINTED;
+//            p[23] = VA_BITS16_TAINTED;
+//            p[24] = VA_BITS16_TAINTED;
+//            p[25] = VA_BITS16_TAINTED;
+//            p[26] = VA_BITS16_TAINTED;
+//            p[27] = VA_BITS16_TAINTED;
+//            p[28] = VA_BITS16_TAINTED;
+//            p[29] = VA_BITS16_TAINTED;
+//            p[30] = VA_BITS16_TAINTED;
+//            p[31] = VA_BITS16_TAINTED;
+//            p[32] = VA_BITS16_TAINTED;
+//            p[33] = VA_BITS16_TAINTED;
+//            p[34] = VA_BITS16_TAINTED;
+//            p[35] = VA_BITS16_TAINTED;
+//            return;
+//         }
+//      }
+//   }
+//
+//   /* else fall into slow case */
+////   TNT_(make_mem_undefined_w_otag)(base, len, otag);
+//   TNT_(make_mem_tainted)(base, len);
+//}
 
 
 //3997
@@ -3549,7 +3554,7 @@ void TNT_(h32_binop_tt) (
          UInt op = tt2  & 0xffff;
 
          if ( op >= ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) ) {
-            VG_(printf)("op = 0x%x, max 0x%x\n", op,
+            VG_(printf)("op = 0x%x, max 0x%lx\n", op,
                         ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
             tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
          }
@@ -3753,24 +3758,17 @@ void TNT_(h32_ite_tt) (
 /**** 64-bit helpers ****/
 
 VG_REGPARM(3)
-void TNT_(h64_next) (
-   ULong next, 
+void TNT_(h64_exit) (
+   ULong tmp,
+   ULong addr,
    ULong value, 
    ULong taint ) {
 
-   ULong  pc; 
+   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
    HChar fnname[FNNAME_MAX];
    HChar aTmp[128];
-
-   pc = VG_(get_IP)( VG_(get_running_tid)() );
    
-   // hack to get name of application binary
    infer_client_binary_name(pc);
-
-   // Always true
-   //if( TNT_(clo_critical_ins_only) &&
-   //    ( enc[0] & 0xf8000000 ) != 0xB8000000 )
-   //   return;
 
    if(!TNT_(do_print) && taint)
       TNT_(do_print) = 1;
@@ -3780,12 +3778,42 @@ void TNT_(h64_next) (
           !TNT_(clo_tainted_ins_only)){
          VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
 
-         VG_(sprintf)( aTmp, "0x%x JMP t%lld", Ist_Exit, next );
+         VG_(sprintf)( aTmp, "0x%x IF t%d GOTO 0x%llx", Ist_Exit, (UInt)tmp, addr );
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         tl_assert( (UInt)tmp < TVAR_I_MAX );
+
+         VG_(printf)( "t%d.%d\n", (UInt)tmp, tvar_i[(UInt)tmp] );
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h64_next) (
+   ULong next, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         VG_(sprintf)( aTmp, "0x%x JMP t%d", Ist_Exit, (UInt)next );
          VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
          tl_assert( next < TVAR_I_MAX );
 
-         VG_(printf)( "t%lld.%d\n", next, tvar_i[next] );
+         VG_(printf)( "t%d.%d\n", (UInt)next, tvar_i[next] );
       }
    }
 }
@@ -4897,6 +4925,14 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       break;
     case __NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
+      break;
+#ifdef __NR_recv
+    case __NR_recv:
+      TNT_(syscall_recv)(tid, args, nArgs, res);
+      break;
+#endif
+    case __NR_recvfrom:
+      TNT_(syscall_recvfrom)(tid, args, nArgs, res);
       break;
 #endif
   }

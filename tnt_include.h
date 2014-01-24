@@ -125,6 +125,7 @@ VG_REGPARM(3) void TNT_(h32_ite_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_ct) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tt) ( UInt, UInt, UInt, UInt );
 
+VG_REGPARM(3) void TNT_(h64_exit) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_get) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_put) ( ULong, ULong, ULong );
@@ -284,6 +285,8 @@ extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes re
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
+extern void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 
 /* Functions defined in tnt_translate.c */
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,

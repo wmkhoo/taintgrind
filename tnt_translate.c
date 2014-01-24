@@ -6160,58 +6160,41 @@ IRDirty* create_dirty_EXIT( MCEnv* mce, IRExpr* guard, IRJumpKind jk, IRConst* d
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
+   //HChar    aTmp[128];
+   //UInt     enc[4] = { 0, 0, 0, 0 };
+   //ULong    enc64[2] = { 0, 0 };
 
-   VG_(sprintf)( aTmp, "IF" );
+   //VG_(sprintf)( aTmp, "IF" );
 
-   if(guard->tag == Iex_RdTmp)
-      VG_(sprintf)( aTmp, "%s t%d GOTO 0x%x!", 
-                    aTmp, extract_IRAtom( guard ), extract_IRConst( dst ) );
-   else if(guard->tag == Iex_Const)
-       return NULL;
+   //if(guard->tag == Iex_RdTmp)
+   //   VG_(sprintf)( aTmp, "%s t%d GOTO 0x%x!", 
+   //                 aTmp, extract_IRAtom( guard ), extract_IRConst( dst ) );
+   //else 
+   if(guard->tag == Iex_Const)        return NULL;
       //VG_(sprintf)( aTmp, "%s 0x%x GOTO 0x%x!",
       //              aTmp, extract_IRAtom( guard ), extract_IRConst( dst ) );
 
-   enc[0] = 0xB8000000;
-   encode_string( aTmp, enc, 4 );
+   //enc[0] = 0xB8000000;
+   //encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
-      //if ( guard->tag == Iex_RdTmp )
-         fn    = &TNT_(h32_exit);
-         nm    = "TNT_(h32_exit)";
-      //else if ( guard->tag == Iex_Const )
-         //fn    = &TNT_(helperc_0_tainted_enc32_exit_const);
-         //nm    = "TNT_(helperc_0_tainted_enc32_exit_const)";
+      fn    = &TNT_(h32_exit);
+      nm    = "TNT_(h32_exit)";
 
       args  = mkIRExprVec_4( mkU32( extract_IRAtom( guard ) ),
                              mkU32( extract_IRConst( dst ) ),
                              convert_Value( mce, guard ),
                              convert_Value( mce, atom2vbits( mce, guard ) ) );
 
-      //fn    = &TNT_(helperc_0_tainted_enc32);
-      //nm    = "TNT_(helperc_0_tainted_enc32)";
-
-      //args  = mkIRExprVec_6( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
-      //                       mkU32( enc[3] ),
-      //                       convert_Value( mce, guard ),
-      //                       convert_Value( mce, atom2vbits( mce, guard ) ) );
    }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
+      fn    = &TNT_(h64_exit);
+      nm    = "TNT_(h64_exit)";
 
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
+      args  = mkIRExprVec_4( mkU64( extract_IRAtom( guard ) ),
+                             mkU64( extract_IRConst( dst ) ),
                              convert_Value( mce, guard ),
                              convert_Value( mce, atom2vbits( mce, guard ) ) );
+
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT: Unknown platform");
 

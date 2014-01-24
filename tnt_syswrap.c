@@ -524,6 +524,24 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 	}
 }
 
+void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+// ssize_t recv(int sockfd, void *buf, size_t len, int flags)
+   Int msglen  = sr_Res(res);
+   HChar *data = (HChar *)args[1];
+   VG_(printf)("syscall recv %d 0x%x 0x%02x\n", tid, msglen, data[0]);
+
+}
+
+void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+// ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+//                 struct sockaddr *src_addr, socklen_t *addrlen)
+// TODO: #include <arpa/inet.h> inet_ntop to pretty print IP address
+   Int msglen  = sr_Res(res);
+   HChar *data = (HChar *)args[1];
+   VG_(printf)("syscall recvfrom %d 0x%x 0x%02x\n", tid, msglen, data[0]);
+
+}
+
 /*--------------------------------------------------------------------*/
 /*--- end                                                          ---*/
 /*--------------------------------------------------------------------*/
