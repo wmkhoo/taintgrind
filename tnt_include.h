@@ -127,6 +127,8 @@ VG_REGPARM(3) void TNT_(h32_ite_tt) ( UInt, UInt, UInt, UInt );
 
 VG_REGPARM(3) void TNT_(h64_exit) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_load_t) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_load_c) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_get) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_put) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_puti) ( ULong, ULong, ULong, ULong );

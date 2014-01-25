@@ -6439,13 +6439,6 @@ IRDirty* create_dirty_RDTMP( MCEnv* mce, IRTemp tmp, IRTemp data ){
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-   //HChar    aTmp[128];
-   //UInt     enc[4] = { 0, 0, 0, 0 };
-   //ULong    enc64[2] = { 0, 0 };
-
-   //VG_(sprintf)( aTmp, "t%d=t%d!", tmp, data );
-   //enc[0] = 0x30000000;
-   //encode_string( aTmp, enc, 4 );
 
    if(mce->hWordTy == Ity_I32){
       fn    = &TNT_(h32_rdtmp);
@@ -6891,29 +6884,17 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
-
-   VG_(sprintf)( aTmp, "t%d=%x", tmp, ty & 0xf );
-
-   if(addr->tag == Iex_RdTmp){
-      VG_(sprintf)( aTmp, "%s t%d!", aTmp, extract_IRAtom( addr ) );
-   }else if(addr->tag == Iex_Const){
-      VG_(sprintf)( aTmp, "%s 0x%x!", aTmp, extract_IRAtom( addr ) );
-   }
-
-   enc[0] = 0x80000000;
-   encode_string( aTmp, enc, 3 );
 
    if(mce->hWordTy == Ity_I32){
       if ( addr->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_load_t);
          nm    = "TNT_(h32_load_t)";
 
-         UInt tt = extract_IRAtom( addr ) & 0xfff;
-         tt = (tt << 16) | tmp;
-         tt = tt | ( (ty & 0xf) << 28);
+         // 31--16 15--12 11--0
+         //  tmp     ty    addr
+         UInt tt = (tmp << 16);
+         tt |= ( (ty & 0xf) << 12);
+         tt |= extract_IRAtom( addr ) & 0xfff;
 
          // Sacrifice tainted-ness of addr if we're to keep within 4 args
          args  = mkIRExprVec_3( mkU32( tt ),
@@ -6923,42 +6904,43 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
          fn    = &TNT_(h32_load_c);
          nm    = "TNT_(h32_load_c)";
 
-         UInt tt = tmp & 0xfffffff;
-         tt = tt | ( (ty & 0xf) << 28);
+         UInt tt = (tmp << 4);
+         tt |= ty & 0xf;
 
          args  = mkIRExprVec_4( mkU32( tt ),
                  mkU32( extract_IRAtom( addr ) ),
                  convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                  convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
-       //VG_(tool_panic)("tnt_translate.c: create_dirty_LOAD: unk 32-bit cfg");
 
-      //fn    = &TNT_(helperc_1_tainted_enc32);
-      //nm    = "TNT_(helperc_1_tainted_enc32)";
-
-      //args  = mkIRExprVec_7( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
-      //                       /*mkU32( enc[3] ),*/
-      //                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                       convert_Value( mce, addr ),
-      //                       convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-      //                       convert_Value( mce, atom2vbits( mce, addr ) ) );
    }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
+      if ( addr->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h64_load_t);
+         nm    = "TNT_(h64_load_t)";
 
-      fn    = &TNT_(helperc_1_tainted_enc64);
-      nm    = "TNT_(helperc_1_tainted_enc64)";
+         // 31--16 15--12 11--0
+         //  tmp     ty    addr
+         UInt tt = (tmp << 16);
+         tt |= ( (ty & 0xf) << 12);
+         tt |= extract_IRAtom( addr ) & 0xfff;
 
-      args  = mkIRExprVec_6( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, addr ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-                             convert_Value( mce, atom2vbits( mce, addr ) ) );
+         args  = mkIRExprVec_3( mkU64( tt ),
+                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+
+      } else {
+         fn    = &TNT_(h64_load_c);
+         nm    = "TNT_(h64_load_c)";
+
+         UInt tt = (tmp << 4);
+         tt |= ty & 0xf;
+
+         args  = mkIRExprVec_4( mkU64( tt ),
+                 mkU64( extract_IRAtom( addr ) ),
+                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      }
+
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_LOAD: Unknown platform");
 
