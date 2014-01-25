@@ -3586,7 +3586,6 @@ void TNT_(h32_rdtmp) (
    HChar fnname[FNNAME_MAX];
    HChar aTmp[128];
    
-   // hack to get name of application binary
    infer_client_binary_name(pc);
 
    if( TNT_(clo_critical_ins_only) ) return;
@@ -3931,6 +3930,42 @@ void TNT_(h64_puti) (
 
          //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
          VG_(printf)("\n");
+      }
+   }
+}
+
+
+VG_REGPARM(3)
+void TNT_(h64_rdtmp) (
+   ULong tt, 
+   ULong value, 
+   ULong taint ) {
+
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); 
+   HChar fnname[FNNAME_MAX];
+   HChar aTmp[128];
+   
+   infer_client_binary_name(pc);
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+         UInt tmp = (UInt)(tt >> 16);
+         UInt tmp2 = (UInt)(tt & 0xffff);
+
+         VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+
+         tl_assert( tmp < TVAR_I_MAX );
+         tl_assert( tmp2 < TVAR_I_MAX );
+         tvar_i[tmp]++;
+         VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
       }
    }
 }

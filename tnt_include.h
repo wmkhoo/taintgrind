@@ -130,6 +130,7 @@ VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_get) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_put) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_puti) ( ULong, ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_rdtmp) ( ULong, ULong, ULong );
 
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );
