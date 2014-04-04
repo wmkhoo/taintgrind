@@ -3015,16 +3015,11 @@ void TNT_(h32_next) (
 VG_REGPARM(3)
 void TNT_(h32_store_tt) (
    UInt tt, 
-   //UInt value1, 
-   UInt value2, 
-   //UInt taint1, 
-   UInt taint2 ) {
+   UInt value, 
+   UInt taint ) {
 
-   UInt value1=0, taint1=0;
    HChar aTmp[128];
    ThreadId tid = VG_(get_running_tid());
-
-   // hack to infer client binary name
    UInt pc = VG_(get_IP)( tid );
    infer_client_binary_name( pc );
 
@@ -3038,27 +3033,27 @@ void TNT_(h32_store_tt) (
    enum VariableType type = 0;
    enum VariableLocation var_loc;
 
-   TNT_(describe_data)(value1, varname, 255, &type, &var_loc);
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
    TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
 
-   if(!TNT_(do_print) && (/*taint1*/0 || taint2))
+   if(!TNT_(do_print) && taint)
       TNT_(do_print) = 1;
 
    if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && (/*taint1*/0 || taint2)) ||
+      if((TNT_(clo_tainted_ins_only) && taint) ||
           !TNT_(clo_tainted_ins_only)){
 
          UInt ty = (tt >> 28) & 0xf;
-         UInt t1 = (tt >> 16) & 0xfff;
-         UInt t2 = (tt >> 0) & 0xffff;
+         UInt addr = (tt >> 16) & 0xfff;
+         UInt data = (tt >> 0) & 0xffff;
 
-         VG_(sprintf)( aTmp, "0x%x ST t%d = %s t%d", Ist_Store, t1, IRType_string[ty], t2 );
+         VG_(sprintf)( aTmp, "0x%x ST t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
 
          //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
          //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-         VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x | ", 
-            fnname, aTmp, value1, value2, taint2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
 
          // Information flow
          // Check if it hasn't been seen before
@@ -3067,11 +3062,11 @@ void TNT_(h32_store_tt) (
          }
          lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-         tl_assert( t1 < TVAR_I_MAX );
-         tl_assert( t2 < TVAR_I_MAX );
+         tl_assert( addr < TVAR_I_MAX );
+         tl_assert( data < TVAR_I_MAX );
 
-         VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], t2, tvar_i[t2] );
-         VG_(printf)( "; t%d.%d <&- t%d.%d\n", t1, tvar_i[t1], t2, tvar_i[t2] );
+         VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
+         VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
       }
    }
 }
@@ -3080,16 +3075,11 @@ VG_REGPARM(3)
 void TNT_(h32_store_tc) (
    UInt tt, 
    UInt data,
-   //UInt value1, 
-   UInt value2, 
-   //UInt taint1, 
-   UInt taint2 ) {
+   UInt value, 
+   UInt taint ) {
 
-   UInt value1=0, taint1=0;
    HChar aTmp[128];
    ThreadId tid = VG_(get_running_tid());
-
-   // hack to infer client binary name
    UInt pc = VG_(get_IP)( tid );
    infer_client_binary_name( pc );
 
@@ -3103,14 +3093,14 @@ void TNT_(h32_store_tc) (
    enum VariableType type = 0;
    enum VariableLocation var_loc;
 
-   TNT_(describe_data)(value1, varname, 255, &type, &var_loc);
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
    TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
 
-   if(!TNT_(do_print) && (/*taint1*/0 || taint2))
+   if(!TNT_(do_print) && taint)
       TNT_(do_print) = 1;
 
    if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && (/*taint1*/0 || taint2)) ||
+      if((TNT_(clo_tainted_ins_only) && taint) ||
           !TNT_(clo_tainted_ins_only)){
 
          UInt ty = (tt >> 28) & 0xf;
@@ -3121,8 +3111,8 @@ void TNT_(h32_store_tc) (
          //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
          //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-         VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x | ", 
-            fnname, aTmp, value1, value2, taint2 );
+         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+            fnname, aTmp, value, taint );
 
          // Information flow
          // Check if it hasn't been seen before

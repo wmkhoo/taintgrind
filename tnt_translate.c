@@ -5723,10 +5723,10 @@ void encode_string( HChar *aStr, UInt *enc, UInt enc_size ){
 
 IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
 //         ppIRExpr output: PUT(<offset>) = data
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
+   Int          nargs = 3;
+   const HChar* nm;
+   void*        fn;
+   IRExpr**     args;
 
    if(data->tag == Iex_Const)
       return NULL;
@@ -5742,6 +5742,7 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
       args  = mkIRExprVec_3( mkU32( tt ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
+
    }else if(mce->hWordTy == Ity_I64){
       fn    = &TNT_(h64_put);
       nm    = "TNT_(h64_put)";
@@ -5761,10 +5762,10 @@ IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
 
 IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias, IRExpr* data ){
 // ppIRExpr output: PUTI(<descr.base:descr.nElems:descr.elemTy>)[ix, bias] = data
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
+   Int          nargs = 3;
+   const HChar* nm;
+   void*        fn;
+   IRExpr**     args;
 
    if(data->tag == Iex_Const)
       return NULL;
@@ -5808,92 +5809,112 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
 IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC, 
                              IRExpr* addr, IRExpr* data ){
 //         ppIRExpr output: ST<end>(<addr>) = <data>
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
+   Int          nargs = 3;
+   const HChar* nm;
+   void*        fn;
+   IRExpr**     args;
+   //HChar        aTmp[128];
+   //UInt         enc[4] = { 0, 0, 0, 0 };
+   //ULong        enc64[2] = { 0, 0 };
+   UInt         ty = typeOfIRExpr(mce->sb->tyenv, data) - Ity_INVALID;
 
    if ( addr->tag == Iex_Const && data->tag == Iex_Const ) return NULL;
 
-   if(addr->tag == Iex_RdTmp){
-      VG_(sprintf)( aTmp, "t%d", extract_IRAtom( addr ) );
-   }else if(addr->tag == Iex_Const){
-      VG_(sprintf)( aTmp, "0x%x", extract_IRAtom( addr ) );
-   }
+   //if(addr->tag == Iex_RdTmp){
+   //   VG_(sprintf)( aTmp, "t%d", extract_IRAtom( addr ) );
+   //}else if(addr->tag == Iex_Const){
+   //   VG_(sprintf)( aTmp, "0x%x", extract_IRAtom( addr ) );
+   //}
 
-   if(data->tag == Iex_RdTmp){
-      VG_(sprintf)( aTmp, "%s=%x t%d!", 
-                    aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
-                    extract_IRAtom( data ));
-   }else if(data->tag == Iex_Const){
-      VG_(sprintf)( aTmp, "%s=%x 0x%x!", 
-                    aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
-                    extract_IRAtom( data ));
-   }
+   //if(data->tag == Iex_RdTmp){
+   //   VG_(sprintf)( aTmp, "%s=%x t%d!", 
+   //                 aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
+   //                 extract_IRAtom( data ));
+   //}else if(data->tag == Iex_Const){
+   //   VG_(sprintf)( aTmp, "%s=%x 0x%x!", 
+   //                 aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
+   //                 extract_IRAtom( data ));
+   //}
 
-   enc[0] = 0x68000000;
-   encode_string( aTmp, enc, 3 );
+   //enc[0] = 0x68000000;
+   //encode_string( aTmp, enc, 3 );
 
    if(mce->hWordTy == Ity_I32){
       if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_store_tt);
          nm    = "TNT_(h32_store_tt)";
 
-         UInt tt = extract_IRAtom( addr ) & 0xfff;
-         tt = (tt << 16) | extract_IRAtom( data );
-         tt = tt | (typeOfIRExpr(mce->sb->tyenv, data) << 28);
+         // 31-28 27-16 15-0
+         //  ty   addr  data
+         UInt tt = (ty << 28); 
+         tt |= ( (extract_IRAtom( addr ) & 0xfff) << 16 );
+         tt |= extract_IRAtom( data );
 
          // Sacrifice tainted-ness of addr if we're to keep within 4 args
          args  = mkIRExprVec_3( mkU32( tt ),
-                             //convert_Value( mce, addr ),
                              convert_Value( mce, data ),
-                             //convert_Value( mce, atom2vbits( mce, addr ) ), 
                              convert_Value( mce, atom2vbits( mce, data ) ) );
+
       } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
          fn    = &TNT_(h32_store_tc);
          nm    = "TNT_(h32_store_tc)";
 
          UInt tt = extract_IRAtom( addr ) & 0xfffffff;
-         tt = tt | (typeOfIRExpr(mce->sb->tyenv, data) << 28);
+         tt |= (ty << 28);
 
          // Sacrifice tainted-ness of addr if we're to keep within 4 args
          args  = mkIRExprVec_4( mkU32( tt ),
                                 mkU32( extract_IRAtom( data ) ),
-                             //convert_Value( mce, addr ),
                              convert_Value( mce, data ),
-                             //convert_Value( mce, atom2vbits( mce, addr ) ), 
                              convert_Value( mce, atom2vbits( mce, data ) ) );
       } else {
          VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 32-bit cfg");
-      //fn    = &TNT_(helperc_1_tainted_enc32);
-      //nm    = "TNT_(helperc_1_tainted_enc32)";
+      }
+   }else if(mce->hWordTy == Ity_I64){
+      if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h64_store_tt);
+         nm    = "TNT_(h64_store_tt)";
 
-      //args  = mkIRExprVec_7( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
+         // 31-28 27-16 15-0
+         //  ty   addr  data
+         UInt tt = (ty << 28); 
+         tt |= ( (extract_IRAtom( addr ) & 0xfff) << 16 );
+         tt |= extract_IRAtom( data );
+
+         // Sacrifice tainted-ness of addr if we're to keep within 4 args
+         args  = mkIRExprVec_3( mkU64( tt ),
+                             convert_Value( mce, data ),
+                             convert_Value( mce, atom2vbits( mce, data ) ) );
+
+      } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
+         fn    = &TNT_(h64_store_tc);
+         nm    = "TNT_(h64_store_tc)";
+
+         UInt tt = extract_IRAtom( addr ) & 0xfffffff;
+         tt |= (ty << 28);
+
+         // Sacrifice tainted-ness of addr if we're to keep within 4 args
+         args  = mkIRExprVec_4( mkU32( tt ),
+                                mkU32( extract_IRAtom( data ) ),
+                             convert_Value( mce, data ),
+                             convert_Value( mce, atom2vbits( mce, data ) ) );
+      } else {
+         VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 64-bit cfg");
+      }
+      //enc64[0] |= enc[0];
+      //enc64[0] = (enc64[0] << 32) | enc[1];
+      //enc64[1] |= enc[2];
+      //enc64[1] = (enc64[1] << 32) | enc[3];
+
+      //fn    = &TNT_(helperc_1_tainted_enc64);
+      //nm    = "TNT_(helperc_1_tainted_enc64)";
+
+      //args  = mkIRExprVec_6( mkU64( enc64[0] ),
+      //                       mkU64( enc64[1] ),
       //                       convert_Value( mce, addr ),
       //                       convert_Value( mce, data ),
       //                       convert_Value( mce, atom2vbits( mce, addr ) ), 
       //                       convert_Value( mce, atom2vbits( mce, data ) ) );
-      }
-   }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn    = &TNT_(helperc_1_tainted_enc64);
-      nm    = "TNT_(helperc_1_tainted_enc64)";
-
-      args  = mkIRExprVec_6( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
-                             convert_Value( mce, addr ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, addr ) ), 
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: Unknown platform");
 

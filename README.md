@@ -7,7 +7,6 @@ Taintgrind: a Valgrind taint analysis tool
 2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
 
 
-This text is available in [Czech](http://czlib.bizcow.com/post/taintgrind-a-valgrind-poskvrnit-nastroj-pro-analyzu) (kindly translated by [Alex Novak](http://bizcow.com))
 
 Installation
 ------------
