@@ -5234,10 +5234,12 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_recv)(tid, args, nArgs, res);
       break;
 #endif
+#ifdef __NR_recvfrom
     case __NR_recvfrom:
       TNT_(syscall_recvfrom)(tid, args, nArgs, res);
       break;
 #endif
+#endif // VGO_freebsd
   }
 }
 
