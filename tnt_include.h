@@ -8,8 +8,6 @@
    This file is part of Taintgrind, a heavyweight Valgrind tool for
    taint analysis.
 
-   Copyright (C) 2010 Wei Ming Khoo 
-
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation; either version 2 of the
@@ -133,6 +131,9 @@ VG_REGPARM(3) void TNT_(h64_get) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_put) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_puti) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_rdtmp) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_store_tt) ( ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_store_tc) ( ULong, ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_store_ct) ( ULong, ULong, ULong, ULong );
 
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );

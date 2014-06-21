@@ -5894,11 +5894,25 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
          tt |= (ty << 28);
 
          // Sacrifice tainted-ness of addr if we're to keep within 4 args
-         args  = mkIRExprVec_4( mkU32( tt ),
-                                mkU32( extract_IRAtom( data ) ),
+         args  = mkIRExprVec_4( mkU64( tt ),
+                                mkU64( extract_IRAtom( data ) ),
+                             convert_Value( mce, data ),
+                             convert_Value( mce, atom2vbits( mce, data ) ) );
+      } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h64_store_ct);
+         nm    = "TNT_(h64_store_ct)";
+
+         UInt tt = extract_IRAtom( data ) & 0xfffffff;
+         tt |= (ty << 28);
+
+         // Sacrifice tainted-ness of addr if we're to keep within 4 args
+         args  = mkIRExprVec_4( mkU64( tt ),
+                                mkU64( extract_IRAtom( addr ) ),
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
       } else {
+         ppIRExpr(addr);
+         ppIRExpr(data);
          VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 64-bit cfg");
       }
       //enc64[0] |= enc[0];

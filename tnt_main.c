@@ -3047,7 +3047,7 @@ void TNT_(h32_store_tt) (
          UInt addr = (tt >> 16) & 0xfff;
          UInt data = (tt >> 0) & 0xffff;
 
-         VG_(sprintf)( aTmp, "0x%x ST t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
+         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
 
          //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
          //   fnname, aTmp, value1, value2, taint1, taint2 );
@@ -3106,7 +3106,7 @@ void TNT_(h32_store_tc) (
          UInt ty = (tt >> 28) & 0xf;
          UInt addr = (tt >> 0) & 0xfffffff;
 
-         VG_(sprintf)( aTmp, "0x%x ST t%d = %s 0x%x", Ist_Store, addr, IRType_string[ty], data );
+         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%x", Ist_Store, addr, IRType_string[ty], data );
 
          //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
          //   fnname, aTmp, value1, value2, taint1, taint2 );
@@ -3166,7 +3166,7 @@ void TNT_(h32_load_t) (
          UInt ty = (tt >> 12) & 0xf;
          UInt addr = (tt >> 0) & 0xfff;
 
-         VG_(sprintf)( aTmp, "0x%x t%d = LD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
+         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
 
          VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
             fnname, aTmp, value, taint );
@@ -3224,7 +3224,7 @@ void TNT_(h32_load_c) (
          UInt tmp = (tt >> 4) & 0xfffffff;
          UInt ty = (tt >> 0) & 0xf;
 
-         VG_(sprintf)( aTmp, "0x%x t%d = LD %s 0x%x", Iex_Load, tmp, IRType_string[ty], addr );
+         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%x", Iex_Load, tmp, IRType_string[ty], addr );
 
          VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
             fnname, aTmp, value, taint );
@@ -3798,6 +3798,181 @@ void TNT_(h64_next) (
 
 
 VG_REGPARM(3)
+void TNT_(h64_store_tt) (
+   ULong tt, 
+   ULong value, 
+   ULong taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   ULong pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   enum VariableType type = 0;
+   enum VariableLocation var_loc;
+
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
+   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt ty = (tt >> 28) & 0xf;
+         UInt addr = (tt >> 16) & 0xfff;
+         UInt data = (tt >> 0) & 0xffff;
+
+         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
+
+         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+         //   fnname, aTmp, value1, value2, taint1, taint2 );
+
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         // Check if it hasn't been seen before
+         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+            myStringArray_push( &lvar_s, varname );
+         }
+         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+         tl_assert( addr < TVAR_I_MAX );
+         tl_assert( data < TVAR_I_MAX );
+
+         VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
+         VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h64_store_tc) (
+   ULong tt, 
+   ULong data,
+   ULong value, 
+   ULong taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   ULong pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   enum VariableType type = 0;
+   enum VariableLocation var_loc;
+
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
+   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt ty = (tt >> 28) & 0xf;
+         UInt addr = (tt >> 0) & 0xfffffff;
+
+         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%llx", Ist_Store, addr, IRType_string[ty], data );
+
+         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+         //   fnname, aTmp, value1, value2, taint1, taint2 );
+
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         // Check if it hasn't been seen before
+         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+            myStringArray_push( &lvar_s, varname );
+         }
+         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+         tl_assert( addr < TVAR_I_MAX );
+
+         VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+         VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
+      }
+   }
+}
+
+VG_REGPARM(3)
+void TNT_(h64_store_ct) (
+   ULong tt, 
+   ULong addr,
+   ULong value, 
+   ULong taint ) {
+
+   HChar aTmp[128];
+   ThreadId tid = VG_(get_running_tid());
+   ULong pc = VG_(get_IP)( tid );
+   infer_client_binary_name( pc );
+
+   HChar varname[256];
+   VG_(memset)( varname, 0, 255 );
+
+   HChar fnname[FNNAME_MAX];
+   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+
+   enum VariableType type = 0;
+   enum VariableLocation var_loc;
+
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
+   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+
+   if(!TNT_(do_print) && taint)
+      TNT_(do_print) = 1;
+
+   if(TNT_(do_print)){
+      if((TNT_(clo_tainted_ins_only) && taint) ||
+          !TNT_(clo_tainted_ins_only)){
+
+         UInt ty = (tt >> 28) & 0xf;
+         UInt data = (tt >> 0) & 0xfffffff;
+
+         VG_(sprintf)( aTmp, "0x%x STORE 0x%llx = %s t%d", Ist_Store, addr, IRType_string[ty], data );
+
+         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+         //   fnname, aTmp, value1, value2, taint1, taint2 );
+
+         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+            fnname, aTmp, value, taint );
+
+         // Information flow
+         // Check if it hasn't been seen before
+         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+            myStringArray_push( &lvar_s, varname );
+         }
+         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+         tl_assert( data < TVAR_I_MAX );
+
+         VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+         VG_(printf)( " <-&- t%d.%d\n", data, tvar_i[data] );
+      }
+   }
+}
+
+VG_REGPARM(3)
 void TNT_(h64_load_t) (
    ULong tt, 
    ULong value, 
@@ -3834,7 +4009,7 @@ void TNT_(h64_load_t) (
          UInt ty = (UInt)(tt >> 12) & 0xf;
          UInt addr = (UInt)(tt >> 0) & 0xfff;
 
-         VG_(sprintf)( aTmp, "0x%x t%d = LD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
+         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
 
          VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
             fnname, aTmp, value, taint );
@@ -3891,7 +4066,7 @@ void TNT_(h64_load_c) (
          UInt tmp = (UInt)(tt >> 4) & 0xfffffff;
          UInt ty = (UInt)(tt >> 0) & 0xf;
 
-         VG_(sprintf)( aTmp, "0x%x t%d = LD %s 0x%llx", Iex_Load, tmp, IRType_string[ty], addr );
+         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%llx", Iex_Load, tmp, IRType_string[ty], addr );
 
          VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
             fnname, aTmp, value, taint );
