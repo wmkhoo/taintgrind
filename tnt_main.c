@@ -2932,6 +2932,35 @@ void TNT_(helperc_0_tainted_enc32) (
 
 /**** 32-bit helpers ****/
 
+// macros
+#define H32_PC \
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
+   HChar fnname[FNNAME_MAX]; \
+   HChar aTmp[128]; \
+   infer_client_binary_name(pc); \
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+#define H64_PC \
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
+   HChar fnname[FNNAME_MAX]; \
+   HChar aTmp[128]; \
+   infer_client_binary_name(pc); \
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+
+#define H_VAR \
+   HChar varname[256]; \
+   ThreadId tid = VG_(get_running_tid()); \
+   VG_(memset)( varname, 0, 255 ); \
+   enum VariableType type = 0; \
+   enum VariableLocation var_loc; \
+   TNT_(describe_data)(value, varname, 255, &type, &var_loc); \
+   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+
+#define H_EXIT_EARLY \
+   if(!TNT_(do_print) && taint)  TNT_(do_print) = 1; \
+   if(!TNT_(do_print))  return; \
+   if(!(TNT_(clo_tainted_ins_only) && taint) && TNT_(clo_tainted_ins_only)) return;
+
 VG_REGPARM(3)
 void TNT_(h32_exit) (
    UInt guard, 
@@ -2939,39 +2968,15 @@ void TNT_(h32_exit) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc; 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   //UInt  enc[4] = { enc0, enc1, enc2, enc3 };
+   H_EXIT_EARLY
+   H32_PC
 
-   pc = VG_(get_IP)( VG_(get_running_tid)() );
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
+   VG_(sprintf)( aTmp, "0x%x IF t%d GOTO 0x%x", Ist_Exit, guard, dst );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   // Always true
-   //if( TNT_(clo_critical_ins_only) &&
-   //    ( enc[0] & 0xf8000000 ) != 0xB8000000 )
-   //   return;
+   tl_assert( guard < TVAR_I_MAX );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
-
-         //decode_string( enc, aTmp );
-         //post_decode_string( aTmp );
-         VG_(sprintf)( aTmp, "0x%x IF t%d GOTO 0x%x", Ist_Exit, guard, dst );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
-
-         tl_assert( guard < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d\n", guard, tvar_i[guard] );
-      }
-   }
+   VG_(printf)( "t%d.%d\n", guard, tvar_i[guard] );
 }
 
 VG_REGPARM(3)
@@ -2980,36 +2985,15 @@ void TNT_(h32_next) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc; 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
+   H_EXIT_EARLY
+   H32_PC
 
-   pc = VG_(get_IP)( VG_(get_running_tid)() );
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
+   VG_(sprintf)( aTmp, "0x%x JMP t%d", Ist_Exit, next );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   // Always true
-   //if( TNT_(clo_critical_ins_only) &&
-   //    ( enc[0] & 0xf8000000 ) != 0xB8000000 )
-   //   return;
+   tl_assert( next < TVAR_I_MAX );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
-
-         VG_(sprintf)( aTmp, "0x%x JMP t%d", Ist_Exit, next );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
-
-         tl_assert( next < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d\n", next, tvar_i[next] );
-      }
-   }
+   VG_(printf)( "t%d.%d\n", next, tvar_i[next] );
 }
 
 VG_REGPARM(3)
@@ -3018,57 +3002,34 @@ void TNT_(h32_store_tt) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   H_EXIT_EARLY
+   H32_PC
+   H_VAR
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   UInt ty = (tt >> 28) & 0xf;
+   UInt addr = (tt >> 16) & 0xfff;
+   UInt data = (tt >> 0) & 0xffff;
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt ty = (tt >> 28) & 0xf;
-         UInt addr = (tt >> 16) & 0xfff;
-         UInt data = (tt >> 0) & 0xffff;
-
-         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
-
-         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
-         //   fnname, aTmp, value1, value2, taint1, taint2 );
-
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( addr < TVAR_I_MAX );
-         tl_assert( data < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
-         VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( addr < TVAR_I_MAX );
+   tl_assert( data < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
+   VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
 }
 
 VG_REGPARM(3)
@@ -3078,55 +3039,32 @@ void TNT_(h32_store_tc) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   H_EXIT_EARLY
+   H32_PC
+   H_VAR
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   UInt ty = (tt >> 28) & 0xf;
+   UInt addr = (tt >> 0) & 0xfffffff;
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%x", Ist_Store, addr, IRType_string[ty], data );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt ty = (tt >> 28) & 0xf;
-         UInt addr = (tt >> 0) & 0xfffffff;
-
-         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%x", Ist_Store, addr, IRType_string[ty], data );
-
-         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
-         //   fnname, aTmp, value1, value2, taint1, taint2 );
-
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( addr < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( addr < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
 }
 
 VG_REGPARM(3)
@@ -3135,56 +3073,31 @@ void TNT_(h32_load_t) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
+   H_EXIT_EARLY
+   H32_PC
+   H_VAR
 
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   UInt tmp = (tt >> 16) & 0xffff;
+   UInt ty = (tt >> 12) & 0xf;
+   UInt addr = (tt >> 0) & 0xfff;
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
-
-   // TODO: This is data, not an address
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt tmp = (tt >> 16) & 0xffff;
-         UInt ty = (tt >> 12) & 0xf;
-         UInt addr = (tt >> 0) & 0xfff;
-
-         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
-
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( addr < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- t%d.%d\n", tmp, tvar_i[tmp], addr, tvar_i[addr] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( addr < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d <*- t%d.%d\n", tmp, tvar_i[tmp], addr, tvar_i[addr] );
 }
 
 VG_REGPARM(3)
@@ -3194,54 +3107,29 @@ void TNT_(h32_load_c) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
+   H_EXIT_EARLY
+   H32_PC
+   H_VAR
 
-   // hack to infer client binary name
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   UInt tmp = (tt >> 4) & 0xfffffff;
+   UInt ty = (tt >> 0) & 0xf;
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%x", Iex_Load, tmp, IRType_string[ty], addr );
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
-
-   TNT_(describe_data)(addr, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt tmp = (tt >> 4) & 0xfffffff;
-         UInt ty = (tt >> 0) & 0xf;
-
-         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%x", Iex_Load, tmp, IRType_string[ty], addr );
-
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( tmp < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- 0x%x\n", tmp, tvar_i[tmp], addr );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( tmp < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d <*- 0x%x\n", tmp, tvar_i[tmp], addr );
 }
 
 VG_REGPARM(3)
@@ -3250,34 +3138,22 @@ void TNT_(h32_get) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt ty = (tt >> 16) & 0xff;
+   UInt reg = tt & 0xffff;
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt ty = (tt >> 16) & 0xff;
-         UInt reg = tt & 0xffff;
+   VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty&0xff] );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty&0xff] );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+   tl_assert( reg < REG_I_MAX );
+   tl_assert( tmp < TVAR_I_MAX );
 
-         tl_assert( reg < REG_I_MAX );
-         tl_assert( tmp < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
-      }
-   }
+   VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
 }
 
 
@@ -3287,34 +3163,22 @@ void TNT_(h32_put) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
-
    if ( TNT_(clo_critical_ins_only) ) return;
-   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
 
-   if (TNT_(do_print)) {
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   H_EXIT_EARLY
+   H32_PC
 
-         UInt reg = tt & 0xffff;
-         UInt tmp = (tt >> 16) & 0xffff;
+   UInt reg = tt & 0xffff;
+   UInt tmp = (tt >> 16) & 0xffff;
 
-         VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+   VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         tl_assert( reg < REG_I_MAX );
-         tl_assert( tmp < TVAR_I_MAX );
-         reg_i[reg]++;
+   tl_assert( reg < REG_I_MAX );
+   tl_assert( tmp < TVAR_I_MAX );
+   reg_i[reg]++;
 
-         VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
-      }
-   }
+   VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
 }
 
 VG_REGPARM(3)
@@ -3324,37 +3188,26 @@ void TNT_(h32_puti) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if ( TNT_(clo_critical_ins_only) ) return;
-   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
 
-   if (TNT_(do_print)) {
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   H_EXIT_EARLY
+   H32_PC
 
-         UInt elemTy = (tt1 >> 16) & 0xff;
-         UInt ix = tt1 & 0xffff;
-         UInt bias = (tt2 >> 16) & 0xffff;
-         UInt tmp = tt2 & 0xffff;
+   UInt elemTy = (tt1 >> 16) & 0xff;
+   UInt ix = tt1 & 0xffff;
+   UInt bias = (tt2 >> 16) & 0xffff;
+   UInt tmp = tt2 & 0xffff;
 
-         VG_(sprintf)(aTmp, "0x%x PUTI<%s>[%x,%x] = t%d", Ist_PutI, IRType_string[elemTy], ix, bias, tmp);
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+   VG_(sprintf)(aTmp, "0x%x PUTI<%s>[%x,%x] = t%d", Ist_PutI, IRType_string[elemTy], ix, bias, tmp);
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         // TODO: Info flow
-         //tl_assert( reg < REG_I_MAX );
-         //tl_assert( tmp < TVAR_I_MAX );
-         //reg_i[reg]++;
+   // TODO: Info flow
+   //tl_assert( reg < REG_I_MAX );
+   //tl_assert( tmp < TVAR_I_MAX );
+   //reg_i[reg]++;
 
-         //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
-         VG_(printf)("\n");
-      }
-   }
+   //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -3363,44 +3216,26 @@ void TNT_(h32_unop) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt op  = (tt >> 8)  & 0xffff;
+   tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   UInt tmp2 = tt & 0xff;
+   VG_(sprintf)( aTmp, "0x%x t%d = %s t%d",
+                 Iex_Binop, tmp, IROp_string[op], tmp2 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt op  = (tt >> 8)  & 0xffff;
-         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
-         UInt tmp2 = tt & 0xff;
-         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d",
-                       Iex_Binop, tmp, IROp_string[op], tmp2 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 }
 
 VG_REGPARM(3)
@@ -3410,45 +3245,26 @@ void TNT_(h32_binop_tc) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt op  = (tt >> 8)  & 0xffff;
+   tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   UInt tmp2 = tt & 0xff;
+   VG_(sprintf)( aTmp, "0x%x t%d = %s t%d 0x%x",
+                 Iex_Binop, tmp, IROp_string[op], tmp2, c );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt op  = (tt >> 8)  & 0xffff;
-         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
-         UInt tmp2 = tt & 0xff;
-         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d 0x%x",
-                       Iex_Binop, tmp, IROp_string[op], tmp2, c );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 }
 
 VG_REGPARM(3)
@@ -3458,45 +3274,26 @@ void TNT_(h32_binop_ct) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt op  = (tt >> 8)  & 0xffff;
+   tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   UInt tmp2 = tt & 0xff;
+   VG_(sprintf)( aTmp, "0x%x t%d = %s 0x%x t%d",
+                 Iex_Binop, tmp, IROp_string[op], c, tmp2 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt op  = (tt >> 8)  & 0xffff;
-         tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
-         UInt tmp2 = tt & 0xff;
-         VG_(sprintf)( aTmp, "0x%x t%d = %s 0x%x t%d",
-                       Iex_Binop, tmp, IROp_string[op], c, tmp2 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 }
 
 VG_REGPARM(3)
@@ -3506,53 +3303,34 @@ void TNT_(h32_binop_tt) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 16) & 0xffff;
+   UInt tmp2 = tt & 0xffff;
+   UInt tmp3 = (tt2 >> 16) & 0xffff;
+   UInt op = tt2  & 0xffff;
 
-         UInt tmp = (tt >> 16) & 0xffff;
-         UInt tmp2 = tt & 0xffff;
-         UInt tmp3 = (tt2 >> 16) & 0xffff;
-         UInt op = tt2  & 0xffff;
-
-         if ( op >= ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) ) {
-            VG_(printf)("op = 0x%x, max 0x%lx\n", op,
-                        ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
-            tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
-         }
-
-         VG_(sprintf)( aTmp, "0x%x t%d = %s t%d t%d",
-                       Iex_Binop, tmp, IROp_string[op], tmp2, tmp3 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tl_assert( tmp3 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
-
-      }
+   if ( op >= ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) ) {
+      VG_(printf)("op = 0x%x, max 0x%lx\n", op,
+                  ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+      tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
    }
+
+   VG_(sprintf)( aTmp, "0x%x t%d = %s t%d t%d",
+                 Iex_Binop, tmp, IROp_string[op], tmp2, tmp3 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tl_assert( tmp3 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
 }
 
 VG_REGPARM(3)
@@ -3561,33 +3339,21 @@ void TNT_(h32_rdtmp) (
    UInt value, 
    UInt taint ) {
 
-   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   UInt tmp = tt >> 16;
+   UInt tmp2 = tt & 0xffff;
 
-         UInt tmp = tt >> 16;
-         UInt tmp2 = tt & 0xffff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-         VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
-
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-         VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
-      }
-   }
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+   VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
 }
 
 VG_REGPARM(3)
@@ -3597,44 +3363,25 @@ void TNT_(h32_ite_tc) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt cond = (tt >> 12) & 0xfff;
+   UInt tmp2  = tt & 0xfff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%x",
+                 Iex_ITE, tmp, cond, tmp2, c );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt cond = (tt >> 12) & 0xfff;
-         UInt tmp2  = tt & 0xfff;
-         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%x",
-                       Iex_ITE, tmp, cond, tmp2, c );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 }
 
 VG_REGPARM(3)
@@ -3644,44 +3391,25 @@ void TNT_(h32_ite_ct) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 24) & 0xff;
+   UInt cond = (tt >> 12) & 0xfff;
+   UInt tmp2  = tt & 0xfff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%x : t%d",
+                 Iex_ITE, tmp, cond, c, tmp2 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 24) & 0xff;
-         UInt cond = (tt >> 12) & 0xfff;
-         UInt tmp2  = tt & 0xfff;
-         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%x : t%d",
-                       Iex_ITE, tmp, cond, c, tmp2 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
 }
 
 VG_REGPARM(3)
@@ -3691,46 +3419,27 @@ void TNT_(h32_ite_tt) (
    UInt value, 
    UInt taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
-
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
-
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H32_PC
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
+   UInt tmp = (tt >> 16) & 0xffff;
+   UInt cond = tt & 0xffff;
+   UInt tmp2 = (tt2 >> 16) & 0xffff;
+   UInt tmp3 = tt2 & 0xffff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
+                 Iex_ITE, tmp, cond, tmp2, tmp3 );
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
 
-         UInt tmp = (tt >> 16) & 0xffff;
-         UInt cond = tt & 0xffff;
-         UInt tmp2 = (tt2 >> 16) & 0xffff;
-         UInt tmp3 = tt2 & 0xffff;
-         VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
-                       Iex_ITE, tmp, cond, tmp2, tmp3 );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-            fnname, aTmp, value, taint );
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tl_assert( tmp3 < TVAR_I_MAX );
+   tvar_i[tmp]++;
 
-         // Information flow
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tl_assert( tmp3 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-
-         VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
-
-      }
-   }
+   VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
 }
 
 /**** 64-bit helpers ****/
@@ -3742,28 +3451,15 @@ void TNT_(h64_exit) (
    ULong value, 
    ULong taint ) {
 
-   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
+   H_EXIT_EARLY
+   H64_PC
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   VG_(sprintf)( aTmp, "0x%x IF t%d GOTO 0x%llx", Ist_Exit, (UInt)tmp, addr );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   tl_assert( (UInt)tmp < TVAR_I_MAX );
 
-         VG_(sprintf)( aTmp, "0x%x IF t%d GOTO 0x%llx", Ist_Exit, (UInt)tmp, addr );
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
-
-         tl_assert( (UInt)tmp < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d\n", (UInt)tmp, tvar_i[(UInt)tmp] );
-      }
-   }
+   VG_(printf)( "t%d.%d\n", (UInt)tmp, tvar_i[(UInt)tmp] );
 }
 
 VG_REGPARM(3)
@@ -3772,28 +3468,15 @@ void TNT_(h64_next) (
    ULong value, 
    ULong taint ) {
 
-   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
+   H_EXIT_EARLY
+   H64_PC
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
+   VG_(sprintf)( aTmp, "0x%x JMP t%d", Ist_Exit, (UInt)next );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   tl_assert( next < TVAR_I_MAX );
 
-         VG_(sprintf)( aTmp, "0x%x JMP t%d", Ist_Exit, (UInt)next );
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
-
-         tl_assert( next < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d\n", (UInt)next, tvar_i[next] );
-      }
-   }
+   VG_(printf)( "t%d.%d\n", (UInt)next, tvar_i[next] );
 }
 
 
@@ -3803,57 +3486,34 @@ void TNT_(h64_store_tt) (
    ULong value, 
    ULong taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   ULong pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   UInt ty = (tt >> 28) & 0xf;
+   UInt addr = (tt >> 16) & 0xfff;
+   UInt data = (tt >> 0) & 0xffff;
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt ty = (tt >> 28) & 0xf;
-         UInt addr = (tt >> 16) & 0xfff;
-         UInt data = (tt >> 0) & 0xffff;
-
-         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s t%d", Ist_Store, addr, IRType_string[ty], data );
-
-         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
-         //   fnname, aTmp, value1, value2, taint1, taint2 );
-
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( addr < TVAR_I_MAX );
-         tl_assert( data < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
-         VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( addr < TVAR_I_MAX );
+   tl_assert( data < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d <- t%d.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], data, tvar_i[data] );
+         VG_(printf)( "; t%d.%d <&- t%d.%d\n", addr, tvar_i[addr], data, tvar_i[data] );
 }
 
 VG_REGPARM(3)
@@ -3863,55 +3523,32 @@ void TNT_(h64_store_tc) (
    ULong value, 
    ULong taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   ULong pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   UInt ty = (tt >> 28) & 0xf;
+   UInt addr = (tt >> 0) & 0xfffffff;
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%llx", Ist_Store, addr, IRType_string[ty], data );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt ty = (tt >> 28) & 0xf;
-         UInt addr = (tt >> 0) & 0xfffffff;
-
-         VG_(sprintf)( aTmp, "0x%x STORE t%d = %s 0x%llx", Ist_Store, addr, IRType_string[ty], data );
-
-         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
-         //   fnname, aTmp, value1, value2, taint1, taint2 );
-
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( addr < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( addr < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
 }
 
 VG_REGPARM(3)
@@ -3921,55 +3558,32 @@ void TNT_(h64_store_ct) (
    ULong value, 
    ULong taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
-   ULong pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   UInt ty = (tt >> 28) & 0xf;
+   UInt data = (tt >> 0) & 0xfffffff;
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(sprintf)( aTmp, "0x%x STORE 0x%llx = %s t%d", Ist_Store, addr, IRType_string[ty], data );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
 
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
 
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt ty = (tt >> 28) & 0xf;
-         UInt data = (tt >> 0) & 0xfffffff;
-
-         VG_(sprintf)( aTmp, "0x%x STORE 0x%llx = %s t%d", Ist_Store, addr, IRType_string[ty], data );
-
-         //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
-         //   fnname, aTmp, value1, value2, taint1, taint2 );
-
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( data < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( " <-&- t%d.%d\n", data, tvar_i[data] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( data < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( " <-&- t%d.%d\n", data, tvar_i[data] );
 }
 
 VG_REGPARM(3)
@@ -3978,56 +3592,31 @@ void TNT_(h64_load_t) (
    ULong value, 
    ULong taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   UInt tmp = (UInt)(tt >> 16) & 0xffff;
+   UInt ty = (UInt)(tt >> 12) & 0xf;
+   UInt addr = (UInt)(tt >> 0) & 0xfff;
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
-
-   // TODO: This is data, not an address
-   TNT_(describe_data)(value, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt tmp = (UInt)(tt >> 16) & 0xffff;
-         UInt ty = (UInt)(tt >> 12) & 0xf;
-         UInt addr = (UInt)(tt >> 0) & 0xfff;
-
-         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s t%d", Iex_Load, tmp, IRType_string[ty], addr );
-
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( addr < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- t%d.%d\n", tmp, tvar_i[tmp], addr, tvar_i[addr] );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( addr < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d <*- t%d.%d\n", tmp, tvar_i[tmp], addr, tvar_i[addr] );
 }
 
 VG_REGPARM(3)
@@ -4037,53 +3626,29 @@ void TNT_(h64_load_c) (
    ULong value, 
    ULong taint ) {
 
-   HChar aTmp[128];
-   ThreadId tid = VG_(get_running_tid());
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   UInt pc = VG_(get_IP)( tid );
-   infer_client_binary_name( pc );
+   UInt tmp = (UInt)(tt >> 4) & 0xfffffff;
+   UInt ty = (UInt)(tt >> 0) & 0xf;
 
-   HChar varname[256];
-   VG_(memset)( varname, 0, 255 );
+   VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%llx", Iex_Load, tmp, IRType_string[ty], addr );
 
-   HChar fnname[FNNAME_MAX];
-   //TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
-   VG_(describe_IP)(pc, fnname, FNNAME_MAX);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
 
-   enum VariableType type = 0;
-   enum VariableLocation var_loc;
-
-   TNT_(describe_data)(addr, varname, 255, &type, &var_loc);
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-
-         UInt tmp = (UInt)(tt >> 4) & 0xfffffff;
-         UInt ty = (UInt)(tt >> 0) & 0xf;
-
-         VG_(sprintf)( aTmp, "0x%x t%d = LOAD %s 0x%llx", Iex_Load, tmp, IRType_string[ty], addr );
-
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-            fnname, aTmp, value, taint );
-
-         // Information flow
-         // Check if it hasn't been seen before
-         if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-            myStringArray_push( &lvar_s, varname );
-         }
-         lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
-         tl_assert( tmp < TVAR_I_MAX );
-
-         VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-         VG_(printf)( "; t%d.%d <*- 0x%llx\n", tmp, tvar_i[tmp], addr );
-      }
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
    }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( tmp < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) t%d.%d <- %s.%d", type, tmp, tvar_i[tmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d.%d <*- 0x%llx\n", tmp, tvar_i[tmp], addr );
 }
 
 VG_REGPARM(3)
@@ -4092,34 +3657,23 @@ void TNT_(h64_get) (
    ULong value, 
    ULong taint ) {
 
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   UInt tmp = (tt >> 48) & 0xffff;
+   UInt ty = (tt >> 32) & 0xff;
+   UInt reg = tt & 0xffffffff;
 
-         UInt tmp = (tt >> 48) & 0xffff;
-         UInt ty = (tt >> 32) & 0xff;
-         UInt reg = tt & 0xffffffff;
+   VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty] );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-         VG_(sprintf)(aTmp, "0x%x t%d = GET %d %s", Iex_Get, tmp, reg, IRType_string[ty] );
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+   tl_assert( reg < REG_I_MAX );
+   tl_assert( tmp < TVAR_I_MAX );
 
-         tl_assert( reg < REG_I_MAX );
-         tl_assert( tmp < TVAR_I_MAX );
-
-         VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
-      }
-   }
+   VG_(printf)( "t%d.%d <- r%d.%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
 }
 
 
@@ -4129,34 +3683,23 @@ void TNT_(h64_put) (
    ULong value, 
    ULong taint ) {
 
-   ULong  pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
-
    if ( TNT_(clo_critical_ins_only) ) return;
-   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
 
-   if (TNT_(do_print)) {
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-         UInt reg = tt & 0xffffffff;
-         UInt tmp = (tt >> 32) & 0xffffffff;
+   UInt reg = tt & 0xffffffff;
+   UInt tmp = (tt >> 32) & 0xffffffff;
 
-         VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+   VG_(sprintf)(aTmp, "0x%x PUT %d = t%d", Ist_Put, reg, tmp);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-         tl_assert( reg < REG_I_MAX );
-         tl_assert( tmp < TVAR_I_MAX );
-         reg_i[reg]++;
+   tl_assert( reg < REG_I_MAX );
+   tl_assert( tmp < TVAR_I_MAX );
+   reg_i[reg]++;
 
-         VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
-      }
-   }
+   VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
 }
 
 
@@ -4167,39 +3710,29 @@ void TNT_(h64_puti) (
    ULong value, 
    ULong taint ) {
 
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if ( TNT_(clo_critical_ins_only) ) return;
-   if (!TNT_(do_print) && taint) TNT_(do_print) = 1;
 
-   if (TNT_(do_print)) {
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-         UInt base = (tt1 >> 32) & 0xffffffff;
-         UInt elemTy = (tt1 >> 16) & 0xff;
-         UInt nElems = tt1 & 0xffff;
-         UInt ix = (tt2 >> 32) & 0xffffffff;
-         UInt bias = (tt2 >> 16) & 0xffff;
-         UInt tmp = tt2 & 0xffff;
+   UInt base = (tt1 >> 32) & 0xffffffff;
+   UInt elemTy = (tt1 >> 16) & 0xff;
+   UInt nElems = tt1 & 0xffff;
+   UInt ix = (tt2 >> 32) & 0xffffffff;
+   UInt bias = (tt2 >> 16) & 0xffff;
+   UInt tmp = tt2 & 0xffff;
 
-         VG_(sprintf)(aTmp, "0x%x PUTI<%d:%s:%d>[%x,%x] = t%d", Ist_PutI, base, IRType_string[elemTy], nElems, ix, bias, tmp);
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+   VG_(sprintf)(aTmp, "0x%x PUTI<%d:%s:%d>[%x,%x] = t%d", Ist_PutI, base, IRType_string[elemTy], nElems, ix, bias, tmp);
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-         // TODO: Info flow
-         //tl_assert( reg < REG_I_MAX );
-         //tl_assert( tmp < TVAR_I_MAX );
-         //reg_i[reg]++;
+   // TODO: Info flow
+   //tl_assert( reg < REG_I_MAX );
+   //tl_assert( tmp < TVAR_I_MAX );
+   //reg_i[reg]++;
 
-         //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
-         VG_(printf)("\n");
-      }
-   }
+   //VG_(printf)("r%d.%d <- t%d.%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   VG_(printf)("\n");
 }
 
 
@@ -4209,33 +3742,22 @@ void TNT_(h64_rdtmp) (
    ULong value, 
    ULong taint ) {
 
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   
-   infer_client_binary_name(pc);
-
    if( TNT_(clo_critical_ins_only) ) return;
 
-   if(!TNT_(do_print) && taint) TNT_(do_print) = 1;
+   H_EXIT_EARLY
+   H64_PC
+   H_VAR
 
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   UInt tmp = (UInt)(tt >> 16);
+   UInt tmp2 = (UInt)(tt & 0xffff);
 
-         UInt tmp = (UInt)(tt >> 16);
-         UInt tmp2 = (UInt)(tt & 0xffff);
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-         VG_(sprintf)( aTmp, "0x%x t%d = t%d", Iex_RdTmp, tmp, tmp2 );
-         VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
-
-         tl_assert( tmp < TVAR_I_MAX );
-         tl_assert( tmp2 < TVAR_I_MAX );
-         tvar_i[tmp]++;
-         VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
-      }
-   }
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+   VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
 }
 
 
