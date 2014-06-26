@@ -3226,7 +3226,7 @@ void TNT_(h32_unop) (
    tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
    UInt tmp2 = tt & 0xff;
    VG_(sprintf)( aTmp, "0x%x t%d = %s t%d",
-                 Iex_Binop, tmp, IROp_string[op], tmp2 );
+                 Iex_Unop, tmp, IROp_string[op], tmp2 );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
