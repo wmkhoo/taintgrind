@@ -5317,7 +5317,7 @@ Bool          TNT_(clo_taint_all)              = False;
 Int           TNT_(clo_after_kbb)              = 0;
 Int           TNT_(clo_before_kbb)             = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
-Bool          TNT_(clo_critical_ins_only)      = True;
+Bool          TNT_(clo_critical_ins_only)      = False;
 Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
@@ -5356,7 +5356,7 @@ static void tnt_print_usage(void) {
 "    --after-kbb=[0,1000000]     start instrumentation after # of BBs, in thousands [0]\n"
 "    --before-kbb=[0,1000000]    stop instrumentation after # of BBs, in thousands [-1]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
-"    --critical-ins-only= no|yes print critical instructions only [yes]\n"
+"    --critical-ins-only= no|yes print critical instructions only [no]\n"
    );
 }
 
