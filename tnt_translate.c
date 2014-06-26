@@ -5820,25 +5820,6 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
 
    if ( addr->tag == Iex_Const && data->tag == Iex_Const ) return NULL;
 
-   //if(addr->tag == Iex_RdTmp){
-   //   VG_(sprintf)( aTmp, "t%d", extract_IRAtom( addr ) );
-   //}else if(addr->tag == Iex_Const){
-   //   VG_(sprintf)( aTmp, "0x%x", extract_IRAtom( addr ) );
-   //}
-
-   //if(data->tag == Iex_RdTmp){
-   //   VG_(sprintf)( aTmp, "%s=%x t%d!", 
-   //                 aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
-   //                 extract_IRAtom( data ));
-   //}else if(data->tag == Iex_Const){
-   //   VG_(sprintf)( aTmp, "%s=%x 0x%x!", 
-   //                 aTmp, typeOfIRExpr(mce->sb->tyenv, data) & 0xf, 
-   //                 extract_IRAtom( data ));
-   //}
-
-   //enc[0] = 0x68000000;
-   //encode_string( aTmp, enc, 3 );
-
    if(mce->hWordTy == Ity_I32){
       if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_store_tt);
@@ -5915,20 +5896,6 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
          ppIRExpr(data);
          VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 64-bit cfg");
       }
-      //enc64[0] |= enc[0];
-      //enc64[0] = (enc64[0] << 32) | enc[1];
-      //enc64[1] |= enc[2];
-      //enc64[1] = (enc64[1] << 32) | enc[3];
-
-      //fn    = &TNT_(helperc_1_tainted_enc64);
-      //nm    = "TNT_(helperc_1_tainted_enc64)";
-
-      //args  = mkIRExprVec_6( mkU64( enc64[0] ),
-      //                       mkU64( enc64[1] ),
-      //                       convert_Value( mce, addr ),
-      //                       convert_Value( mce, data ),
-      //                       convert_Value( mce, atom2vbits( mce, addr ) ), 
-      //                       convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: Unknown platform");
 
@@ -6824,38 +6791,15 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-   Int      num_args = 0;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
 
-   if( arg->tag == Iex_RdTmp ){
-      VG_(sprintf)( aTmp, "t%d=%x t%d!",
-                    tmp, op - Iop_INVALID, extract_IRAtom(arg) );
-      num_args++;
-   }else if( arg->tag == Iex_Const ){
-      VG_(sprintf)( aTmp, "t%d=%x 0x%x!",
-                    tmp, op - Iop_INVALID, extract_IRAtom(arg) );
-   }
+   if ( arg->tag == Iex_Const )  return NULL;
 
-   enc[0] = 0x70000000;
-
-   if(mce->hWordTy == Ity_I32 && num_args == 0){
-      return NULL;
-      //encode_string( aTmp, enc, 4 );
-      //fn    = &TNT_(helperc_0_tainted_enc32);
-      //nm    = "TNT_(helperc_0_tainted_enc32)";
-
-      //args  = mkIRExprVec_6( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
-      //                       mkU32( enc[3] ),
-      //                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                       convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-   }else if(mce->hWordTy == Ity_I32 && num_args == 1){
+   if ( mce->hWordTy == Ity_I32 ) {
       fn    = &TNT_(h32_unop);
       nm    = "TNT_(h32_unop)";
 
+      // 31-24 23-16 15-0
+      // tmp   op    arg
       UInt tt = (tmp << 24);
       op -= Iop_INVALID;
       tt |= (op << 8);
@@ -6864,47 +6808,20 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
       args  = mkIRExprVec_3( mkU32( tt ),
                              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-      //encode_string( aTmp, enc, 3 );
-      //fn    = &TNT_(helperc_1_tainted_enc32);
-      //nm    = "TNT_(helperc_1_tainted_enc32)";
+   } else if ( mce->hWordTy == Ity_I64 ){
+      fn    = &TNT_(h64_unop);
+      nm    = "TNT_(h64_unop)";
 
-      //args  = mkIRExprVec_7( mkU32( enc[0] ),
-      //                       mkU32( enc[1] ),
-      //                       mkU32( enc[2] ),
-      //                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                       convert_Value( mce, arg ),
-      //                       convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-      //                       convert_Value( mce, atom2vbits( mce, arg ) ) );
-   }else if(mce->hWordTy == Ity_I64 && num_args == 0){
-      encode_string( aTmp, enc, 4 );
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
+      // 31-24 23-16 15-0
+      // tmp   op    arg
+      UInt tt = (tmp << 24);
+      op -= Iop_INVALID;
+      tt |= (op << 8);
+      tt |= extract_IRAtom( arg ) & 0xff;
 
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
+      args  = mkIRExprVec_3( mkU64( tt ),
                              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-   }else if(mce->hWordTy == Ity_I64 && num_args == 1){
-      encode_string( aTmp, enc, 4 );
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn    = &TNT_(helperc_1_tainted_enc64);
-      nm    = "TNT_(helperc_1_tainted_enc64)";
-
-      args  = mkIRExprVec_6( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, arg ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-                             convert_Value( mce, atom2vbits( mce, arg ) ) );
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP: Unknown platform");
 
