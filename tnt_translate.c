@@ -6493,7 +6493,7 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRTemp tmp, IROp op,
    }*/
 
    // Iop_INVALID = 0x1400
-   VG_(sprintf)( aStr, "0x15004 t%d = %s", tmp, IROp_string[op - Iop_INVALID]);
+   VG_(sprintf)( aStr, "0x%x t%d = %s", Iex_Qop, tmp, IROp_string[op - Iop_INVALID]);
 
    args = mkIRExprVec_4( arg1, arg2, arg3, arg4);
 
@@ -6569,7 +6569,7 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp tmp, IROp op,
    }*/
 
    // Iop_INVALID = 0x1400
-   VG_(sprintf)( aStr, "0x15005 t%d = %s", tmp, IROp_string[op - Iop_INVALID]);
+   VG_(sprintf)( aStr, "0x%x t%d = %s", Iex_Triop, tmp, IROp_string[op - Iop_INVALID]);
 
    args = mkIRExprVec_3( arg1, arg2, arg3);
 
@@ -6625,160 +6625,97 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
-   IRExpr** args;
-   Int      arg_index[2];
-   Int      num_args = 0;
    IRExpr** di_args;
-   Int      i;
-   HChar    aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };
-   HChar*   aStr;
 
    // Iop_INVALID = 0x1400
-   VG_(sprintf)( aTmp, "t%d=%x ", tmp, op - Iop_INVALID);
+   if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const )  return NULL;
 
-   args = mkIRExprVec_2( arg1, arg2);
-
-   for(i=0; i<2; i++){
-      if( args[i]->tag == Iex_Const ){
-         VG_(sprintf)( aTmp, "%sx%x", aTmp, extract_IRAtom( args[i] ) );
-      }else if( args[i]->tag == Iex_RdTmp ){
-         VG_(sprintf)( aTmp, "%st%d", aTmp, extract_IRAtom( args[i] ) );
-         arg_index[num_args++] = i;
-      }
-   }
-   VG_(sprintf)( aTmp, "%s!", aTmp );
-
-   enc[0] = 0x60000000;
-   encode_string( aTmp, enc, 3 );
-
-   if(mce->hWordTy == Ity_I32 && num_args == 0){
-      return NULL;
-      //encode_string( aTmp, enc, 4 );
-      //fn       = &TNT_(helperc_0_tainted_enc32);
-      //nm       = "TNT_(helperc_0_tainted_enc32)";
-
-      //di_args  = mkIRExprVec_6( mkU32( enc[0] ),
-      //                          mkU32( enc[1] ),
-      //                          mkU32( enc[2] ),
-      //                          mkU32( enc[3] ),
-      //                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-//                             convert_Value( mce, atom2vbits( mce, addr ) ) );
-   }else if(mce->hWordTy == Ity_I32 && num_args == 1){
-      if ( args[0]->tag == Iex_RdTmp && args[1]->tag == Iex_Const ) {
+   if ( mce->hWordTy == Ity_I32 ){
+      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
          fn       = &TNT_(h32_binop_tc);
          nm       = "TNT_(h32_binop_tc)";
 
-         UInt tt = extract_IRAtom(args[0]);
+         UInt tt = extract_IRAtom(arg1);
          op -= Iop_INVALID;
          tt |= (op << 8);
          tt |= (tmp << 24);
 
          di_args  = mkIRExprVec_4( mkU32( tt ),
-                                   mkU32( extract_IRAtom( args[1] ) ),
+                                   mkU32( extract_IRAtom( arg2 ) ),
                                    convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                                    convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-      } else {
+      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
          fn       = &TNT_(h32_binop_ct);
          nm       = "TNT_(h32_binop_ct)";
 
-         UInt tt = extract_IRAtom(args[1]);
+         UInt tt = extract_IRAtom(arg2);
          op -= Iop_INVALID;
          tt |= (op << 8);
          tt |= (tmp << 24);
 
          di_args  = mkIRExprVec_4( mkU32( tt ),
-                                   mkU32( extract_IRAtom( args[0] ) ),
+                                   mkU32( extract_IRAtom( arg1 ) ),
+                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      } else {
+
+         fn    = &TNT_(h32_binop_tt);
+         nm    = "TNT_(h32_binop_tt)";
+
+         UInt tt = (tmp << 16);
+         tt |= extract_IRAtom( arg1 );
+         UInt tt2 = (extract_IRAtom( arg2 ) << 16);
+         op -= Iop_INVALID;
+         tt2 |= op;
+
+         di_args  = mkIRExprVec_4( mkU32( tt ),
+                                   mkU32( tt2 ),
                                    convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                                    convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
-      //encode_string( aTmp, enc, 3 );
-      //fn       = &TNT_(helperc_1_tainted_enc32);
-      //nm       = "TNT_(helperc_1_tainted_enc32)";
+   }else if( mce->hWordTy == Ity_I64 ){
+      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
+         fn       = &TNT_(h64_binop_tc);
+         nm       = "TNT_(h64_binop_tc)";
 
-      //di_args  = mkIRExprVec_7( mkU32( enc[0] ),
-      //                          mkU32( enc[1] ),
-      //                          mkU32( enc[2] ),
-      //                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                          convert_Value( mce, args[arg_index[0]] ), 
-      //                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-      //                          convert_Value( mce, atom2vbits( mce, args[arg_index[0]] ) ) );
-   }else if( mce->hWordTy == Ity_I32 && num_args == 2 ){
+         UInt tt = extract_IRAtom(arg1);
+         op -= Iop_INVALID;
+         tt |= (op << 8);
+         tt |= (tmp << 24);
 
-      fn    = &TNT_(h32_binop_tt);
-      nm    = "TNT_(h32_binop_tt)";
+         di_args  = mkIRExprVec_4( mkU64( tt ),
+                                   mkU64( extract_IRAtom( arg2 ) ),
+                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
+         fn       = &TNT_(h64_binop_ct);
+         nm       = "TNT_(h64_binop_ct)";
 
-      UInt tt = (tmp << 16);
-      tt |= extract_IRAtom( args[0] );
-      UInt tt2 = (extract_IRAtom( args[1] ) << 16);
-      op -= Iop_INVALID;
-      tt2 |= op;
+         UInt tt = extract_IRAtom(arg2);
+         op -= Iop_INVALID;
+         tt |= (op << 8);
+         tt |= (tmp << 24);
 
-      di_args  = mkIRExprVec_4( mkU32( tt ),
-                                mkU32( tt2 ),
-                                convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-      //aStr = (HChar*)VG_(malloc)( "create_dirty_BINOP", sizeof(HChar)*128 );
-      //VG_(sprintf)( aStr, "0x15006 t%d = %s t%d t%d", 
-      //              tmp, IROp_string[op - Iop_INVALID], 
-      //              extract_IRAtom( args[0] ), extract_IRAtom( args[1] ) );
+         di_args  = mkIRExprVec_4( mkU64( tt ),
+                                   mkU64( extract_IRAtom( arg1 ) ),
+                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      } else {
 
-      //fn    = &TNT_(helperc_2_tainted);
-      //nm    = "TNT_(helperc_2_tainted)";
+         fn    = &TNT_(h64_binop_tt);
+         nm    = "TNT_(h64_binop_tt)";
 
-      //di_args  = mkIRExprVec_7( mkIRExpr_HWord( (HWord)aStr ),
-      //                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-      //                          convert_Value( mce, args[arg_index[0]] ), 
-      //                          convert_Value( mce, args[arg_index[1]] ), 
-      //                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-      //                          convert_Value( mce, atom2vbits( mce, args[arg_index[0]] ) ), 
-      //                          convert_Value( mce, atom2vbits( mce, args[arg_index[1]] ) ) );
-   }else if( mce->hWordTy == Ity_I64 && num_args == 2 ){
-      // Helper function can't have num_args > 6 for 64-bits
-      aStr = (HChar*)VG_(malloc)( "create_dirty_BINOP", sizeof(HChar)*128 );
-      VG_(sprintf)( aStr, "0x15006 t%d = %s t%d t%d", 
-                    tmp, IROp_string[op - Iop_INVALID], 
-                    extract_IRAtom( args[0] ), extract_IRAtom( args[1] ) );
+         UInt tt = (tmp << 16);
+         tt |= extract_IRAtom( arg1 );
+         UInt tt2 = (extract_IRAtom( arg2 ) << 16);
+         op -= Iop_INVALID;
+         tt2 |= op;
 
-      fn    = &TNT_(helperc_0_tainted);
-      nm    = "TNT_(helperc_0_tainted)";
-
-      di_args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
-                                convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   }else if(mce->hWordTy == Ity_I64 && num_args == 0){
-      encode_string( aTmp, enc, 4 );
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn       = &TNT_(helperc_0_tainted_enc64);
-      nm       = "TNT_(helperc_0_tainted_enc64)";
-
-      di_args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                                mkU64( enc64[1] ),
-                                convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-   }else if(mce->hWordTy == Ity_I64 && num_args == 1){
-      encode_string( aTmp, enc, 4 );
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn       = &TNT_(helperc_1_tainted_enc64);
-      nm       = "TNT_(helperc_1_tainted_enc64)";
-
-      di_args  = mkIRExprVec_6( mkU64( enc64[0] ),
-                                mkU64( enc64[1] ),
-                                convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                convert_Value( mce, args[arg_index[0]] ), 
-                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ),
-                                convert_Value( mce, atom2vbits( mce, args[arg_index[0]] ) ) );
+         di_args  = mkIRExprVec_4( mkU64( tt ),
+                                   mkU64( tt2 ),
+                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+      }
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP: Unknown platform");
 

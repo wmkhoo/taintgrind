@@ -3765,6 +3765,102 @@ void TNT_(h64_unop) (
 }
 
 VG_REGPARM(3)
+void TNT_(h64_binop_tc) (
+   ULong tt, 
+   ULong c, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt tmp = ((UInt)tt >> 24) & 0xff;
+   UInt op  = ((UInt)tt >> 8)  & 0xffff;
+   tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   UInt tmp2 = tt & 0xff;
+   VG_(sprintf)( aTmp, "0x%x t%d = %s t%d 0x%llx",
+                 Iex_Binop, tmp, IROp_string[op], tmp2, c );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+}
+
+VG_REGPARM(3)
+void TNT_(h64_binop_ct) (
+   ULong tt, 
+   ULong c, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt tmp = ((UInt)tt >> 24) & 0xff;
+   UInt op  = ((UInt)tt >> 8)  & 0xffff;
+   tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   UInt tmp2 = (UInt)tt & 0xff;
+   VG_(sprintf)( aTmp, "0x%x t%d = %s 0x%llx t%d",
+                 Iex_Binop, tmp, IROp_string[op], c, tmp2 );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+}
+
+VG_REGPARM(3)
+void TNT_(h64_binop_tt) (
+   ULong tt, 
+   ULong tt2, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt tmp = ((UInt)tt >> 16) & 0xffff;
+   UInt tmp2 = (UInt)tt & 0xffff;
+   UInt tmp3 = ((UInt)tt2 >> 16) & 0xffff;
+   UInt op = (UInt)tt2  & 0xffff;
+
+   if ( op >= ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) ) {
+      VG_(printf)("op = 0x%x, max 0x%lx\n", op,
+                  ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+      tl_assert( op < ( sizeof(IROp_string)/sizeof(IROp_string[0]) ) );
+   }
+
+   VG_(sprintf)( aTmp, "0x%x t%d = %s t%d t%d",
+                 Iex_Binop, tmp, IROp_string[op], tmp2, tmp3 );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tl_assert( tmp3 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+}
+
+
+VG_REGPARM(3)
 void TNT_(h64_rdtmp) (
    ULong tt, 
    ULong value, 
