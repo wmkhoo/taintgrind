@@ -3442,6 +3442,23 @@ void TNT_(h32_ite_tt) (
    VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
 }
 
+// No decoding necessary. Just print the string
+VG_REGPARM(3)
+void TNT_(h32_none) ( 
+   HChar *str, 
+   UInt value, 
+   UInt taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   // No information flow info
+   VG_(printf)("%s | %s | 0x%x | 0x%x\n", 
+      fnname, str, value, taint );
+}
+
 /**** 64-bit helpers ****/
 
 VG_REGPARM(3)
@@ -3884,6 +3901,24 @@ void TNT_(h64_rdtmp) (
    VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
 }
 
+// No decoding necessary. Just print the string
+VG_REGPARM(3)
+void TNT_(h64_none) ( 
+   HChar *str, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   // No information flow info
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx\n", 
+      fnname, str, value, taint );
+}
+
+/*-- End of 64-bit helpers --*/
 
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (

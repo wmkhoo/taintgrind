@@ -122,6 +122,7 @@ VG_REGPARM(3) void TNT_(h32_rdtmp) ( UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tc) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_ct) ( UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tt) ( UInt, UInt, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_none) ( HChar *, UInt, UInt );
 
 VG_REGPARM(3) void TNT_(h64_exit) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_next) ( ULong, ULong, ULong );
@@ -138,6 +139,7 @@ VG_REGPARM(3) void TNT_(h64_rdtmp) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_store_tt) ( ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_store_tc) ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_store_ct) ( ULong, ULong, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_none) ( HChar *, ULong, ULong );
 
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
 VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );

@@ -6478,19 +6478,9 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRTemp tmp, IROp op,
    IRExpr** args;
    IRExpr** di_args;
    HChar*   aStr;
-   Int      i; //, num_args = 0;
-   //Int      arg_index[4];
-/*   Char     aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };*/
+   Int      i;
 
    aStr = (HChar*)VG_(malloc)( "create_dirty_QOP", sizeof(HChar)*128 );
-//   aStr = (Char*)VG_(cli_malloc)( VG_(clo_alignment), sizeof(Char)*128 );
-//   aStr = TNT_string[0x5500 | ( tmp & 0xff )];
-/*   aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   while( aStr[0] != '\0' ){
-      aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   }*/
 
    // Iop_INVALID = 0x1400
    VG_(sprintf)( aStr, "0x%x t%d = %s", Iex_Qop, tmp, IROp_string[op - Iop_INVALID]);
@@ -6502,45 +6492,21 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRTemp tmp, IROp op,
          VG_(sprintf)( aStr, "%s 0x%x", aStr, extract_IRAtom( args[i] ) );
       else if( args[i]->tag == Iex_RdTmp ){
          VG_(sprintf)( aStr, "%s t%d", aStr, extract_IRAtom( args[i] ) );
-         //arg_index[num_args++] = i;
       }
    }
 
-   fn       = &TNT_(helperc_0_tainted);
-   nm       = "TNT_(helperc_0_tainted)";
+
+   if ( mce->hWordTy == Ity_I32 ){
+      fn       = &TNT_(h32_none);
+      nm       = "TNT_(h32_none)";
+   } else {
+      fn       = &TNT_(h64_none);
+      nm       = "TNT_(h64_none)";
+   }
 
    di_args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
                              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-/*   VG_(sprintf)( aTmp, "t%d=%s!", tmp, IROp_string[op & 0xfff]);
-   enc[0] = 0x40000000;
-   encode_string( aTmp, enc, 4 );
-
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
-
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_QOP: Unknown platform");*/
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), di_args );
 }
@@ -6556,17 +6522,8 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp tmp, IROp op,
    IRExpr** di_args;
    Int      i;
    HChar*   aStr;
-/*   Char     aTmp[128];
-   UInt     enc[4] = { 0, 0, 0, 0 };
-   ULong    enc64[2] = { 0, 0 };*/
 
    aStr = (HChar*)VG_(malloc)( "create_dirty_TRIOP", sizeof(HChar)*128 );
-//   aStr = (Char*)VG_(cli_malloc)( VG_(clo_alignment), sizeof(Char)*128 );
-//   aStr = TNT_string[0x5400 | ( tmp & 0xff )];
-/*   aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   while( aStr[0] != '\0' ){
-      aStr = TNT_string[ VG_(random)(0) & 0xffff ];
-   }*/
 
    // Iop_INVALID = 0x1400
    VG_(sprintf)( aStr, "0x%x t%d = %s", Iex_Triop, tmp, IROp_string[op - Iop_INVALID]);
@@ -6580,41 +6537,17 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp tmp, IROp op,
          VG_(sprintf)( aStr, "%s t%d", aStr, extract_IRAtom( args[i] ) );
    }
 
-   fn       = &TNT_(helperc_0_tainted);
-   nm       = "TNT_(helperc_0_tainted)";
+   if ( mce->hWordTy == Ity_I32 ){
+      fn       = &TNT_(h32_none);
+      nm       = "TNT_(h32_none)";
+   } else {
+      fn       = &TNT_(h64_none);
+      nm       = "TNT_(h64_none)";
+   }
 
-      di_args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
-                                convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-/*   VG_(sprintf)( aTmp, "t%d=%s!", tmp, IROp_string[op & 0xfff]);
-   enc[0] = 0x50000000;
-   encode_string( aTmp, enc, 4 );
-
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(helperc_0_tainted_enc32);
-      nm    = "TNT_(helperc_0_tainted_enc32)";
-
-      args  = mkIRExprVec_6( mkU32( enc[0] ),
-                             mkU32( enc[1] ),
-                             mkU32( enc[2] ),
-                             mkU32( enc[3] ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   }else if(mce->hWordTy == Ity_I64){
-      enc64[0] |= enc[0];
-      enc64[0] = (enc64[0] << 32) | enc[1];
-      enc64[1] |= enc[2];
-      enc64[1] = (enc64[1] << 32) | enc[3];
-
-      fn    = &TNT_(helperc_0_tainted_enc64);
-      nm    = "TNT_(helperc_0_tainted_enc64)";
-
-      args  = mkIRExprVec_4( mkU64( enc64[0] ),
-                             mkU64( enc64[1] ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_TRIOP: Unknown platform");*/
+   di_args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
+                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
 }
