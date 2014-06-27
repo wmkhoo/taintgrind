@@ -151,14 +151,14 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 Int  ctoi( HChar c );
 Int  ctoi_test( HChar c );
 Int  atoi( HChar *s );
-Char decode_char( UInt num );
-void decode_string( UInt *enc, HChar *aStr );
-void post_decode_string( HChar *aStr );
-void post_decode_string_load( HChar *aStr );
-void post_decode_string_primops( HChar *aStr );
-void post_decode_string_binops( HChar *aStr );
-void post_decode_string_store( HChar *aStr );
-void post_decode_string_ite( HChar *aStr );
+//Char decode_char( UInt num );
+//void decode_string( UInt *enc, HChar *aStr );
+//void post_decode_string( HChar *aStr );
+//void post_decode_string_load( HChar *aStr );
+//void post_decode_string_primops( HChar *aStr );
+//void post_decode_string_binops( HChar *aStr );
+//void post_decode_string_store( HChar *aStr );
+//void post_decode_string_ite( HChar *aStr );
 Int get_and_check_reg( HChar *reg );
 Int get_and_check_tvar( HChar *tmp );
 void infer_client_binary_name(UInt pc);
@@ -2419,7 +2419,7 @@ Int atoi( HChar *s ){
 
    return result;
 }
-
+#if 0
 Char decode_char( UInt num ){
    switch( num ){
    case 0:
@@ -2779,7 +2779,7 @@ void post_decode_string( HChar *aStr ){
       post_decode_string_store( aStr );
    }
 }
-
+#endif
 
 /*-----------------------------------------------
    Helper functions for taint information flows
@@ -2855,7 +2855,7 @@ void infer_client_binary_name(UInt pc) {
    }
 
 }
-
+#if 0
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc32) (
    UInt enc0, 
@@ -2928,7 +2928,7 @@ void TNT_(helperc_0_tainted_enc32) (
       }
    }
 }
-
+#endif
 
 /**** 32-bit helpers ****/
 
@@ -3065,6 +3065,41 @@ void TNT_(h32_store_tc) (
 
    VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
    VG_(printf)( "; t%d.%d\n", addr, tvar_i[addr] );
+}
+
+VG_REGPARM(3)
+void TNT_(h32_store_ct) (
+   UInt tt, 
+   UInt addr,
+   UInt value, 
+   UInt taint ) {
+
+   H_EXIT_EARLY
+   H32_PC
+   H_VAR
+
+   UInt ty = (tt >> 28) & 0xf;
+   UInt data = (tt >> 0) & 0xfffffff;
+
+   VG_(sprintf)( aTmp, "0x%x STORE 0x%x = %s t%d", Ist_Store, addr, IRType_string[ty], data );
+
+   //VG_(printf)("%s | %s | 0x%x 0x%x | 0x%x 0x%x | ", 
+   //   fnname, aTmp, value1, value2, taint1, taint2 );
+
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   // Check if it hasn't been seen before
+   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
+      myStringArray_push( &lvar_s, varname );
+   }
+   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
+
+   tl_assert( data < TVAR_I_MAX );
+
+   VG_(printf)( "(%d) %s.%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( " <-&- t%d.%d\n", data, tvar_i[data] );
 }
 
 VG_REGPARM(3)
@@ -3901,6 +3936,92 @@ void TNT_(h64_rdtmp) (
    VG_(printf)("t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2]);
 }
 
+VG_REGPARM(3)
+void TNT_(h64_ite_tc) (
+   ULong tt, 
+   ULong c, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt tmp = ((UInt)tt >> 24) & 0xff;
+   UInt cond = ((UInt)tt >> 12) & 0xfff;
+   UInt tmp2  = (UInt)tt & 0xfff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%llx",
+                 Iex_ITE, tmp, cond, tmp2, c );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+}
+
+VG_REGPARM(3)
+void TNT_(h64_ite_ct) (
+   ULong tt, 
+   ULong c, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   UInt tmp = ((UInt)tt >> 24) & 0xff;
+   UInt cond = ((UInt)tt >> 12) & 0xfff;
+   UInt tmp2  = (UInt)tt & 0xfff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%llx : t%d",
+                 Iex_ITE, tmp, cond, c, tmp2 );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+}
+
+VG_REGPARM(3)
+void TNT_(h64_ite_tt) (
+   ULong tt, 
+   ULong tt2, 
+   ULong value, 
+   ULong taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt tmp = ((UInt)tt >> 16) & 0xffff;
+   UInt cond = (UInt)tt & 0xffff;
+   UInt tmp2 = ((UInt)tt2 >> 16) & 0xffff;
+   UInt tmp3 = (UInt)tt2 & 0xffff;
+   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
+                 Iex_ITE, tmp, cond, tmp2, tmp3 );
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( tmp2 < TVAR_I_MAX );
+   tl_assert( tmp3 < TVAR_I_MAX );
+   tvar_i[tmp]++;
+
+   VG_(printf)( "t%d.%d <- t%d.%d, t%d.%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+}
+
 // No decoding necessary. Just print the string
 VG_REGPARM(3)
 void TNT_(h64_none) ( 
@@ -3919,7 +4040,7 @@ void TNT_(h64_none) (
 }
 
 /*-- End of 64-bit helpers --*/
-
+#if 0
 VG_REGPARM(3)
 void TNT_(helperc_0_tainted_enc64) (
    ULong enc0, 
@@ -4616,7 +4737,7 @@ void TNT_(helperc_4_tainted) (
       }
    }
 }
-
+#endif
 /*------------------------------------------------------------*/
 /*--- utility function for finding local/global variable   ---*/
 /*--- name from data address, using debug symbol tables.   ---*/
