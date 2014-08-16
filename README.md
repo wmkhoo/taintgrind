@@ -39,10 +39,8 @@ Usage
 	    --taint-start=[0,800000]    starting byte to taint (in hex) [0]
 	    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]
 	    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]
-	    --after-bb=[0,1000000]      start instrumentation after [0]
-	    --before-bb=[0,1000000]     stop instrumentation after [-1]
 	    --tainted-ins-only= no|yes  print tainted instructions only [yes]
-	    --critical-ins-only= no|yes print critical instructions only [yes]
+	    --critical-ins-only= no|yes print critical instructions only [no]
 
 
 Sample output
