@@ -6932,29 +6932,29 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
 #endif
    // For complainIfTainted
    IRDirty* di2;
-
+#if 0
    // Check if instrumentation is turned on
    // i.e. have we read tainted bytes from a file?
    numBBs++;
    if( numBBs % 1000 == 0 ) {
       numBBs = 0;
       numKBBs++;
-      VG_(printf)("kBBs read: %d ", numKBBs);
+      //VG_(printf)("kBBs read: %d ", numKBBs);
    }
 
    if( TNT_(clo_after_kbb) != 0 && numKBBs < TNT_(clo_after_kbb) ){
-      if( numBBs % 1000 == 0 )
-         VG_(printf)("Off\n");
+      //if( numBBs % 1000 == 0 )
+      //   VG_(printf)("Off\n");
       return sb_in;
    }
    if( TNT_(clo_before_kbb) != -1 && numKBBs > TNT_(clo_before_kbb) ){
-      if( numBBs % 1000 == 0 )
-         VG_(printf)("Off\n");
+      //if( numBBs % 1000 == 0 )
+      //   VG_(printf)("Off\n");
       return sb_in;
    }
-   if( numBBs % 1000 == 0 )
-      VG_(printf)("On\n");
-   
+   //if( numBBs % 1000 == 0 )
+   //   VG_(printf)("On\n");
+#endif
 
    if (gWordTy != hWordTy) {
       /* We don't currently support this case. */
