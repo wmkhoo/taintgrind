@@ -9,7 +9,8 @@ pkginclude_HEADERS = \
 
 noinst_HEADERS = \
 	tnt_include.h \
-	tnt_strings.h
+	tnt_strings.h \
+        copy.h
 
 #----------------------------------------------------------------------------
 # taintgrind-<platform>
@@ -24,7 +25,8 @@ TAINTGRIND_SOURCES_COMMON = \
 	tnt_syswrap.c \
 	tnt_malloc_wrappers.c \
 	tnt_main.c \
-	tnt_translate.c
+	tnt_translate.c \
+        copy.c
 
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_SOURCES      = $(TAINTGRIND_SOURCES_COMMON)
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CPPFLAGS     = \

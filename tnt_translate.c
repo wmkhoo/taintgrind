@@ -39,6 +39,7 @@
 
 #include "tnt_include.h"
 //#include "tnt_strings.h"
+#include "copy.h"
 
 /*------------------------------------------------------------*/
 /*--- Forward decls                                        ---*/
@@ -905,33 +906,34 @@ void encode_string( HChar *aStr, UInt *enc, UInt enc_size );
 
 Int extract_IRAtom( IRAtom* atom );
 Int extract_IRConst( IRConst* con );
+ULong extract_IRConst64( IRConst* con );
 
 // Convert to Dirty helper arg type IRExpr*
 static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
 
 // The IRStmt types
-IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data );
+IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data );
 IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias, IRExpr* data );
-IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end,
+IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone, IREndness end,
                              IRTemp resSC, IRExpr* addr,
                              IRExpr* data );
 IRDirty* create_dirty_CAS( MCEnv* mce, IRCAS* details );
 IRDirty* create_dirty_DIRTY( MCEnv* mce, IRDirty* details );
-IRDirty* create_dirty_EXIT( MCEnv* mce, IRExpr* guard, IRJumpKind jk, IRConst* dst );
+IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard, IRJumpKind jk, IRConst* dst );
 IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next );
 
 // The IRExpr types with the destination tmp, dst, as an additional argument
-IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp dst, IRExpr* data );
-IRDirty* create_dirty_GET( MCEnv* mce, IRTemp dst, Int offset, IRType ty );
+IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* data );
+IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp dst, Int offset, IRType ty );
 IRDirty* create_dirty_GETI( MCEnv* mce, IRTemp dst, IRRegArray* descr, IRExpr* ix, Int bias );
-IRDirty* create_dirty_RDTMP( MCEnv* mce, IRTemp dst, IRTemp tmp );
+IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp dst, IRTemp tmp );
 IRDirty* create_dirty_QOP( MCEnv* mce, IRTemp dst, IROp op,
                            IRExpr* arg1, IRExpr* arg2, IRExpr* arg3, IRExpr* arg4 );
 IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp dst, IROp op, 
                              IRExpr* arg1, IRExpr* arg2, IRExpr* arg3 );
-IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp dst, IROp op, IRExpr* arg1, IRExpr* arg2 );
-IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp dst, IROp op, IRExpr* arg );
-IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp, Bool isLL, IREndness end,
+IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op, IRExpr* arg1, IRExpr* arg2 );
+IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op, IRExpr* arg );
+IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp, Bool isLL, IREndness end,
                             IRType ty, IRExpr* addr );
 IRDirty* create_dirty_CCALL( MCEnv* mce, IRTemp tmp, 
                              IRCallee* cee, IRType retty, IRExpr** args );
@@ -1073,7 +1075,7 @@ static Bool isAlwaysDefd ( MCEnv* mce, Int offset, Int size ) //1159
    relevant V-bits are then generated from the original.
 */
 static
-void do_shadow_PUT ( MCEnv* mce,  Int offset,  //1191
+void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
                      IRAtom* atom, IRAtom* vatom, IRExpr *guard )
 {
    IRType ty;
@@ -1119,8 +1121,8 @@ void do_shadow_PUT ( MCEnv* mce,  Int offset,  //1191
       // Taintgrind: include this check only if we're not tracking critical ins
       // For why total_sizeB is added to offset, 
       // see VEX/pub/libvex.h "A note about guest state layout"
-      if( atom && !TNT_(clo_critical_ins_only) ){
-         IRDirty* di2 = create_dirty_PUT( mce, offset, atom );
+      if( atom && clone && !TNT_(clo_critical_ins_only) ){
+         IRDirty* di2 = create_dirty_PUT( mce, clone, offset, atom );
          if ( di2 ) complainIfTainted( mce, NULL /*atom*/, di2 ); 
       }
 //   }
@@ -4297,7 +4299,7 @@ IRExpr* atom2vbits ( MCEnv* mce, IRAtom* atom )
 
 // Taintgrind: include checks for tainted RdTmp's
 static
-void do_shadow_WRTMP ( MCEnv* mce, IRTemp tmp, IRExpr* expr )
+void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr )
 {
    IRDirty* di2;
 
@@ -4306,7 +4308,7 @@ void do_shadow_WRTMP ( MCEnv* mce, IRTemp tmp, IRExpr* expr )
    assign( 'V', mce, findShadowTmpV( mce, tmp ), expr2vbits( mce, expr ) );
 
    if( expr->tag != Iex_Const ){
-      di2 = create_dirty_WRTMP( mce, tmp, expr );
+      di2 = create_dirty_WRTMP( mce, clone, tmp, expr );
 
       if( di2 != NULL )
          complainIfTainted( mce, IRExpr_RdTmp( tmp ), di2 );
@@ -4372,7 +4374,8 @@ IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom ) // 2980
    function must do that if necessary. */
 
 static
-void do_shadow_Store ( MCEnv* mce,   // 3032
+void do_shadow_Store ( MCEnv* mce,
+                       IRStmt *clone,
                        IREndness end,
                        IRAtom* addr, UInt bias,
                        IRAtom* data, IRAtom* vdata,
@@ -4430,8 +4433,8 @@ void do_shadow_Store ( MCEnv* mce,   // 3032
       the address (shadow) to 'defined' following the test. */
    // Taintgrind: What to do in the vdata case?
    //          vdata cases (CAS, Dirty) are handled by their resp. shadow routines
-   if( data ){
-      di2 = create_dirty_STORE( mce, end, 0/*resSC*/, addr, data );
+   if( data && clone ){
+      di2 = create_dirty_STORE( mce, clone, end, 0/*resSC*/, addr, data );
       if ( di2 ) complainIfTainted( mce, addr, di2 );
    }
 
@@ -4818,7 +4821,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRDirty* d ) // 3224
             /* Write suitably-casted 'curr' to the state slice 
                gOff .. gOff+n-1 */
             tyDst = szToITy( n );
-            do_shadow_PUT( mce, gOff,
+            do_shadow_PUT( mce, NULL /*clone*/, gOff,
                                 NULL, /* original atom */
                                 mkPCastTo( mce, tyDst, curr ), d->guard );
             gSz -= n;
@@ -4833,7 +4836,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRDirty* d ) // 3224
       toDo   = d->mSize;
       /* chew off 32-bit chunks */
       while (toDo >= 4) {
-         do_shadow_Store( mce, end, d->mAddr, d->mSize - toDo,
+         do_shadow_Store( mce, NULL/*clone*/, end, d->mAddr, d->mSize - toDo,
                           NULL, /* original data */
                           mkPCastTo( mce, Ity_I32, curr ),
                           NULL/*guard*/ );
@@ -4841,7 +4844,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRDirty* d ) // 3224
       }
       /* chew off 16-bit chunks */
       while (toDo >= 2) {
-         do_shadow_Store( mce, end, d->mAddr, d->mSize - toDo,
+         do_shadow_Store( mce, NULL/*clone*/, end, d->mAddr, d->mSize - toDo,
                           NULL, /* original data */
                           mkPCastTo( mce, Ity_I16, curr ),
                           NULL/*guard*/ );
@@ -5040,7 +5043,7 @@ static void do_shadow_CAS_single ( MCEnv* mce, IRCAS* cas )
    /* 7. if "expected == old"
             store data# to shadow memory */
 
-   do_shadow_Store( mce, cas->end, cas->addr, 0/*bias*/,
+   do_shadow_Store( mce, NULL/*clone*/, cas->end, cas->addr, 0/*bias*/,
                     NULL/*data*/, vdataLo/*vdata*/,
                     expd_eq_old/*guard for store*/ );
    // Taintgrind: Not tracking
@@ -5207,10 +5210,10 @@ static void do_shadow_CAS_double ( MCEnv* mce, IRCAS* cas )
 
    /* 7. if "expected == old"
             store data# to shadow memory */
-   do_shadow_Store( mce, cas->end, cas->addr, memOffsHi/*bias*/,
+   do_shadow_Store( mce, NULL/*clone*/, cas->end, cas->addr, memOffsHi/*bias*/,
                     NULL/*data*/, vdataHi/*vdata*/,
                     expd_eq_old/*guard for store*/ );
-   do_shadow_Store( mce, cas->end, cas->addr, memOffsLo/*bias*/,
+   do_shadow_Store( mce, NULL/*clone*/, cas->end, cas->addr, memOffsLo/*bias*/,
                     NULL/*data*/, vdataLo/*vdata*/,
                     expd_eq_old/*guard for store*/ );
    // Taintgrind: Not tracking
@@ -5262,7 +5265,7 @@ static void do_shadow_LLSC ( MCEnv*    mce,
                                    stStoredata);
       tl_assert(dataTy == Ity_I64 || dataTy == Ity_I32
                 || dataTy == Ity_I16 || dataTy == Ity_I8);
-      do_shadow_Store( mce, stEnd,
+      do_shadow_Store( mce, NULL /*clone*/, stEnd,
                             stAddr, 0/* addr bias */,
                             stStoredata,
                             NULL /* shadow data */,
@@ -5296,7 +5299,7 @@ static void do_shadow_StoreG ( MCEnv* mce, IRStoreG* sg )
    /* do_shadow_Store will generate code to check the definedness and
       validity of sg->addr, in the case where sg->guard evaluates to
       True at run-time. */
-   do_shadow_Store( mce, sg->end,
+   do_shadow_Store( mce, NULL /*clone*/, sg->end,
                     sg->addr, 0/* addr bias */,
                     sg->data,
                     NULL /* shadow data */,
@@ -5490,7 +5493,6 @@ static Bool checkForBogusLiterals ( /*FLAT*/ IRStmt* st )
   passed from TNT_(instrument) to its subroutines to 
   complainIfTainted as an extra argument.
 -----------------------------------------------------------*/
-
 Int extract_IRAtom( IRAtom* atom ){
 //   tl_assert(isIRAtom(atom));
 
@@ -5514,6 +5516,30 @@ Int extract_IRConst( IRConst* con ){
       case Ico_U32:
          return con->Ico.U32;
       case Ico_U64: // Taintgrind: Re-cast it and hope for the best
+         return con->Ico.U64;
+      case Ico_F64:
+         return con->Ico.F64;
+      case Ico_F64i:
+         return con->Ico.F64i;
+      case Ico_V128:
+         return con->Ico.V128;
+      default:
+         ppIRConst(con);
+         VG_(tool_panic)("tnt_translate.c: convert_IRConst");
+   }
+}
+
+ULong extract_IRConst64( IRConst* con ){
+   switch(con->tag){
+      case Ico_U1:
+         return con->Ico.U1;
+      case Ico_U8:
+         return con->Ico.U8;
+      case Ico_U16:
+         return con->Ico.U16;
+      case Ico_U32:
+         return con->Ico.U32;
+      case Ico_U64:
          return con->Ico.U64;
       case Ico_F64:
          return con->Ico.F64;
@@ -5721,39 +5747,25 @@ void encode_string( HChar *aStr, UInt *enc, UInt enc_size ){
    }
 }
 #endif
-IRDirty* create_dirty_PUT( MCEnv* mce, Int offset, IRExpr* data ){
+IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data ){
 //         ppIRExpr output: PUT(<offset>) = data
    Int          nargs = 3;
    const HChar* nm;
    void*        fn;
    IRExpr**     args;
 
-   if(data->tag == Iex_Const)
-      return NULL;
+   if(data->tag == Iex_Const) return NULL;
+
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, data ),
+                          convert_Value( mce, atom2vbits( mce, data ) ) );
 
    if(mce->hWordTy == Ity_I32){
       fn    = &TNT_(h32_put);
       nm    = "TNT_(h32_put)";
-
-      UInt tmp = extract_IRAtom( data );
-      UInt tt = 0 | (tmp << 16);
-      tt |= offset;
-
-      args  = mkIRExprVec_3( mkU32( tt ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
-
    }else if(mce->hWordTy == Ity_I64){
       fn    = &TNT_(h64_put);
       nm    = "TNT_(h64_put)";
-
-      UInt tmp = extract_IRAtom( data );
-      ULong tt = 0 | ((ULong)tmp << 32);
-      tt |= offset;
-
-      args  = mkIRExprVec_3( mkU64( tt ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_PUT: Unknown type");
 
@@ -5806,58 +5818,31 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC, 
+IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone,
+                             IREndness end, IRTemp resSC, 
                              IRExpr* addr, IRExpr* data ){
 //         ppIRExpr output: ST<end>(<addr>) = <data>
    Int          nargs = 3;
    const HChar* nm;
    void*        fn;
    IRExpr**     args;
-   //HChar        aTmp[128];
-   //UInt         enc[4] = { 0, 0, 0, 0 };
-   //ULong        enc64[2] = { 0, 0 };
-   UInt         ty = typeOfIRExpr(mce->sb->tyenv, data) - Ity_INVALID;
 
    if ( addr->tag == Iex_Const && data->tag == Iex_Const ) return NULL;
+
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, data ),
+                          convert_Value( mce, atom2vbits( mce, data ) ) );
 
    if(mce->hWordTy == Ity_I32){
       if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_store_tt);
          nm    = "TNT_(h32_store_tt)";
-
-         // 31-28 27-16 15-0
-         //  ty   addr  data
-         UInt tt = (ty << 28); 
-         tt |= ( (extract_IRAtom( addr ) & 0xfff) << 16 );
-         tt |= extract_IRAtom( data );
-
-         // Sacrifice tainted-ness of addr if we're to keep within 4 args
-         args  = mkIRExprVec_3( mkU32( tt ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
-
       } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
          fn    = &TNT_(h32_store_tc);
          nm    = "TNT_(h32_store_tc)";
-
-         UInt tt = extract_IRAtom( addr ) & 0xfffffff;
-         tt |= (ty << 28);
-
-         args  = mkIRExprVec_4( mkU32( tt ),
-                                mkU32( extract_IRAtom( data ) ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
       } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_store_ct);
          nm    = "TNT_(h32_store_ct)";
-
-         UInt tt = extract_IRAtom( data ) & 0xfffffff;
-         tt |= (ty << 28);
-
-         args  = mkIRExprVec_4( mkU32( tt ),
-                                mkU32( extract_IRAtom( addr ) ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
       } else {
          VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 32-bit cfg");
       }
@@ -5865,39 +5850,12 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IREndness end, IRTemp resSC,
       if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h64_store_tt);
          nm    = "TNT_(h64_store_tt)";
-
-         // 31-28 27-16 15-0
-         //  ty   addr  data
-         UInt tt = (ty << 28); 
-         tt |= ( (extract_IRAtom( addr ) & 0xfff) << 16 );
-         tt |= extract_IRAtom( data );
-
-         args  = mkIRExprVec_3( mkU64( tt ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
-
       } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
          fn    = &TNT_(h64_store_tc);
          nm    = "TNT_(h64_store_tc)";
-
-         UInt tt = extract_IRAtom( addr ) & 0xfffffff;
-         tt |= (ty << 28);
-
-         args  = mkIRExprVec_4( mkU64( tt ),
-                                mkU64( extract_IRAtom( data ) ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
       } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
          fn    = &TNT_(h64_store_ct);
          nm    = "TNT_(h64_store_ct)";
-
-         UInt tt = extract_IRAtom( data ) & 0xfffffff;
-         tt |= (ty << 28);
-
-         args  = mkIRExprVec_4( mkU64( tt ),
-                                mkU64( extract_IRAtom( addr ) ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
       } else {
          ppIRExpr(addr);
          ppIRExpr(data);
@@ -6079,33 +6037,31 @@ typedef
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_EXIT( MCEnv* mce, IRExpr* guard, IRJumpKind jk, IRConst* dst ){
+IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard, IRJumpKind jk, IRConst* dst ){
 // ppIRStmt output:  if(<guard>) goto {<jk>} <dst>
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
 
-   if(guard->tag == Iex_Const)        return NULL;
+   //if(guard->tag == Iex_Const)        return NULL;
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_exit);
-      nm    = "TNT_(h32_exit)";
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, guard ),
+                          convert_Value( mce, atom2vbits( mce, guard ) ) );
 
-      args  = mkIRExprVec_4( mkU32( extract_IRAtom( guard ) ),
-                             mkU32( extract_IRConst( dst ) ),
-                             convert_Value( mce, guard ),
-                             convert_Value( mce, atom2vbits( mce, guard ) ) );
-
-   }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_exit);
-      nm    = "TNT_(h64_exit)";
-
-      args  = mkIRExprVec_4( mkU64( extract_IRAtom( guard ) ),
-                             mkU64( extract_IRConst( dst ) ),
-                             convert_Value( mce, guard ),
-                             convert_Value( mce, atom2vbits( mce, guard ) ) );
-
+   if(mce->hWordTy == Ity_I32 && guard->tag == Iex_Const){
+      fn    = &TNT_(h32_exit_c);
+      nm    = "TNT_(h32_exit_c)";
+   }else if(mce->hWordTy == Ity_I32 && guard->tag == Iex_RdTmp){
+      fn    = &TNT_(h32_exit_t);
+      nm    = "TNT_(h32_exit_t)";
+   }else if(mce->hWordTy == Ity_I64 && guard->tag == Iex_Const){
+      fn    = &TNT_(h64_exit_c);
+      nm    = "TNT_(h64_exit_c)";
+   }else if(mce->hWordTy == Ity_I64 && guard->tag == Iex_RdTmp){
+      fn    = &TNT_(h64_exit_t);
+      nm    = "TNT_(h64_exit_t)";
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT: Unknown platform");
 
@@ -6119,31 +6075,33 @@ IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
    void*    fn;
    IRExpr** args;
 
-   if( next->tag == Iex_Const )       return NULL;
+   // We need to track all BBs, for var run-time taint and values
+   //if( next->tag == Iex_Const )       return NULL;
+   IRExpr *clone = deepMallocIRExpr(next);
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_next);
-      nm    = "TNT_(h32_next)";
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, next ),
+                          convert_Value( mce, atom2vbits( mce, next ) ) );
 
-      args  = mkIRExprVec_3( mkU32( extract_IRAtom( next ) ),
-                             convert_Value( mce, next ),
-                             convert_Value( mce, atom2vbits( mce, next ) ) );
-
-   }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_next);
-      nm    = "TNT_(h64_next)";
-
-      args  = mkIRExprVec_3( mkU64( extract_IRAtom( next ) ),
-                             convert_Value( mce, next ),
-                             convert_Value( mce, atom2vbits( mce, next ) ) );
-
+   if(mce->hWordTy == Ity_I32 && next->tag == Iex_Const){
+      fn    = &TNT_(h32_next_c);
+      nm    = "TNT_(h32_next_c)";
+   }else if(mce->hWordTy == Ity_I32 && next->tag == Iex_RdTmp){
+      fn    = &TNT_(h32_next_t);
+      nm    = "TNT_(h32_next_t)";
+   }else if(mce->hWordTy == Ity_I64 && next->tag == Iex_Const){
+      fn    = &TNT_(h64_next_c);
+      nm    = "TNT_(h64_next_c)";
+   }else if(mce->hWordTy == Ity_I64 && next->tag == Iex_RdTmp){
+      fn    = &TNT_(h64_next_t);
+      nm    = "TNT_(h64_next_t)";
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_NEXT: Unknown platform");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
+IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
    Int i;
    Int num_args=0;
 
@@ -6153,7 +6111,7 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
 
    switch( e->tag ){
       case Iex_Get:
-         return create_dirty_GET( mce, tmp, e->Iex.Get.offset, e->Iex.Get.ty );
+         return create_dirty_GET( mce, clone, tmp, e->Iex.Get.offset, e->Iex.Get.ty );
 
       case Iex_GetI:
          return create_dirty_GETI( mce, tmp, e->Iex.GetI.descr,
@@ -6161,7 +6119,7 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
                                              e->Iex.GetI.bias );
 
       case Iex_RdTmp:
-         return create_dirty_RDTMP( mce, tmp, e->Iex.RdTmp.tmp );
+         return create_dirty_RDTMP( mce, clone, tmp, e->Iex.RdTmp.tmp );
 
       case Iex_Qop:
          if( e->Iex.Qop.details->arg1->tag == Iex_Const &&
@@ -6199,7 +6157,7 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
             return NULL;
          else
             return create_dirty_BINOP(
-                   mce, tmp,
+                   mce, clone, tmp,
                    e->Iex.Binop.op,
                    e->Iex.Binop.arg1, e->Iex.Binop.arg2
                 );
@@ -6209,10 +6167,11 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
              TNT_(clo_tainted_ins_only) )
             return NULL;
          else
-            return create_dirty_UNOP( mce, tmp, e->Iex.Unop.op, e->Iex.Unop.arg );
+            return create_dirty_UNOP( mce, clone, tmp,
+                                      e->Iex.Unop.op, e->Iex.Unop.arg );
 
       case Iex_Load:
-         return create_dirty_LOAD( mce, tmp, False /*isLL*/, e->Iex.Load.end,
+         return create_dirty_LOAD( mce, clone, tmp, False /*isLL*/, e->Iex.Load.end,
                                    e->Iex.Load.ty,
                                    e->Iex.Load.addr );
 
@@ -6246,40 +6205,23 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRTemp tmp, IRExpr* e ){
    }
 }
 
-IRDirty* create_dirty_GET( MCEnv* mce, IRTemp tmp, Int offset, IRType ty ){
+IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp, Int offset, IRType ty ){
 // ppIRStmt output: t<tmp> = GET(<offset>:<ty>)
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
 
-   if ( (ty & 0xff) > 14 )
-      VG_(tool_panic)("tnt_translate.c: create_dirty_GET Unhandled type");
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
 
    if(mce->hWordTy == Ity_I32){
       fn    = &TNT_(h32_get);
       nm    = "TNT_(h32_get)";
-
-      UInt  tt = (tmp << 24);
-            tt |= (ty << 16);
-            tt |=  offset;
-
-      args  = mkIRExprVec_3( mkU32( tt ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
    }else if(mce->hWordTy == Ity_I64){
       fn    = &TNT_(h64_get);
       nm    = "TNT_(h64_get)";
-
-      ULong tt = ((ULong)tmp << 48);
-            tt |= ((ULong)ty << 32);
-            tt |=  offset;
-
-      args  = mkIRExprVec_3( mkU64( tt ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_GET: Unknown platform");
 
@@ -6356,33 +6298,23 @@ IRDirty* create_dirty_GETI( MCEnv* mce, IRTemp tmp, IRRegArray* descr, IRExpr* i
 }
 
 
-IRDirty* create_dirty_RDTMP( MCEnv* mce, IRTemp tmp, IRTemp data ){
+IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRTemp data ){
 // ppIRStmt output:  t<tmp> = t<data>
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
 
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+
    if(mce->hWordTy == Ity_I32){
       fn    = &TNT_(h32_rdtmp);
       nm    = "TNT_(h32_rdtmp)";
-
-      UInt tt = (tmp << 16) | data;
-
-      args  = mkIRExprVec_3( mkU32( tt ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
    }else if(mce->hWordTy == Ity_I64){
       fn    = &TNT_(h64_rdtmp);
       nm    = "TNT_(h64_rdtmp)";
-
-      UInt tt = (tmp << 16) | data;
-
-      args  = mkIRExprVec_3( mkU64( tt ),
-                             convert_Value( mce, IRExpr_RdTmp(tmp) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_RDTMP: Unknown platform");
 
@@ -6473,7 +6405,8 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRTemp tmp, IROp op,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
 }
 
-IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
+IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
+                             IRTemp tmp, IROp op,
                              IRExpr* arg1, IRExpr* arg2 ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2 )
    Int      nargs = 3;
@@ -6484,91 +6417,31 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
    // Iop_INVALID = 0x1400
    if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const )  return NULL;
 
+   di_args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+
    if ( mce->hWordTy == Ity_I32 ){
       if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
          fn       = &TNT_(h32_binop_tc);
          nm       = "TNT_(h32_binop_tc)";
-
-         UInt tt = extract_IRAtom(arg1);
-         op -= Iop_INVALID;
-         tt |= (op << 8);
-         tt |= (tmp << 24);
-
-         di_args  = mkIRExprVec_4( mkU32( tt ),
-                                   mkU32( extract_IRAtom( arg2 ) ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
          fn       = &TNT_(h32_binop_ct);
          nm       = "TNT_(h32_binop_ct)";
-
-         UInt tt = extract_IRAtom(arg2);
-         op -= Iop_INVALID;
-         tt |= (op << 8);
-         tt |= (tmp << 24);
-
-         di_args  = mkIRExprVec_4( mkU32( tt ),
-                                   mkU32( extract_IRAtom( arg1 ) ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       } else {
-
          fn    = &TNT_(h32_binop_tt);
          nm    = "TNT_(h32_binop_tt)";
-
-         UInt tt = (tmp << 16);
-         tt |= extract_IRAtom( arg1 );
-         UInt tt2 = (extract_IRAtom( arg2 ) << 16);
-         op -= Iop_INVALID;
-         tt2 |= op;
-
-         di_args  = mkIRExprVec_4( mkU32( tt ),
-                                   mkU32( tt2 ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
    }else if( mce->hWordTy == Ity_I64 ){
       if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
          fn       = &TNT_(h64_binop_tc);
          nm       = "TNT_(h64_binop_tc)";
-
-         UInt tt = extract_IRAtom(arg1);
-         op -= Iop_INVALID;
-         tt |= (op << 8);
-         tt |= (tmp << 24);
-
-         di_args  = mkIRExprVec_4( mkU64( tt ),
-                                   mkU64( extract_IRAtom( arg2 ) ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
          fn       = &TNT_(h64_binop_ct);
          nm       = "TNT_(h64_binop_ct)";
-
-         UInt tt = extract_IRAtom(arg2);
-         op -= Iop_INVALID;
-         tt |= (op << 8);
-         tt |= (tmp << 24);
-
-         di_args  = mkIRExprVec_4( mkU64( tt ),
-                                   mkU64( extract_IRAtom( arg1 ) ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       } else {
-
          fn    = &TNT_(h64_binop_tt);
          nm    = "TNT_(h64_binop_tt)";
-
-         UInt tt = (tmp << 16);
-         tt |= extract_IRAtom( arg1 );
-         UInt tt2 = (extract_IRAtom( arg2 ) << 16);
-         op -= Iop_INVALID;
-         tt2 |= op;
-
-         di_args  = mkIRExprVec_4( mkU64( tt ),
-                                   mkU64( tt2 ),
-                                   convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                                   convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP: Unknown platform");
@@ -6576,7 +6449,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRTemp tmp, IROp op,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), di_args );
 }
 
-IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
+IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op, IRExpr* arg ){
 // ppIRStmt output:  t<tmp> = op( arg )
    Int      nargs = 3;
    const HChar*   nm;
@@ -6585,41 +6458,22 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRTemp tmp, IROp op, IRExpr* arg ){
 
    if ( arg->tag == Iex_Const )  return NULL;
 
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
    if ( mce->hWordTy == Ity_I32 ) {
       fn    = &TNT_(h32_unop);
       nm    = "TNT_(h32_unop)";
-
-      // 31-24 23-16 15-0
-      // tmp   op    arg
-      UInt tt = (tmp << 24);
-      op -= Iop_INVALID;
-      tt |= (op << 8);
-      tt |= extract_IRAtom( arg ) & 0xff;
-
-      args  = mkIRExprVec_3( mkU32( tt ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
    } else if ( mce->hWordTy == Ity_I64 ){
       fn    = &TNT_(h64_unop);
       nm    = "TNT_(h64_unop)";
-
-      // 31-24 23-16 15-0
-      // tmp   op    arg
-      UInt tt = (tmp << 24);
-      op -= Iop_INVALID;
-      tt |= (op << 8);
-      tt |= extract_IRAtom( arg ) & 0xff;
-
-      args  = mkIRExprVec_3( mkU64( tt ),
-                             convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                             convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP: Unknown platform");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
+IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp,
                             Bool isLL, IREndness end,
                             IRType ty, IRAtom* addr ){
 //         ppIRExpr output: tmp = LD<end>:<ty>(<addr>), eg. t0 = LDle:I32(t1)
@@ -6628,62 +6482,26 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRTemp tmp,
    void*    fn;
    IRExpr** args;
 
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+
    if(mce->hWordTy == Ity_I32){
       if ( addr->tag == Iex_RdTmp ) {
          fn    = &TNT_(h32_load_t);
          nm    = "TNT_(h32_load_t)";
-
-         // 31--16 15--12 11--0
-         //  tmp     ty    addr
-         UInt tt = (tmp << 16);
-         tt |= ( (ty & 0xf) << 12);
-         tt |= extract_IRAtom( addr ) & 0xfff;
-
-         // Sacrifice tainted-ness of addr if we're to keep within 4 args
-         args  = mkIRExprVec_3( mkU32( tt ),
-                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       } else {
          fn    = &TNT_(h32_load_c);
          nm    = "TNT_(h32_load_c)";
-
-         UInt tt = (tmp << 4);
-         tt |= ty & 0xf;
-
-         args  = mkIRExprVec_4( mkU32( tt ),
-                 mkU32( extract_IRAtom( addr ) ),
-                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
-
    }else if(mce->hWordTy == Ity_I64){
       if ( addr->tag == Iex_RdTmp ) {
          fn    = &TNT_(h64_load_t);
          nm    = "TNT_(h64_load_t)";
-
-         // 31--16 15--12 11--0
-         //  tmp     ty    addr
-         UInt tt = (tmp << 16);
-         tt |= ( (ty & 0xf) << 12);
-         tt |= extract_IRAtom( addr ) & 0xfff;
-
-         args  = mkIRExprVec_3( mkU64( tt ),
-                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
       } else {
          fn    = &TNT_(h64_load_c);
          nm    = "TNT_(h64_load_c)";
-
-         UInt tt = (tmp << 4);
-         tt |= ty & 0xf;
-
-         args  = mkIRExprVec_4( mkU64( tt ),
-                 mkU64( extract_IRAtom( addr ) ),
-                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
       }
-
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_LOAD: Unknown platform");
 
@@ -7191,11 +7009,14 @@ typedef
       }
 
       /* Emulate shadow operations for each stmt ... */
+      // Taintgrind: clone the IRStmt. Defined in copy.c
+      IRStmt *clone = deepMallocIRStmt(st);
 
       switch (st->tag) {
 
          case Ist_WrTmp:  // all the assign tmp stmts, e.g. t1 = GET:I32(0)
             do_shadow_WRTMP( &mce,
+                             clone,
                              st->Ist.WrTmp.tmp,
                              st->Ist.WrTmp.data );
 //            assign( 'V', &mce, findShadowTmpV(&mce, st->Ist.WrTmp.tmp),
@@ -7204,6 +7025,7 @@ typedef
 
          case Ist_Put:
             do_shadow_PUT( &mce,
+                           clone,
                            st->Ist.Put.offset,
                            st->Ist.Put.data,
                            NULL /* shadow atom */, NULL /* guard */ );
@@ -7214,7 +7036,8 @@ typedef
             break;
 
          case Ist_Store:
-            do_shadow_Store( &mce, st->Ist.Store.end,
+            do_shadow_Store( &mce, clone,
+                                   st->Ist.Store.end,
                                    st->Ist.Store.addr, 0/* addr bias */,
                                    st->Ist.Store.data,
                                    NULL /* shadow data */,
@@ -7230,7 +7053,7 @@ typedef
             break;
 
          case Ist_Exit: // Conditional jumps, if(t<guard>) goto {Boring} <addr>:I32
-            di2 = create_dirty_EXIT( &mce, st->Ist.Exit.guard, 
+            di2 = create_dirty_EXIT( &mce, clone, st->Ist.Exit.guard, 
                                      st->Ist.Exit.jk, st->Ist.Exit.dst );
             complainIfTainted( &mce, st->Ist.Exit.guard, di2 );
             break;
