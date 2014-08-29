@@ -620,7 +620,7 @@ static IRAtom* mkImproveORV256 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
 
 /* --------- Pessimising casts. --------- */
 
-static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits ) // 651
+static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
 {
    IRType  src_ty;
    IRAtom* tmp1;
@@ -901,9 +901,6 @@ static void setHelperAnns ( MCEnv* mce, IRDirty* di ) { //970
 }
 
 // Taintgrind: Forward decls
-Int encode_char( Char c );
-void encode_string( HChar *aStr, UInt *enc, UInt enc_size );
-
 Int extract_IRAtom( IRAtom* atom );
 Int extract_IRConst( IRConst* con );
 ULong extract_IRConst64( IRConst* con );
@@ -959,26 +956,6 @@ IRDirty* create_dirty_from_dirty( IRDirty* di_old );
 */
 static void complainIfTainted ( MCEnv* mce, IRAtom* atom, IRDirty* di2 )
 {
-#if 0
-    tl_assert( di2->args[0]->tag == Iex_Const );
-    tl_assert( di2->args[0]->Iex.Const.con->tag == Ico_U32 );
-    if( (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x10000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x20000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x30000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x40000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x50000000 /* &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x60000000 */&&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x70000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x80000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0xa0000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0xb0000000 /* &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x38000000 */ &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x48000000 /* &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x68000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0x78000000 &&
-        (di2->args[0]->Iex.Const.con->Ico.U32 & 0xF8000000) != 0xb8000000 */ ) 
-        return;
-#endif
 //   IRAtom*  vatom;
 //   IRAtom*  cond;
 //   IRType   ty;
@@ -1132,7 +1109,7 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
    given PUTI (passed in in pieces).
 */
 static
-void do_shadow_PUTI ( MCEnv* mce, IRPutI *puti ) // 1344
+void do_shadow_PUTI ( MCEnv* mce, IRPutI *puti )
 //                      IRRegArray* descr,
 //                      IRAtom* ix, Int bias, IRAtom* atom )
 {
@@ -3985,89 +3962,6 @@ IRAtom* expr2vbits_Load_WRK ( MCEnv* mce,
 
    return mkexpr(datavbits);
 }
-//static
-//IRAtom* expr2vbits_Load_WRK ( MCEnv* mce,  //2766
-//                              IREndness end, IRType ty,
-//                              IRAtom* addr, UInt bias )
-//{
-//   void*    helper;
-//   const HChar*    hname;
-//   IRDirty* di;
-//   IRTemp   datavbits;
-//   IRAtom*  addrAct;
-//
-//   tl_assert(isOriginalAtom(mce,addr));
-//   tl_assert(end == Iend_LE || end == Iend_BE);
-//
-//   /* Now cook up a call to the relevant helper function, to read the
-//      data V bits from shadow memory. */
-//   ty = shadowTypeV(ty);
-//
-//   if (end == Iend_LE) {
-//      switch (ty) {
-//         case Ity_I64: helper = &TNT_(helperc_LOADV64le);
-//                       hname = "TNT_(helperc_LOADV64le)";
-//                       break;
-//         case Ity_I32: helper = &TNT_(helperc_LOADV32le);
-//                       hname = "TNT_(helperc_LOADV32le)";
-//                       break;
-//         case Ity_I16: helper = &TNT_(helperc_LOADV16le);
-//                       hname = "TNT_(helperc_LOADV16le)";
-//                       break;
-//         case Ity_I8:  helper = &TNT_(helperc_LOADV8);
-//                       hname = "TNT_(helperc_LOADV8)";
-//                       break;
-//         default:      ppIRType(ty);
-//                       VG_(tool_panic)("tnt_translate.c: do_shadow_Load(LE)");
-//      }
-//   } else {
-//      switch (ty) {
-//         case Ity_I64: helper = &TNT_(helperc_LOADV64be);
-//                       hname = "TNT_(helperc_LOADV64be)";
-//                       break;
-//         case Ity_I32: helper = &TNT_(helperc_LOADV32be);
-//                       hname = "TNT_(helperc_LOADV32be)";
-//                       break;
-//         case Ity_I16: helper = &TNT_(helperc_LOADV16be);
-//                       hname = "TNT_(helperc_LOADV16be)";
-//                       break;
-//         case Ity_I8:  helper = &TNT_(helperc_LOADV8);
-//                       hname = "TNT_(helperc_LOADV8)";
-//                       break;
-//         default:      ppIRType(ty);
-//                       VG_(tool_panic)("tnt_translate.c: :do_shadow_Load(BE)");
-//      }
-//   }
-//
-//   /* Generate the actual address into addrAct. */
-//   if (bias == 0) {
-//      addrAct = addr;
-//   } else {
-//      IROp    mkAdd;
-//      IRAtom* eBias;
-//      IRType  tyAddr  = mce->hWordTy;
-//      tl_assert( tyAddr == Ity_I32 || tyAddr == Ity_I64 );
-//      mkAdd   = tyAddr==Ity_I32 ? Iop_Add32 : Iop_Add64;
-//      eBias   = tyAddr==Ity_I32 ? mkU32(bias) : mkU64(bias);
-//      addrAct = assignNew('V', mce, tyAddr, binop(mkAdd, addr, eBias) );
-//   }
-//
-//   // Taintgrind
-////   VG_(printf)("tnt_translate.c: expr2vbits_Load_WRK %d ", addrAct->tag); ppIRExpr(addrAct);
-////   VG_(printf)("\n");
-//
-//   /* We need to have a place to park the V bits we're just about to
-//      read. */
-//   datavbits = newTemp(mce, ty, VSh);
-//   di = unsafeIRDirty_1_N( datavbits,
-//                           1/*regparms*/,
-//                           hname, VG_(fnptr_to_fnentry)( helper ),
-//                           mkIRExprVec_1( addrAct ));
-//   setHelperAnns( mce, di );
-//   stmt( 'V', mce, IRStmt_Dirty(di) );
-//
-//   return mkexpr(datavbits);
-//}
 
 
 static
@@ -4089,34 +3983,6 @@ IRAtom* expr2vbits_Load ( MCEnv* mce,
          VG_(tool_panic)("expr2vbits_Load");
    }
 }
-//static
-//IRAtom* expr2vbits_Load ( MCEnv* mce,  //2851
-//                          IREndness end, IRType ty,
-//                          IRAtom* addr, UInt bias )
-//{
-//   IRAtom *v64hi, *v64lo;
-//   tl_assert(end == Iend_LE || end == Iend_BE);
-//   switch (shadowTypeV(ty)) {
-//      case Ity_I8:
-//      case Ity_I16:
-//      case Ity_I32:
-//      case Ity_I64:
-//         return expr2vbits_Load_WRK(mce, end, ty, addr, bias);
-//      case Ity_V128:
-//         if (end == Iend_LE) {
-//            v64lo = expr2vbits_Load_WRK(mce, end, Ity_I64, addr, bias);
-//            v64hi = expr2vbits_Load_WRK(mce, end, Ity_I64, addr, bias+8);
-//         } else {
-//            v64hi = expr2vbits_Load_WRK(mce, end, Ity_I64, addr, bias);
-//            v64lo = expr2vbits_Load_WRK(mce, end, Ity_I64, addr, bias+8);
-//         }
-//         return assignNew( 'V', mce,
-//                           Ity_V128,
-//                           binop(Iop_64HLtoV128, v64hi, v64lo));
-//      default:
-//         VG_(tool_panic)("tnt_translate.c: expr2vbits_Load");
-//   }
-//}
 
 static
 IRAtom* expr2vbits_Load_guarded_General ( MCEnv* mce,
@@ -4322,7 +4188,7 @@ void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr )
 /* Widen a value to the host word size. */
 
 static
-IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom ) // 2980
+IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom )
 {
    IRType ty, tyH;
 
@@ -4641,7 +4507,7 @@ static IRType szToITy ( Int n )
 }
 
 static
-void do_shadow_Dirty ( MCEnv* mce, IRDirty* d ) // 3224
+void do_shadow_Dirty ( MCEnv* mce, IRDirty* d )
 {
    Int       i, k, n, toDo, gSz, gOff;
    IRAtom    *src, *here, *curr;
@@ -5349,7 +5215,7 @@ static void do_shadow_LoadG ( MCEnv* mce, IRLoadG* lg )
 
 //static void schemeS ( MCEnv* mce, IRStmt* st );
 
-static Bool isBogusAtom ( IRAtom* at ) //3887
+static Bool isBogusAtom ( IRAtom* at )
 {
    ULong n = 0;
    IRConst* con;
@@ -5614,139 +5480,7 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
          VG_(tool_panic)("tnt_translate.c: convert_Value");
    }
 }
-#if 0
-Int encode_char( Char c ){
-   switch(c){
-   case '0':
-      return 0;
-   case '1':
-      return 1;
-   case '2':
-      return 2;
-   case '3':
-      return 3;
-   case '4':
-      return 4;
-   case '5':
-      return 5;
-   case '6':
-      return 6;
-   case '7':
-      return 7;
-   case '8':
-      return 8;
-   case '9':
-      return 9;
-   case 'a':
-   case 'A':
-      return 0xa;
-   case 'b':
-   case 'B':
-      return 0xb;
-   case 'c':
-   case 'C':
-      return 0xc;
-   case 'd':
-   case 'D':
-      return 0xd;
-   case 'e':
-   case 'E':
-      return 0xe;
-   case 'f':
-   case 'F':
-      return 0xf;
-   case 'g':
-   case 'G':
-      return 0x10;
-   case 'i':
-   case 'I':
-      return 0x11;
-   case 'j':
-   case 'J':
-      return 0x12;
-   case 'l':
-   case 'L':
-      return 0x13;
-   case 'm':
-   case 'M':
-      return 0x14;
-   case 'n':
-   case 'N':
-      return 0x15;
-   case 'o':
-   case 'O':
-      return 0x16;
-   case 'p':
-   case 'P':
-      return 0x17;
-   case 's':
-   case 'S':
-      return 0x18;
-   case 't':
-   case 'T':
-      return 0x19;
-   case 'u':
-   case 'U':
-      return 0x1a;
-   case 'x':
-   case 'X':
-      return 0x1b;
-   case '=':
-      return 0x1c;
-   case ' ':
-      return 0x1d;
-   case '_':
-      return 0x1e;
-   default:
-      return 0x1f;
-   }
-}
 
-void encode_string( HChar *aStr, UInt *enc, UInt enc_size ){
-   Int start = 5;
-   Int next_char = 0;
-   Int shift;
-   Int i;
-
-/*   if( VG_(strlen)(aStr) >= 25 ){
-      aStr[24] = '!';
-   }*/
-   if( enc_size == 4 ){
-      //tl_assert( VG_(strlen)(aStr) < 25 );
-      if( VG_(strlen)(aStr) >= 25 ){
-         aStr[24] = '!';
-      }
-   }else if( enc_size == 3 ){
-      //tl_assert( VG_(strlen)(aStr) < 19 );
-      if( VG_(strlen)(aStr) >= 19 ){
-         aStr[18] = '!';
-      }
-   }else
-      tl_assert(0);
-
-   for( i = 0; i < enc_size; i++ ){
-      shift = 32 - start - 5;
-
-      while( shift > 0 ){
-         enc[i] |= encode_char( aStr[next_char] ) << shift;
-         start += 5;
-         next_char++;
-         if( aStr[next_char] == '\0' )
-            return;
-         shift = 32 - start - 5;
-      }
-
-      enc[i] |= encode_char( aStr[next_char] ) >> (-1 * shift);
-      start = 0;
-      enc[i+1] |= encode_char( aStr[next_char] ) << (32 - start + shift);
-      start = -1*shift;
-      next_char++;
-
-      if( aStr[next_char] == '\0' )
-         return;
-   }
-}
-#endif
 IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data ){
 //         ppIRExpr output: PUT(<offset>) = data
    Int          nargs = 3;
@@ -6260,39 +5994,6 @@ IRDirty* create_dirty_GETI( MCEnv* mce, IRTemp tmp, IRRegArray* descr, IRExpr* i
    args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
                           convert_Value( mce, IRExpr_RdTmp(tmp) ),
                           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
-   //if ( (descr->elemTy & 0xff) > 14 )
-   //   VG_(tool_panic)("tnt_translate.c: create_dirty_GETI Unhandled type");
-   //VG_(sprintf)( aTmp, "t%d=GETI t%d %s!", tmp, extract_IRAtom(ix), IRType_string[descr->elemTy & 0xff]);
-
-   //enc[0] = 0x20000000;
-   //encode_string( aTmp, enc, 4 );
-
-   //if(mce->hWordTy == Ity_I32){
-   //   fn    = &TNT_(helperc_0_tainted_enc32);
-   //   nm    = "TNT_(helperc_0_tainted_enc32)";
-
-   //   args  = mkIRExprVec_6( mkU32( enc[0] ),
-   //                          mkU32( enc[1] ),
-   //                          mkU32( enc[2] ),
-   //                          mkU32( enc[3] ),
-   //                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-   //                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   //}else if(mce->hWordTy == Ity_I64){
-   //   enc64[0] |= enc[0];
-   //   enc64[0] = (enc64[0] << 32) | enc[1];
-   //   enc64[1] |= enc[2];
-   //   enc64[1] = (enc64[1] << 32) | enc[3];
-
-   //   fn    = &TNT_(helperc_0_tainted_enc64);
-   //   nm    = "TNT_(helperc_0_tainted_enc64)";
-
-   //   args  = mkIRExprVec_4( mkU64( enc64[0] ),
-   //                          mkU64( enc64[1] ),
-   //                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-   //                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-   //}else
-   //   VG_(tool_panic)("tnt_translate.c: create_dirty_GETI: Unknown platform");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm,VG_(fnptr_to_fnentry)( fn ), args );
 }

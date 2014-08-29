@@ -148,17 +148,7 @@ VG_REGPARM(3) void TNT_(h64_ite_tc)   ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_ct)   ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_tt)   ( ULong, ULong, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, ULong, ULong );
-#if 0
-VG_REGPARM(3) void TNT_(helperc_0_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_0_tainted_enc64) ( ULong, ULong, ULong, ULong );
-VG_REGPARM(3) void TNT_(helperc_1_tainted_enc32) ( UInt, UInt, UInt, UInt, UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_1_tainted_enc64) ( ULong, ULong, ULong, ULong, ULong, ULong );
-VG_REGPARM(3) void TNT_(helperc_0_tainted) ( HChar *, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_1_tainted) ( HChar *, UInt, UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_2_tainted) ( HChar *, UInt, UInt, UInt, UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_3_tainted) ( HChar *, UInt, UInt, UInt, UInt, UInt );
-VG_REGPARM(3) void TNT_(helperc_4_tainted) ( HChar *, UInt, UInt, UInt, UInt, UInt, UInt );
-#endif
+
 /* Strings used by tnt_translate, printed by tnt_main */
 extern const char *IRType_string[];
 extern const char *IREndness_string[];
