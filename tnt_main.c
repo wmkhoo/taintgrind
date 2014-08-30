@@ -2788,13 +2788,18 @@ void post_decode_string( HChar *aStr ){
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
 // see libvex_guest_amd64.h
-#define REG_I_MAX 740 
-#define TVAR_I_MAX 384
+#define TI_MAX 430
+#define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
-int tvar_i[TVAR_I_MAX];
-int reg_i[REG_I_MAX];
-struct myStringArray lvar_s;
-int lvar_i[STACK_SIZE];
+// Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
+UInt  ti[TI_MAX];
+// Tmp variable values
+ULong tv[TI_MAX];
+// Reg variable indices; values are obtained in real-time
+UInt  ri[RI_MAX];
+
+struct   myStringArray lvar_s;
+int      lvar_i[STACK_SIZE];
 
 ////////////////////////////////
 // Start of SOAAP-related data
@@ -2824,9 +2829,9 @@ Int get_and_check_reg( HChar *reg ){
 //      VG_(printf)("get_and_check_tvar: regnum %d mod 4 != 0\n", regnum );
 //      tl_assert( !( regnum % 4 ) );
 //   }
-   if( regnum >= REG_I_MAX ){
-      VG_(printf)("get_and_check_reg: regnum %d >= %d\n", regnum, REG_I_MAX );
-      tl_assert( regnum < REG_I_MAX );
+   if( regnum >= RI_MAX ){
+      VG_(printf)("get_and_check_reg: regnum %d >= %d\n", regnum, RI_MAX );
+      tl_assert( regnum < RI_MAX );
    }
 
    return regnum;
@@ -2835,7 +2840,7 @@ Int get_and_check_reg( HChar *reg ){
 Int get_and_check_tvar( HChar *tmp ){
 
    Int tmpnum = atoi( tmp );
-   tl_assert( tmpnum < TVAR_I_MAX );
+   tl_assert( tmpnum < TI_MAX );
    return tmpnum;
 }
 
@@ -2907,8 +2912,8 @@ void TNT_(helperc_0_tainted_enc32) (
                // Get indices
                Int tmpnum1 = get_and_check_tvar( tmp1 );
                Int tmpnum2 = get_and_check_tvar( tmp2 );
-               tvar_i[tmpnum1]++;
-               VG_(printf)("t%s.%d <- t%s.%d", tmp1, tvar_i[tmpnum1], tmp2, tvar_i[tmpnum2]);
+               ti[tmpnum1]++;
+               VG_(printf)("t%s.%d <- t%s.%d", tmp1, ti[tmpnum1], tmp2, ti[tmpnum2]);
             }else if( pEquals != NULL ){
             // 0x15003 t28 = 
             //          ^--pTmp1
@@ -2917,8 +2922,8 @@ void TNT_(helperc_0_tainted_enc32) (
 
                // Get indices
                Int tmpnum1 = get_and_check_tvar( tmp1 );
-               tvar_i[tmpnum1]++;
-               VG_(printf)("t%s.%d", tmp1, tvar_i[tmpnum1]);
+               ti[tmpnum1]++;
+               VG_(printf)("t%s.%d", tmp1, ti[tmpnum1]);
             }
          VG_(printf)("\n");
       }
@@ -2957,6 +2962,20 @@ void TNT_(helperc_0_tainted_enc32) (
    if(!TNT_(do_print))  return; \
    if(!(TNT_(clo_tainted_ins_only) && taint) && TNT_(clo_tainted_ins_only)) return;
 
+#define H_WRTMP_BOOKKEEPING \
+   UInt ltmp = clone->Ist.WrTmp.tmp; \
+   if ( ltmp >= TI_MAX ) \
+      VG_(printf)("ltmp %d\n", ltmp); \
+   tl_assert( ltmp < TI_MAX ); \
+   ti[ltmp]++; \
+   if ( taint ) \
+      ti[ltmp] |= 0x80000000; \
+   else \
+      ti[ltmp] &= 0x7fffffff; \
+   tv[ltmp] = value;
+
+#define _ti(ltmp) ti[ltmp] & 0x7fffffff
+
 // if <gtmp> goto <jk> dst
 VG_REGPARM(3)
 void TNT_(h32_exit_t) (
@@ -2972,13 +2991,13 @@ void TNT_(h32_exit_t) (
    IRConst *dst  = clone->Ist.Exit.dst;
    ULong addr    = extract_IRConst64(dst);
 
-   tl_assert( gtmp < TVAR_I_MAX );
+   tl_assert( gtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, tvar_i[gtmp], addr );
+   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", gtmp, tvar_i[gtmp] );
+   VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
 }
 
 // if <const> goto <jk> dst
@@ -3003,13 +3022,13 @@ void TNT_(h32_next_t) (
 
    UInt next = clone->Iex.RdTmp.tmp;
 
-   tl_assert( next < TVAR_I_MAX );
+   tl_assert( next < TI_MAX );
 
-   VG_(sprintf)( aTmp, "JMP t%d_%d", next, tvar_i[next] );
+   VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", next, tvar_i[next] );
+   VG_(printf)( "t%d_%d\n", next, ti[next] );
 }
 
 // JMP const 
@@ -3038,12 +3057,12 @@ void TNT_(h32_store_tt) (
    UInt atmp = addr->Iex.RdTmp.tmp;
    UInt dtmp = data->Iex.RdTmp.tmp;
 
-   tl_assert( atmp < TVAR_I_MAX );
-   tl_assert( dtmp < TVAR_I_MAX );
+   tl_assert( atmp < TI_MAX );
+   tl_assert( dtmp < TI_MAX );
 
    VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
-                               atmp, tvar_i[atmp],
-                               dtmp, tvar_i[dtmp] );
+                               atmp, _ti(atmp),
+                               dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3055,8 +3074,8 @@ void TNT_(h32_store_tt) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, tvar_i[dtmp] );
-   VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, tvar_i[atmp], dtmp, tvar_i[dtmp] );
+   VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, _ti(atmp), dtmp, _ti(dtmp) );
 }
 
 // STORE atmp = const
@@ -3075,9 +3094,9 @@ void TNT_(h32_store_tc) (
    UInt atmp    = addr->Iex.RdTmp.tmp;
    UInt c       = extract_IRConst(data->Iex.Const.con);
 
-   tl_assert( atmp < TVAR_I_MAX );
+   tl_assert( atmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%x", atmp, tvar_i[atmp], c );
+   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%x", atmp, _ti(atmp), c );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3090,7 +3109,7 @@ void TNT_(h32_store_tc) (
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
    VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d\n", atmp, tvar_i[atmp] );
+   VG_(printf)( "; t%d_%d\n", atmp, _ti(atmp) );
 }
 
 // STORE const = dtmp
@@ -3109,9 +3128,9 @@ void TNT_(h32_store_ct) (
    UInt c       = extract_IRConst(addr->Iex.Const.con);
    UInt dtmp    = data->Iex.RdTmp.tmp;
 
-   tl_assert( dtmp < TVAR_I_MAX );
+   tl_assert( dtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, tvar_i[dtmp] );
+   VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3124,7 +3143,7 @@ void TNT_(h32_store_ct) (
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
    VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( " <-&- t%d_%d\n", dtmp, tvar_i[dtmp] );
+   VG_(printf)( " <-&- t%d_%d\n", dtmp, _ti(dtmp) );
 }
 
 // ltmp = LOAD <ty> rtmp
@@ -3134,21 +3153,20 @@ void TNT_(h32_load_t) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    H_EXIT_EARLY
    H32_PC
    H_VAR
 
-   UInt ltmp    = clone->Ist.WrTmp.tmp;
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
    UInt rtmp    = addr->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, tvar_i[ltmp],
-                               IRType_string[ty], rtmp, tvar_i[rtmp] );
+   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+                               IRType_string[ty], rtmp, _ti(rtmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3160,8 +3178,8 @@ void TNT_(h32_load_t) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, tvar_i[ltmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp, tvar_i[rtmp] );
+   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
 }
 
 VG_REGPARM(3)
@@ -3170,19 +3188,17 @@ void TNT_(h32_load_c) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    H_EXIT_EARLY
    H32_PC
    H_VAR
 
-   UInt ltmp    = clone->Ist.WrTmp.tmp;
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
    UInt c       = extract_IRConst(addr->Iex.Const.con);
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
-
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, tvar_i[ltmp],
+   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, _ti(ltmp),
                                               IRType_string[ty], c );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
@@ -3195,8 +3211,8 @@ void TNT_(h32_load_c) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, tvar_i[ltmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- 0x%x\n", ltmp, tvar_i[ltmp], c );
+   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d_%d <*- 0x%x\n", ltmp, _ti(ltmp), c );
 }
 
 VG_REGPARM(3)
@@ -3205,28 +3221,36 @@ void TNT_(h32_get) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
-   UInt tmp     = clone->Ist.WrTmp.tmp;
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
    UInt reg     = data->Iex.Get.offset;
 
-   tl_assert( reg < REG_I_MAX );
-   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( reg < RI_MAX );
 
    VG_(sprintf)(aTmp, "t%d_%d = GET r%d_%d %s",
-                           tmp, tvar_i[tmp],
-                           reg, tvar_i[reg], IRType_string[ty&0xff] );
+                           ltmp, _ti(ltmp),
+                           reg, ti[reg], IRType_string[ty&0xff] );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d <- r%d_%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
+   VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
 }
 
+VG_REGPARM(3)
+void TNT_(h32_geti) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+}
 
 VG_REGPARM(3)
 void TNT_(h32_put) (
@@ -3243,16 +3267,16 @@ void TNT_(h32_put) (
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
-   tl_assert( reg < REG_I_MAX );
-   tl_assert( tmp < TVAR_I_MAX );
-   reg_i[reg]++;
+   tl_assert( reg < RI_MAX );
+   tl_assert( tmp < TI_MAX );
+   ri[reg]++;
 
-   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, reg_i[reg],
-                                            tmp, tvar_i[tmp] );
+   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("r%d_%d <- t%d_%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
 }
 
 VG_REGPARM(3)
@@ -3276,12 +3300,22 @@ void TNT_(h32_puti) (
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
    // TODO: Info flow
-   //tl_assert( reg < REG_I_MAX );
-   //tl_assert( tmp < TVAR_I_MAX );
-   //reg_i[reg]++;
+   //tl_assert( reg < RI_MAX );
+   //tl_assert( tmp < TI_MAX );
+   //ri[reg]++;
 
-   //VG_(printf)("r%d_%d <- t%d_%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   //VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, ti[tmp]);
    VG_(printf)("\n");
+}
+
+// ltmp = <op> const 
+VG_REGPARM(3)
+void TNT_(h32_wrtmp_c) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 }
 
 // ltmp = <op> rtmp
@@ -3291,28 +3325,27 @@ void TNT_(h32_unop) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt rtmp = arg->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                 ltmp, tvar_i[ltmp], IROp_string[op],
-                 rtmp, tvar_i[rtmp] );
+                 ltmp, _ti(ltmp), IROp_string[op],
+                 rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp, tvar_i[rtmp] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
 }
 
 // ltmp = <op> rtmp1, const
@@ -3322,30 +3355,29 @@ void TNT_(h32_binop_tc) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
    UInt c = extract_IRConst( arg2->Iex.Const.con );
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp1 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp1 < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%x",
-                 ltmp, tvar_i[ltmp],
-                 IROp_string[op], rtmp1, tvar_i[rtmp1], c );
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], rtmp1, _ti(rtmp1), c );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp1, tvar_i[rtmp1] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
 }
 
 // ltmp = <op> Const rtmp1
@@ -3355,30 +3387,29 @@ void TNT_(h32_binop_ct) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt c = extract_IRConst( arg1->Iex.Const.con );
    UInt rtmp2 = arg2->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp2 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp2 < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x t%d_%d",
-                 ltmp, tvar_i[ltmp],
-                 IROp_string[op], c, rtmp2, tvar_i[rtmp2] );
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp2, tvar_i[rtmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
 }
 
 // ltmp = <op> rtmp1 rtmp2
@@ -3388,34 +3419,53 @@ void TNT_(h32_binop_tt) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
    UInt rtmp2 = arg2->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp  < TVAR_I_MAX );
-   tl_assert( rtmp1 < TVAR_I_MAX );
-   tl_assert( rtmp2 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp1 < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                 ltmp, tvar_i[ltmp],
+                 ltmp, _ti(ltmp),
                  IROp_string[op],
-                 rtmp1, tvar_i[rtmp1],
-                 rtmp2, tvar_i[rtmp2] );
+                 rtmp1, _ti(rtmp1),
+                 rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, tvar_i[ltmp],
-                       rtmp1, tvar_i[rtmp1], rtmp2, tvar_i[rtmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
+                       rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+}
+
+// ltmp = <op> rtmp1, rtmp2, rtmp3
+VG_REGPARM(3)
+void TNT_(h32_triop) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+}
+
+// ltmp = <op> rtmp1, rtmp2, rtmp3, rtmp4
+VG_REGPARM(3)
+void TNT_(h32_qop) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 }
 
 // ltmp = rtmp
@@ -3425,110 +3475,164 @@ void TNT_(h32_rdtmp) (
    UInt value, 
    UInt taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, tvar_i[ltmp],
-                                          rtmp, tvar_i[rtmp] );
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+                                          rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp],
-                                     rtmp, tvar_i[rtmp]);
+   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                     rtmp, _ti(rtmp));
 }
 
+// ltmp = ctmp? rtmp1 : const
 VG_REGPARM(3)
 void TNT_(h32_ite_tc) (
-   UInt tt, 
-   UInt c, 
+   IRStmt *clone, 
    UInt value, 
    UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt tmp = (tt >> 24) & 0xff;
-   UInt cond = (tt >> 12) & 0xfff;
-   UInt tmp2  = tt & 0xfff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%x",
-                 Iex_ITE, tmp, cond, tmp2, c );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
+   UInt c       = extract_IRConst(data->Iex.ITE.iffalse->Iex.Const.con);
+
+   tl_assert( ctmp  < TI_MAX );
+   tl_assert( rtmp1 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tvar_i[tmp]++;
-
-   VG_(printf)( "t%d_%d <- t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
 }
 
+// ltmp = ctmp? const : rtmp2
 VG_REGPARM(3)
 void TNT_(h32_ite_ct) (
-   UInt tt, 
-   UInt c, 
+   IRStmt *clone, 
    UInt value, 
    UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt tmp = (tt >> 24) & 0xff;
-   UInt cond = (tt >> 12) & 0xfff;
-   UInt tmp2  = tt & 0xfff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%x : t%d",
-                 Iex_ITE, tmp, cond, c, tmp2 );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt c       = extract_IRConst(data->Iex.ITE.iftrue->Iex.Const.con);
+   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
+
+   tl_assert( ctmp  < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tvar_i[tmp]++;
-
-   VG_(printf)( "t%d_%d <- t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
 }
 
+// ltmp = ctmp? rtmp1 : rtmp2
 VG_REGPARM(3)
 void TNT_(h32_ite_tt) (
-   UInt tt, 
-   UInt tt2, 
+   IRStmt *clone, 
    UInt value, 
    UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt tmp = (tt >> 16) & 0xffff;
-   UInt cond = tt & 0xffff;
-   UInt tmp2 = (tt2 >> 16) & 0xffff;
-   UInt tmp3 = tt2 & 0xffff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
-                 Iex_ITE, tmp, cond, tmp2, tmp3 );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
+   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
+
+   tl_assert( ctmp  < TI_MAX );
+   tl_assert( rtmp1 < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp),
+                 rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tl_assert( tmp3 < TVAR_I_MAX );
-   tvar_i[tmp]++;
+   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
+                          rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+}
 
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+// ltmp = ctmp? const1 : const2
+VG_REGPARM(3)
+void TNT_(h32_ite_cc) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt c1      = extract_IRConst(data->Iex.ITE.iftrue->Iex.Const.con);
+   UInt c2      = extract_IRConst(data->Iex.ITE.iffalse->Iex.Const.con);
+
+   tl_assert( ctmp  < TI_MAX );
+   if ( (ti[ctmp] & 0x80000000) == 0 ) return;
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : 0x%x",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
+
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                      ctmp, _ti(ctmp) );
+}
+
+// ltmp = callee( arg[0], ... )
+VG_REGPARM(3)
+void TNT_(h32_ccall) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
 }
 
 // No decoding necessary. Just print the string
@@ -3565,13 +3669,13 @@ void TNT_(h64_exit_t) (
    IRConst *dst  = clone->Ist.Exit.dst;
    ULong addr    = extract_IRConst64(dst);
 
-   tl_assert( gtmp < TVAR_I_MAX );
+   tl_assert( gtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, tvar_i[gtmp], addr );
+   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", gtmp, tvar_i[gtmp] );
+   VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
 }
 
 // IF <gtmp> GOTO <jk> addr
@@ -3596,13 +3700,13 @@ void TNT_(h64_next_t) (
 
    UInt next = clone->Iex.RdTmp.tmp;
 
-   tl_assert( next < TVAR_I_MAX );
+   tl_assert( next < TI_MAX );
 
-   VG_(sprintf)( aTmp, "JMP t%d_%d", next, tvar_i[next] );
+   VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", next, tvar_i[next] );
+   VG_(printf)( "t%d_%d\n", next, ti[next] );
 }
 
 // JMP const 
@@ -3629,12 +3733,12 @@ void TNT_(h64_store_tt) (
    UInt atmp = addr->Iex.RdTmp.tmp;
    UInt dtmp = data->Iex.RdTmp.tmp;
 
-   tl_assert( atmp < TVAR_I_MAX );
-   tl_assert( dtmp < TVAR_I_MAX );
+   tl_assert( atmp < TI_MAX );
+   tl_assert( dtmp < TI_MAX );
 
    VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
-                               atmp, tvar_i[atmp],
-                               dtmp, tvar_i[dtmp] );
+                               atmp, _ti(atmp),
+                               dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3646,8 +3750,8 @@ void TNT_(h64_store_tt) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, tvar_i[dtmp] );
-         VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, tvar_i[atmp], dtmp, tvar_i[dtmp] );
+   VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+         VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, _ti(atmp), dtmp, _ti(dtmp) );
 }
 
 VG_REGPARM(3)
@@ -3665,9 +3769,9 @@ void TNT_(h64_store_tc) (
    UInt atmp    = addr->Iex.RdTmp.tmp;
    ULong c      = extract_IRConst64(data->Iex.Const.con);
 
-   tl_assert( atmp < TVAR_I_MAX );
+   tl_assert( atmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%llx", atmp, tvar_i[atmp], c );
+   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3680,7 +3784,7 @@ void TNT_(h64_store_tc) (
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
    VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d\n", atmp, tvar_i[atmp] );
+   VG_(printf)( "; t%d_%d\n", atmp, _ti(atmp) );
 }
 
 VG_REGPARM(3)
@@ -3698,9 +3802,9 @@ void TNT_(h64_store_ct) (
    ULong c      = extract_IRConst64(addr->Iex.Const.con);
    UInt dtmp    = data->Iex.RdTmp.tmp;
 
-   tl_assert( dtmp < TVAR_I_MAX );
+   tl_assert( dtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, tvar_i[dtmp] );
+   VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3713,7 +3817,7 @@ void TNT_(h64_store_ct) (
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
    VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( " <-&- t%d_%d\n", dtmp, tvar_i[dtmp] );
+   VG_(printf)( " <-&- t%d_%d\n", dtmp, _ti(dtmp) );
 }
 
 // ltmp = LOAD <ty> rtmp
@@ -3723,21 +3827,20 @@ void TNT_(h64_load_t) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    H_EXIT_EARLY
    H64_PC
    H_VAR
 
-   UInt ltmp    = clone->Ist.WrTmp.tmp;
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
    UInt rtmp    = addr->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, tvar_i[ltmp],
-                         IRType_string[ty], rtmp, tvar_i[rtmp] );
+   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+                         IRType_string[ty], rtmp, _ti(rtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3749,8 +3852,8 @@ void TNT_(h64_load_t) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, tvar_i[ltmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp, tvar_i[rtmp] );
+   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
 }
 
 // ltmp = LOAD <ty> const
@@ -3760,19 +3863,17 @@ void TNT_(h64_load_c) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    H_EXIT_EARLY
    H64_PC
    H_VAR
 
-   UInt ltmp    = clone->Ist.WrTmp.tmp;
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
    ULong c      = extract_IRConst64(addr->Iex.Const.con);
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
-
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, tvar_i[ltmp],
+   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp),
                                                 IRType_string[ty], c );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
@@ -3785,8 +3886,8 @@ void TNT_(h64_load_c) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, tvar_i[ltmp], varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- 0x%llx\n", ltmp, tvar_i[ltmp], c );
+   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   VG_(printf)( "; t%d_%d <*- 0x%llx\n", ltmp, _ti(ltmp), c );
 }
 
 VG_REGPARM(3)
@@ -3795,6 +3896,8 @@ void TNT_(h64_get) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
@@ -3802,22 +3905,28 @@ void TNT_(h64_get) (
    H_VAR
 
    IRExpr *data = clone->Ist.WrTmp.data;
-   UInt tmp     = clone->Ist.WrTmp.tmp;
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
    UInt reg     = data->Iex.Get.offset;
 
-   tl_assert( reg < REG_I_MAX );
-   tl_assert( tmp < TVAR_I_MAX );
+   tl_assert( reg < RI_MAX );
 
    VG_(sprintf)(aTmp, "t%d_%d = GET r%d_%d %s",
-                           tmp, tvar_i[tmp],
-                           reg, tvar_i[reg], IRType_string[ty&0xff] );
+                           ltmp, _ti(ltmp),
+                           reg, ti[reg], IRType_string[ty&0xff] );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d <- r%d_%d\n", tmp, tvar_i[tmp], reg, reg_i[reg] );
+   VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
 }
 
+VG_REGPARM(3)
+void TNT_(h64_geti) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+}
 
 VG_REGPARM(3)
 void TNT_(h64_put) (
@@ -3835,16 +3944,16 @@ void TNT_(h64_put) (
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
-   tl_assert( reg < REG_I_MAX );
-   tl_assert( tmp < TVAR_I_MAX );
-   reg_i[reg]++;
+   tl_assert( reg < RI_MAX );
+   tl_assert( tmp < TI_MAX );
+   ri[reg]++;
 
-   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, reg_i[reg],
-                                            tmp, tvar_i[tmp] );
+   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("r%d_%d <- t%d_%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
 }
 
 
@@ -3872,12 +3981,22 @@ void TNT_(h64_puti) (
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
    // TODO: Info flow
-   //tl_assert( reg < REG_I_MAX );
-   //tl_assert( tmp < TVAR_I_MAX );
-   //reg_i[reg]++;
+   //tl_assert( reg < RI_MAX );
+   //tl_assert( tmp < TI_MAX );
+   //ri[reg]++;
 
-   //VG_(printf)("r%d_%d <- t%d_%d\n", reg, reg_i[reg], tmp, tvar_i[tmp]);
+   //VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, ti[tmp]);
    VG_(printf)("\n");
+}
+
+// ltmp = <op> ...
+VG_REGPARM(3)
+void TNT_(h64_wrtmp_c) (
+   IRStmt *clone,
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
 }
 
 // ltmp = <op> rtmp
@@ -3887,28 +4006,27 @@ void TNT_(h64_unop) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt rtmp = arg->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                 ltmp, tvar_i[ltmp], IROp_string[op],
-                 rtmp, tvar_i[rtmp] );
+                 ltmp, _ti(ltmp), IROp_string[op],
+                 rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp, tvar_i[rtmp] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
 }
 
 // ltmp = <op> rtmp1 const
@@ -3918,12 +4036,13 @@ void TNT_(h64_binop_tc) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
@@ -3931,18 +4050,16 @@ void TNT_(h64_binop_tc) (
    
    ULong c = extract_IRConst64(arg2->Iex.Const.con);
    
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp1 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp1 < TI_MAX );
    
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%llx",
-                 ltmp, tvar_i[ltmp],
-                 IROp_string[op], rtmp1, tvar_i[rtmp1], c );
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], rtmp1, _ti(rtmp1), c );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp1, tvar_i[rtmp1] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
 }
 
 // ltmp = <op> const rtmp2
@@ -3952,30 +4069,29 @@ void TNT_(h64_binop_ct) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    ULong c = extract_IRConst64(arg1->Iex.Const.con);
    UInt rtmp2 = arg2->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp2 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp2 < TI_MAX );
 
    VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx t%d_%d",
-                 ltmp, tvar_i[ltmp],
-                 IROp_string[op], c, rtmp2, tvar_i[rtmp2] );
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp2, tvar_i[rtmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
 }
 
 // ltmp = <op> rtmp1 rtmp2
@@ -3985,35 +4101,53 @@ void TNT_(h64_binop_tt) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
    
    H_EXIT_EARLY
    H64_PC
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
    UInt rtmp2 = arg2->Iex.RdTmp.tmp;
    
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp1 < TVAR_I_MAX );
-   tl_assert( rtmp2 < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp1 < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
    
    VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                 ltmp, tvar_i[ltmp],
+                 ltmp, _ti(ltmp),
                  IROp_string[op],
-                 rtmp1, tvar_i[rtmp1],
-                 rtmp2, tvar_i[rtmp2] );
+                 rtmp1, _ti(rtmp1),
+                 rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, tvar_i[ltmp], rtmp1, tvar_i[rtmp1], rtmp2, tvar_i[rtmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
 }
 
+// ltmp = <op> rtmp1, rtmp2, rtmp3
+VG_REGPARM(3)
+void TNT_(h64_triop) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+}
+
+// ltmp = <op> rtmp1, rtmp2, rtmp3, rtmp4
+VG_REGPARM(3)
+void TNT_(h64_qop) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+}
 
 VG_REGPARM(3)
 void TNT_(h64_rdtmp) (
@@ -4021,111 +4155,165 @@ void TNT_(h64_rdtmp) (
    ULong value, 
    ULong taint ) {
 
+   H_WRTMP_BOOKKEEPING
+
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
    H_VAR
 
-   UInt ltmp = clone->Ist.WrTmp.tmp;
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
 
-   tl_assert( ltmp < TVAR_I_MAX );
-   tl_assert( rtmp < TVAR_I_MAX );
-   tvar_i[ltmp]++;
+   tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, tvar_i[ltmp],
-                                          rtmp, tvar_i[rtmp] );
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+                                          rtmp, _ti(rtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, tvar_i[ltmp], rtmp, tvar_i[rtmp]);
+   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp));
 }
 
+// ltmp = ctmp? rtmp1 : const
 VG_REGPARM(3)
 void TNT_(h64_ite_tc) (
-   ULong tt, 
-   ULong c, 
+   IRStmt *clone, 
    ULong value, 
    ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
 
-   UInt tmp = ((UInt)tt >> 24) & 0xff;
-   UInt cond = ((UInt)tt >> 12) & 0xfff;
-   UInt tmp2  = (UInt)tt & 0xfff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : 0x%llx",
-                 Iex_ITE, tmp, cond, tmp2, c );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
+   ULong c      = extract_IRConst64(data->Iex.ITE.iffalse->Iex.Const.con);
+
+   tl_assert( ctmp  < TI_MAX );
+   tl_assert( rtmp1 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tvar_i[tmp]++;
-
-   VG_(printf)( "t%d_%d <- t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
 }
 
+// ltmp = ctmp? const : rtmp2
 VG_REGPARM(3)
 void TNT_(h64_ite_ct) (
-   ULong tt, 
-   ULong c, 
+   IRStmt *clone, 
    ULong value, 
    ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt tmp = ((UInt)tt >> 24) & 0xff;
-   UInt cond = ((UInt)tt >> 12) & 0xfff;
-   UInt tmp2  = (UInt)tt & 0xfff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? 0x%llx : t%d",
-                 Iex_ITE, tmp, cond, c, tmp2 );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   ULong c      = extract_IRConst64(data->Iex.ITE.iftrue->Iex.Const.con);
+   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
+
+   tl_assert( ctmp  < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
+
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tvar_i[tmp]++;
-
-   VG_(printf)( "t%d_%d <- t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2] );
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
 }
 
+// ltmp = ctmp? rtmp1 : rtmp2
 VG_REGPARM(3)
 void TNT_(h64_ite_tt) (
-   ULong tt, 
-   ULong tt2, 
+   IRStmt *clone, 
    ULong value, 
    ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H64_PC
 
-   UInt tmp = ((UInt)tt >> 16) & 0xffff;
-   UInt cond = (UInt)tt & 0xffff;
-   UInt tmp2 = ((UInt)tt2 >> 16) & 0xffff;
-   UInt tmp3 = (UInt)tt2 & 0xffff;
-   VG_(sprintf)( aTmp, "0x%x t%d = t%d ? t%d : t%d",
-                 Iex_ITE, tmp, cond, tmp2, tmp3 );
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
+   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
+
+   tl_assert( ltmp  < TI_MAX );
+   tl_assert( rtmp1 < TI_MAX );
+   tl_assert( rtmp2 < TI_MAX );
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp),
+                 rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   tl_assert( tmp < TVAR_I_MAX );
-   tl_assert( tmp2 < TVAR_I_MAX );
-   tl_assert( tmp3 < TVAR_I_MAX );
-   tvar_i[tmp]++;
+   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+}
 
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", tmp, tvar_i[tmp], tmp2, tvar_i[tmp2], tmp3, tvar_i[tmp3] );
+// ltmp = ctmp? const1 : const2
+VG_REGPARM(3)
+void TNT_(h64_ite_cc) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   ULong c1     = extract_IRConst64(data->Iex.ITE.iftrue->Iex.Const.con);
+   ULong c2     = extract_IRConst64(data->Iex.ITE.iffalse->Iex.Const.con);
+
+   tl_assert( ctmp  < TI_MAX );
+   if ( (ti[ctmp] & 0x80000000) == 0 ) return;
+
+   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : 0x%llx",
+                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
+
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+      fnname, aTmp, value, taint );
+
+   // Information flow
+   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                      ctmp, _ti(ctmp) );
+}
+
+// ltmp = callee( arg[0], ... )
+VG_REGPARM(3)
+void TNT_(h64_ccall) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
 }
 
 // No decoding necessary. Just print the string
@@ -4615,10 +4803,12 @@ static void tnt_post_clo_init(void)
 
    // Initialise temporary variables/reg SSA index array
    Int i;
-   for( i=0; i< TVAR_I_MAX; i++ )
-      tvar_i[i] = 0;
-   for( i=0; i< REG_I_MAX; i++ )
-      reg_i[i] = 0;
+   for( i=0; i< TI_MAX; i++ ) {
+      ti[i] = 0;
+      tv[i] = 0;
+   }
+   for( i=0; i< RI_MAX; i++ )
+      ri[i] = 0;
    for( i=0; i< STACK_SIZE; i++ )
       lvar_i[i] = 0;
    lvar_s.size = 0;
