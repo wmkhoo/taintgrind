@@ -4299,7 +4299,7 @@ void do_shadow_Store ( MCEnv* mce,
    /* First, emit a definedness test for the address.  This also sets
       the address (shadow) to 'defined' following the test. */
    // Taintgrind: What to do in the vdata case?
-   //          vdata cases (CAS, Dirty) are handled by their resp. shadow routines
+   //        vdata cases (CAS, Dirty) are handled by their resp. shadow routines
    if( data && clone ){
       di2 = create_dirty_STORE( mce, clone, end, 0/*resSC*/, addr, data );
       if ( di2 ) complainIfTainted( mce, addr, di2 );

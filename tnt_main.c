@@ -151,14 +151,6 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 Int  ctoi( HChar c );
 Int  ctoi_test( HChar c );
 Int  atoi( HChar *s );
-//Char decode_char( UInt num );
-//void decode_string( UInt *enc, HChar *aStr );
-//void post_decode_string( HChar *aStr );
-//void post_decode_string_load( HChar *aStr );
-//void post_decode_string_primops( HChar *aStr );
-//void post_decode_string_binops( HChar *aStr );
-//void post_decode_string_store( HChar *aStr );
-//void post_decode_string_ite( HChar *aStr );
 Int get_and_check_reg( HChar *reg );
 Int get_and_check_tvar( HChar *tmp );
 void infer_client_binary_name(UInt pc);
@@ -602,7 +594,7 @@ UChar extract_vabits4_from_vabits8 ( Addr a, UChar vabits8 )
 // is equal to VA_BITS2_PARTUNTAINTED, then the corresponding entry in the
 // sec-V-bits table must also be set!
 static INLINE
-void set_vabits2 ( Addr a, UChar vabits2 ) //726
+void set_vabits2 ( Addr a, UChar vabits2 )
 {
    SecMap* sm       = get_secmap_for_writing(a); // Taintgrind: only handle 32-bits
    UWord   sm_off   = SM_OFF(a);
@@ -641,7 +633,7 @@ UChar get_vabits2 ( Addr a )
 // 4 2-bit fields in vabits8 are equal to VA_BITS2_PARTUNTAINTED, then the
 // corresponding entry(s) in the sec-V-bits table must also be set!
 static INLINE
-UChar get_vabits8_for_aligned_word32 ( Addr a ) //747
+UChar get_vabits8_for_aligned_word32 ( Addr a )
 {
    SecMap* sm       = get_secmap_for_reading(a);
    UWord   sm_off   = SM_OFF(a);
@@ -663,12 +655,13 @@ static UWord get_sec_vbits8(Addr a);
 static void  set_sec_vbits8(Addr a, UWord vbits8);
 
 // Returns False if there was an addressability error.
+// Taintgrind: skip addressability check
 static INLINE
-Bool set_vbits8 ( Addr a, UChar vbits8 ) //768
+Bool set_vbits8 ( Addr a, UChar vbits8 )
 {
    Bool  ok      = True;
    UChar vabits2 = get_vabits2(a);
-   if ( VA_BITS2_NOACCESS != vabits2 ) {
+   //if ( VA_BITS2_NOACCESS != vabits2 ) {
       // Addressable.  Convert in-register format to in-memory format.
       // Also remove any existing sec V bit entry for the byte if no
       // longer necessary.
@@ -678,12 +671,12 @@ Bool set_vbits8 ( Addr a, UChar vbits8 ) //768
                                                 set_sec_vbits8(a, vbits8);  }
       set_vabits2(a, vabits2);
 
-   } else {
-      // Unaddressable!  Do nothing -- when writing to unaddressable
-      // memory it acts as a black hole, and the V bits can never be seen
-      // again.  So we don't have to write them at all.
-      ok = False;
-   }
+   //} else {
+   //   // Unaddressable!  Do nothing -- when writing to unaddressable
+   //   // memory it acts as a black hole, and the V bits can never be seen
+   //   // again.  So we don't have to write them at all.
+   //   ok = False;
+   //}
    return ok;
 }
 
@@ -708,7 +701,7 @@ Bool get_vbits8 ( Addr a, UChar* vbits8 )
    return ok;
 }
 
-/* --------------- Secondary V bit table ------------ */ //815
+/* --------------- Secondary V bit table ------------ */
 static OSet* secVBitTable;
 
 // Stats
@@ -823,7 +816,7 @@ static void gcSecVBitTable(void)
    }
 }
 
-static UWord get_sec_vbits8(Addr a) //962
+static UWord get_sec_vbits8(Addr a)
 {
    Addr         aAligned = VG_ROUNDDN(a, BYTES_PER_SEC_VBIT_NODE);
    Int          amod     = a % BYTES_PER_SEC_VBIT_NODE;
@@ -880,13 +873,13 @@ static void set_sec_vbits8(Addr a, UWord vbits8)
 
 /* Returns the offset in memory of the byteno-th most significant byte
    in a wordszB-sized word, given the specified endianness. */
-static INLINE UWord byte_offset_w ( UWord wordszB, Bool bigendian, //1019
+static INLINE UWord byte_offset_w ( UWord wordszB, Bool bigendian,
                                     UWord byteno ) {
    return bigendian ? (wordszB-1-byteno) : byteno;
 }
 
 
-/* --------------- Load/store slow cases. --------------- *///1147
+/* --------------- Load/store slow cases. --------------- */
 static
 __attribute__((noinline))
 void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
@@ -1039,6 +1032,9 @@ ULong tnt_LOADVn_slow ( Addr a, SizeT nBits, Bool bigendian )
       SecMap* sm       = get_secmap_for_reading(a);
       UWord   sm_off16 = SM_OFF_16(a);
       UWord   vabits16 = ((UShort*)(sm->vabits8))[sm_off16];
+#ifdef DBG_LOAD
+      VG_(printf)("tnt_LOADn_slow fully t/ut 0x%lx 0x%x\n", a, vabits16);
+#endif
       if (LIKELY(vabits16 == VA_BITS16_UNTAINTED))
          return V_BITS64_UNTAINTED;
       if (LIKELY(vabits16 == VA_BITS16_TAINTED))
@@ -1067,6 +1063,9 @@ ULong tnt_LOADVn_slow ( Addr a, SizeT nBits, Bool bigendian )
       if (!ok) n_addrs_bad++;
       vbits64 <<= 8;
       vbits64 |= vbits8;
+#ifdef DBG_LOAD
+      VG_(printf)("tnt_LOADn_slow loop 0x%lx 0x%x\n", ai, vbits8);
+#endif
    }
 
    /* This is a hack which avoids producing errors for code which
@@ -1118,6 +1117,7 @@ void tnt_STOREVn_slow ( Addr a, SizeT nBits, ULong vbytes, Bool bigendian )
 
    PROF_EVENT(35, "tnt_STOREVn_slow");
 
+
    /* ------------ BEGIN semi-fast cases ------------ */
    /* These deal quickly-ish with the common auxiliary primary map
       cases on 64-bit platforms.  Are merely a speedup hack; can be
@@ -1138,9 +1138,15 @@ void tnt_STOREVn_slow ( Addr a, SizeT nBits, ULong vbytes, Bool bigendian )
          /* is mapped, and is addressible. */
          // Convert full V-bits in register to compact 2-bit form.
          if (LIKELY(V_BITS64_UNTAINTED == vbytes)) {
+#ifdef DBG_STORE
+            VG_(printf)("tnt_STOREVn_slow likely untainted 0x%llx 0x%llx\n", a, nBits);
+#endif
             ((UShort*)(sm->vabits8))[sm_off16] = (UShort)VA_BITS16_UNTAINTED;
             return;
          } else if (V_BITS64_TAINTED == vbytes) {
+#ifdef DBG_STORE
+            VG_(printf)("tnt_STOREVn_slow tainted 0x%llx 0x%llx\n", a, nBits);
+#endif
             ((UShort*)(sm->vabits8))[sm_off16] = (UShort)VA_BITS16_TAINTED;
             return;
          }
@@ -1163,6 +1169,9 @@ void tnt_STOREVn_slow ( Addr a, SizeT nBits, ULong vbytes, Bool bigendian )
             sm->vabits8[sm_off] = VA_BITS8_UNTAINTED;
             return;
          } else if (V_BITS32_TAINTED == (vbytes & 0xFFFFFFFF)) {
+#ifdef DBG_STORE
+            VG_(printf)("tnt_STOREVn_slow tainted ffffffff 0x%lx 0x%llx\n", a, nBits);
+#endif
             sm->vabits8[sm_off] = VA_BITS8_TAINTED;
             return;
          }
@@ -1183,6 +1192,9 @@ void tnt_STOREVn_slow ( Addr a, SizeT nBits, ULong vbytes, Bool bigendian )
       ok     = set_vbits8(ai, vbits8);
       if (!ok) n_addrs_bad++;
       vbytes >>= 8;
+#ifdef DBG_STORE
+      VG_(printf)("tnt_STOREVn_slow loop 0x%lx 0x%x ok %d\n", ai, vbits8, ok);
+#endif
    }
 
    /* If an address error has happened, report it. */
@@ -1197,7 +1209,7 @@ void tnt_STOREVn_slow ( Addr a, SizeT nBits, ULong vbytes, Bool bigendian )
 /*------------------------------------------------------------*/
 
 static void set_address_range_perms ( Addr a, SizeT lenT, UWord vabits16,
-                                      UWord dsm_num ) //1329
+                                      UWord dsm_num )
 {
    UWord    sm_off, sm_off16;
    UWord    vabits2 = vabits16 & 0x3;
@@ -1459,7 +1471,7 @@ void TNT_(make_mem_defined) ( Addr a, SizeT len )
 /* --- Block-copy permissions (needed for implementing realloc() and
        sys_mremap). --- */
 
-void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len ) //1687
+void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len )
 {
    SizeT i, j;
    UChar vabits2, vabits8;
@@ -1543,7 +1555,7 @@ void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len ) //1687
 }
 
 /*static
-void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx, //3873
+void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx,
                        ULong di_handle )
 {
    if (rr || ww || xx)
@@ -1552,7 +1564,7 @@ void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx, //3873
       TNT_(make_mem_noaccess)(a, len);
 }*/
 
-//3311
+
 //void TNT_(helperc_MAKE_STACK_UNINIT) ( Addr base, UWord len, Addr nia )
 //{
 //   //UInt otag;
@@ -1680,7 +1692,6 @@ void tnt_new_mem_mmap ( Addr a, SizeT len, Bool rr, Bool ww, Bool xx, //3873
 //}
 
 
-//3997
 /*------------------------------------------------------------*/
 /*--- Functions called directly from generated code:       ---*/
 /*--- Load/store handlers.                                 ---*/
@@ -1772,6 +1783,9 @@ static INLINE
 ULong tnt_LOADV64 ( Addr a, Bool isBigEndian )
 {
    PROF_EVENT(200, "tnt_LOADV64");
+#ifdef DBG_LOAD
+   VG_(printf)("tnt_LOADV64 0x%lx\n", a);
+#endif
 
 #ifndef PERF_FAST_LOADV
    return tnt_LOADVn_slow( a, 64, isBigEndian );
@@ -1843,9 +1857,15 @@ void tnt_STOREV64 ( Addr a, ULong vbits64, Bool isBigEndian )
 
       if (UNLIKELY( UNALIGNED_OR_HIGH(a,64) )) {
          PROF_EVENT(211, "tnt_STOREV64-slow1");
+#ifdef DBG_STORE
+         VG_(printf)("tnt_STOREV64 unlikely 0x%lx 0x%llx\n", a, vbits64);
+#endif
          tnt_STOREVn_slow( a, 64, vbits64, isBigEndian );
          return;
       }
+#ifdef DBG_STORE
+      VG_(printf)("tnt_STOREV64 0x%08lx 0x%llx\n", a, vbits64);
+#endif
 
       sm       = get_secmap_for_reading_low(a);
       sm_off16 = SM_OFF_16(a);
@@ -1862,6 +1882,9 @@ void tnt_STOREV64 ( Addr a, ULong vbits64, Bool isBigEndian )
             ((UShort*)(sm->vabits8))[sm_off16] = (UShort)VA_BITS16_UNTAINTED;
          } else if (V_BITS64_TAINTED == vbits64) {
             ((UShort*)(sm->vabits8))[sm_off16] = (UShort)VA_BITS16_TAINTED;
+#ifdef DBG_STORE
+            VG_(printf)("tnt_STOREV64 V_BITS64_TAINTED\n");
+#endif
          } else {
             /* Slow but general case -- writing partially defined bytes. */
             PROF_EVENT(212, "tnt_STOREV64-slow2");
@@ -2047,6 +2070,8 @@ VG_REGPARM(2) void TNT_(helperc_STOREV32be) ( Addr a, UWord vbits32 )
 
    tnt_STOREV32(a, vbits32, True);
 }
+
+
 VG_REGPARM(2) void TNT_(helperc_STOREV32le) ( Addr a, UWord vbits32 )
 {
 #ifdef DBG_STORE
@@ -2419,367 +2444,6 @@ Int atoi( HChar *s ){
 
    return result;
 }
-#if 0
-Char decode_char( UInt num ){
-   switch( num ){
-   case 0:
-      return '0';
-   case 1:
-      return '1';
-   case 2:
-      return '2';
-   case 3:
-      return '3';
-   case 4:
-      return '4';
-   case 5:
-      return '5';
-   case 6:
-      return '6';
-   case 7:
-      return '7';
-   case 8:
-      return '8';
-   case 9:
-      return '9';
-   case 0xa:
-      return 'a';
-   case 0xb:
-      return 'b';
-   case 0xc:
-      return 'c';
-   case 0xd:
-      return 'd';
-   case 0xe:
-      return 'e';
-   case 0xf:
-      return 'f';
-   case 0x10:
-      return 'g';
-   case 0x11:
-      return 'i';
-   case 0x12:
-      return 'j';
-   case 0x13:
-      return 'l';
-   case 0x14:
-      return 'm';
-   case 0x15:
-      return 'n';
-   case 0x16:
-      return 'o';
-   case 0x17:
-      return 'p';
-   case 0x18:
-      return 's';
-   case 0x19:
-      return 't';
-   case 0x1a:
-      return 'u';
-   case 0x1b:
-      return 'x';
-   case 0x1c:
-      return '=';
-   case 0x1d:
-      return ' ';
-   case 0x1e:
-      return '_';
-   default:
-      return '\0';
-   }
-}
-
-void decode_string( UInt *enc, HChar *aStr ){
-   Int start = 5;
-   Int next_uint;
-   Int shift;
-   Int i;
-
-   VG_(sprintf)( aStr, "0x1%X00%X ",
-      (enc[0] & 0x08000000)? 9:5, (enc[0] & 0xf0000000) >> 28 );
-
-   for( i = 0; i < 4; i++ ){
-      shift = 32 - start - 5;
-
-      while( shift > 0 ){
-         next_uint = (enc[i] >> shift) & 0x1f;
-         if( next_uint == 0x1f )
-            return;
-         VG_(sprintf)( aStr, "%s%c", aStr, decode_char( next_uint ) );
-         start += 5;
-         shift = 32 - start - 5;
-      }
-
-      next_uint = (enc[i] << (32 - 5 - shift)) >> 27;
-      next_uint = (next_uint | ( enc[i+1] >> (32 + shift) ) ) & 0x1f;
-      if( next_uint == 0x1f )
-         return;
-      VG_(sprintf)( aStr, "%s%c", aStr, decode_char( next_uint ) );
-      start = -1*shift;
-   }
-}
-
-void post_decode_string_load( HChar *aStr ){
-   HChar aTmp1[128];
-   HChar aTmp2[128];
-   Int i;
-   Int irtype;
-   HChar *pChr;
-
-   pChr = VG_(strchr)( aStr, '=' );
-
-   tl_assert( pChr );
-
-   VG_(strncpy)( aTmp1, aStr, pChr-aStr+1 );
-   aTmp1[pChr-aStr+1] = 0;
-   i = pChr-aStr;
-
-   if( aStr[i+1] == ' '       && 
-       ctoi_test( aStr[i+2] ) &&
-       aStr[i+3] == ' '       ){
-       irtype = ctoi( aStr[i+2] );
-       i = i+3;
-   }else
-      tl_assert(0);
-
-   if( irtype >= IRType_MAX ){
-      VG_(printf)("%s\n", aStr);
-      tl_assert( irtype < IRType_MAX );
-   }
-
-   VG_(strncpy)( aTmp2, aStr+i+1, 127 );
-
-   tl_assert( VG_(strlen)(aTmp1) +
-              VG_(strlen)(IRType_string[irtype & 0xf]) +
-              VG_(strlen)(aTmp2) < 128 );
-   
-   VG_(sprintf)( aStr, "%s LD %s %s", aTmp1, IRType_string[irtype & 0xf], aTmp2 );
-}
-
-void post_decode_string_primops( HChar *aStr ){
-   HChar aTmp1[128];
-   HChar aTmp2[128];
-   HChar *pChr;
-   Int i;
-   Int irop;
-
-   pChr = VG_(strchr)( aStr, '=' );
-
-   tl_assert( pChr );
-
-   VG_(strncpy)( aTmp1, aStr, pChr-aStr+1 );
-   aTmp1[pChr-aStr+1] = 0;
-   i = pChr-aStr;
-
-   if( aStr[i+1] == ' '       && 
-       ctoi_test( aStr[i+2] ) &&
-       aStr[i+3] == ' '       ){
-       irop = ctoi( aStr[i+2] );
-       i = i+3;
-   }else if( aStr[i+1] == ' '       && 
-             ctoi_test( aStr[i+2] ) &&
-             ctoi_test( aStr[i+3] ) &&
-             aStr[i+4] == ' '       ){
-       irop = ctoi( aStr[i+2] ) * 0x10 +
-              ctoi( aStr[i+3] );
-       i = i+4;
-   }else if( aStr[i+1] == ' '       && 
-             ctoi_test( aStr[i+2] ) &&
-             ctoi_test( aStr[i+3] ) &&
-             ctoi_test( aStr[i+4] ) &&
-             aStr[i+5] == ' '       ){
-       irop = ctoi( aStr[i+2] ) * 0x100 +
-              ctoi( aStr[i+3] ) * 0x10  +
-              ctoi( aStr[i+4] );
-       i = i+5;
-   }else{
-      VG_(printf)("%s\n", aStr);
-      tl_assert(0);
-   }
-
-   // 1st: Iop_INVALID, Last: Iop_LAST
-   if( irop >= (Iop_LAST - Iop_INVALID) ){
-      VG_(printf)("%s irop:%x Iop_LAST:%x\n", aStr, irop, Iop_LAST);
-      tl_assert( 0 );
-   }
-
-   VG_(strncpy)( aTmp2, aStr+i+1, 127 );
-
-   tl_assert( VG_(strlen)(aTmp1) +
-              VG_(strlen)(IROp_string[irop & 0xfff]) +
-              VG_(strlen)(aTmp2) < 128 );
-   
-   VG_(sprintf)( aStr, "%s %s %s", aTmp1, IROp_string[irop & 0xfff], aTmp2 );
-}
-
-void post_decode_string_binops( HChar *aStr ){
-   HChar aTmp1[128];
-   HChar aTmp2[128];
-   HChar aTmp3[128];
-   HChar *pEquals, *pSpace;
-   HChar *pTempVar, *pHex;
-
-   // 0x15006 t20 = irop t25x1
-   //             ^--pEquals
-   // 0x15006 t28 = irop x0t20
-   //             ^--pEquals
-   pEquals = VG_(strstr)( aStr, " = " );
-
-   tl_assert( pEquals );
-
-   // 0x15006 t20 = irop t25x1
-   //                   ^--pSpace
-   // 0x15006 t28 = irop x0t20
-   //                   ^--pSpace
-   pSpace = VG_(strchr)( pEquals + 3, ' ' );
-   pTempVar = VG_(strchr)( pSpace, 't' );
-   pHex = VG_(strchr)( pSpace, 'x' );
-
-   tl_assert( pSpace );
-//   tl_assert( pTempVar );
-   tl_assert( pHex );
-
-   if( pTempVar && pTempVar < pHex ){
-
-      // 0x15006 t20 = irop t25x1
-      //                       ^--pHex
-      VG_(strncpy)( aTmp1, aStr, pHex-aStr );
-      aTmp1[pHex-aStr] = '\0';
-      // aTmp1: 0x15006 t20 = irop t25
-
-      VG_(strncpy)( aTmp2, pHex, VG_(strlen)(pHex) );
-      aTmp2[VG_(strlen)(pHex)] = '\0';
-      // aTmp2: x1
-
-      tl_assert( VG_(strlen)(aTmp1) +
-                 VG_(strlen)(aTmp2) + 2 < 128 );
-
-      VG_(sprintf)( aStr, "%s 0%s", aTmp1, aTmp2 );
-   }else if( pTempVar && pTempVar > pHex ){
-
-      // 0x15006 t28 = irop x0t20
-      //                   ^--pSpace
-      VG_(strncpy)( aTmp1, aStr, pSpace-aStr );
-      aTmp1[pSpace-aStr] = '\0';
-      // aTmp1: 0x15006 t28 = irop
-
-      VG_(strncpy)( aTmp2, pHex, pTempVar-pHex );
-      aTmp2[pTempVar-pHex] = '\0';
-      // aTmp2: x0
-
-      VG_(strncpy)( aTmp3, pTempVar, VG_(strlen)(pTempVar) );
-      aTmp3[VG_(strlen)(pTempVar)] = '\0';
-      // aTmp3: t20
-
-      tl_assert( VG_(strlen)(aTmp1) +
-                 VG_(strlen)(aTmp2) +
-                 VG_(strlen)(aTmp3) + 2 < 128 );
-
-      VG_(sprintf)( aStr, "%s 0%s %s", aTmp1, aTmp2, aTmp3 );
-   }
-}
-
-void post_decode_string_store( HChar *aStr ){
-   HChar aTmp1[128];
-   HChar aTmp2[128];
-   HChar aTmp3[8];
-   Int i;
-   Int irtype;
-   HChar *pChr;
-
-   VG_(strncpy)( aTmp3, aStr, 7 );
-   aTmp3[7] = '\0';
-
-   pChr = VG_(strchr)( aStr, '=' );
-
-   tl_assert( pChr );
-
-   VG_(strncpy)( aTmp1, aStr+8, pChr-aStr+1-8 );
-   aTmp1[pChr-aStr+1-8] = '\0';
-
-   i = pChr-aStr;
-
-   if( aStr[i+1] == ' '       && 
-       ctoi_test( aStr[i+2] ) &&
-       aStr[i+3] == ' '       ){
-       irtype = ctoi( aStr[i+2] );
-       i = i+3;
-   }else
-      tl_assert(0);
-
-   if( irtype >= IRType_MAX ){
-      VG_(printf)("%s\n", aStr);
-      tl_assert( irtype < IRType_MAX );
-   }
-
-   VG_(strncpy)( aTmp2, aStr+i+1, 127 );
-
-   tl_assert( VG_(strlen)(aTmp3) +
-              VG_(strlen)(aTmp1) +
-              VG_(strlen)(IRType_string[irtype & 0xf]) +
-              VG_(strlen)(aTmp2) < 128 );
-   
-   VG_(sprintf)( aStr, "%s ST %s %s %s", 
-      aTmp3, aTmp1, aTmp2, IRType_string[irtype & 0xf] );
-}
-
-void post_decode_string_ite( HChar *aStr ){
-   HChar aTmp1[128];
-   HChar aTmp2[128];
-   HChar *pChr;
-
-   pChr = VG_(strchr)( aStr, '=' );
-
-   tl_assert( pChr );
-
-   VG_(strncpy)( aTmp1, aStr, pChr-aStr+1 );
-   aTmp1[pChr-aStr+1] = 0;
-   VG_(strncpy)( aTmp2, pChr+2, 127 );
-
-   tl_assert( VG_(strlen)( aTmp1 ) +
-              7 +
-              VG_(strlen)( aTmp2 ) < 128 );
-
-   VG_(sprintf)( aStr, "%s ITE %s", aTmp1, aTmp2 );
-}
-
-void post_decode_string( HChar *aStr ){
-   HChar aTmp[128];
-   Int i;
-   Int count = 0;
-
-   for( i=0; i<128; i++ ){
-      if( aStr[i] == '=' ){
-         aTmp[count++] = ' ';
-         aTmp[count++] = aStr[i];
-         aTmp[count++] = ' ';
-      }else if( aStr[i] == '\0' ){
-         aTmp[count] = aStr[i];
-         break;
-      }else
-         aTmp[count++] = aStr[i];
-   }
-   
-   VG_(sprintf)( aStr, "%s", aTmp );
-
-   if( aStr[3] == '5' && aStr[6] == '4' ){
-      post_decode_string_primops( aStr );
-   }else if( aStr[3] == '5' && aStr[6] == '5' ){
-      post_decode_string_primops( aStr );
-   }else if( aStr[3] == '5' && aStr[6] == '6' ){
-      post_decode_string_primops( aStr );
-      post_decode_string_binops( aStr );
-   }else if( aStr[3] == '5' && aStr[6] == '7' ){
-      post_decode_string_primops( aStr );
-   }else if( aStr[3] == '5' && aStr[6] == '8' ){
-      post_decode_string_load( aStr );
-   }else if( aStr[3] == '5' && aStr[6] == 'A' ){
-      post_decode_string_ite( aStr );
-   }else if( aStr[3] == '9' && aStr[6] == '6' ){
-      post_decode_string_store( aStr );
-   }
-}
-#endif
 
 /*-----------------------------------------------
    Helper functions for taint information flows
@@ -2856,80 +2520,6 @@ void infer_client_binary_name(UInt pc) {
    }
 
 }
-#if 0
-VG_REGPARM(3)
-void TNT_(helperc_0_tainted_enc32) (
-   UInt enc0, 
-   UInt enc1, 
-   UInt enc2, 
-   UInt enc3, 
-   UInt value, 
-   UInt taint ) {
-
-   UInt  pc; 
-   HChar fnname[FNNAME_MAX];
-   HChar aTmp[128];
-   UInt  enc[4] = { enc0, enc1, enc2, enc3 };
-
-   pc = VG_(get_IP)( VG_(get_running_tid)() );
-   
-   // hack to get name of application binary
-   infer_client_binary_name(pc);
-
-   if( TNT_(clo_critical_ins_only) &&
-       ( enc[0] & 0xf8000000 ) != 0xB8000000 )
-      return;
-
-   if(!TNT_(do_print) && taint)
-      TNT_(do_print) = 1;
-
-   if(TNT_(do_print)){
-      if((TNT_(clo_tainted_ins_only) && taint) ||
-          !TNT_(clo_tainted_ins_only)){
-         VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
-
-         decode_string( enc, aTmp );
-         post_decode_string( aTmp );
-         VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
-
-            HChar *pTmp1, *pTmp2, *pEquals;
-            HChar tmp1[16], tmp2[16];
-
-            // 0x15003 t28 = t61
-            //          ^--pTmp1
-            //                ^--pTmp2
-            pTmp1 = VG_(strstr)( aTmp, " t" ); pTmp1 += 2;
-            pEquals = VG_(strstr)( aTmp, " = " );
-            pTmp2 = pEquals + 4;
-
-            if( pEquals != NULL && pEquals[3] == 't' ){
-
-               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
-               tmp1[pEquals-pTmp1] = '\0';
-               VG_(strncpy)( tmp2, pTmp2, VG_(strlen)(pTmp2) );
-               tmp2[VG_(strlen)(pTmp2)] = '\0';
-
-               // Get indices
-               Int tmpnum1 = get_and_check_tvar( tmp1 );
-               Int tmpnum2 = get_and_check_tvar( tmp2 );
-               ti[tmpnum1]++;
-               VG_(printf)("t%s.%d <- t%s.%d", tmp1, ti[tmpnum1], tmp2, ti[tmpnum2]);
-            }else if( pEquals != NULL ){
-            // 0x15003 t28 = 
-            //          ^--pTmp1
-               VG_(strncpy)( tmp1, pTmp1, pEquals-pTmp1 );
-               tmp1[pEquals-pTmp1] = '\0';
-
-               // Get indices
-               Int tmpnum1 = get_and_check_tvar( tmp1 );
-               ti[tmpnum1]++;
-               VG_(printf)("t%s.%d", tmp1, ti[tmpnum1]);
-            }
-         VG_(printf)("\n");
-      }
-   }
-}
-#endif
 
 /**** 32-bit helpers ****/
 
@@ -3234,9 +2824,9 @@ void TNT_(h32_get) (
 
    tl_assert( reg < RI_MAX );
 
-   VG_(sprintf)(aTmp, "t%d_%d = GET r%d_%d %s",
+   VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
                            ltmp, _ti(ltmp),
-                           reg, ti[reg], IRType_string[ty&0xff] );
+                           reg, ri[reg], IRType_string[ty&0xff] );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -3271,8 +2861,8 @@ void TNT_(h32_put) (
    tl_assert( tmp < TI_MAX );
    ri[reg]++;
 
-   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, ri[reg],
-                                            tmp, _ti(tmp) );
+   VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+                                         tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -3910,9 +3500,9 @@ void TNT_(h64_get) (
 
    tl_assert( reg < RI_MAX );
 
-   VG_(sprintf)(aTmp, "t%d_%d = GET r%d_%d %s",
+   VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
                            ltmp, _ti(ltmp),
-                           reg, ti[reg], IRType_string[ty&0xff] );
+                           reg, ri[reg], IRType_string[ty&0xff] );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
@@ -3948,8 +3538,8 @@ void TNT_(h64_put) (
    tl_assert( tmp < TI_MAX );
    ri[reg]++;
 
-   VG_(sprintf)(aTmp, "PUT %d_%d = t%d_%d", reg, ri[reg],
-                                            tmp, _ti(tmp) );
+   VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+                                         tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
@@ -4166,6 +3756,12 @@ void TNT_(h64_rdtmp) (
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
 
    tl_assert( rtmp < TI_MAX );
+
+   // Sanity check for the WrTmp book-keeping,
+   // since RdTmp is essentially a no-op
+   if ( value != tv[rtmp] )
+      VG_(printf)("value 0x%llx != tv[rtmp] 0x%llx\n", value, tv[rtmp] );
+   tl_assert( value == tv[rtmp] );
 
    VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                           rtmp, _ti(rtmp) );
