@@ -2529,14 +2529,14 @@ void infer_client_binary_name(UInt pc) {
    HChar fnname[FNNAME_MAX]; \
    HChar aTmp[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
 
 #define H64_PC \
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
    HChar fnname[FNNAME_MAX]; \
    HChar aTmp[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX );
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
 
 #define H_VAR \
    HChar varname[256]; \
