@@ -2524,6 +2524,9 @@ void infer_client_binary_name(UInt pc) {
 /**** 32-bit helpers ****/
 
 // macros
+#define _ti(ltmp) ti[ltmp] & 0x7fffffff
+#define is_tainted(ltmp) (ti[ltmp] >> 31)
+
 #define H32_PC \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
    HChar fnname[FNNAME_MAX]; \
@@ -2552,6 +2555,11 @@ void infer_client_binary_name(UInt pc) {
    if(!TNT_(do_print))  return; \
    if(!(TNT_(clo_tainted_ins_only) && taint) && TNT_(clo_tainted_ins_only)) return;
 
+#define H_EXIT_EARLY_LDST \
+   if(!TNT_(do_print) && taint)  TNT_(do_print) = 1; \
+   if(!TNT_(do_print))  return; \
+   if(!(TNT_(clo_tainted_ins_only) && (taint | is_tainted(atmp))) && TNT_(clo_tainted_ins_only)) return;
+
 #define H_WRTMP_BOOKKEEPING \
    UInt ltmp = clone->Ist.WrTmp.tmp; \
    if ( ltmp >= TI_MAX ) \
@@ -2563,9 +2571,6 @@ void infer_client_binary_name(UInt pc) {
    else \
       ti[ltmp] &= 0x7fffffff; \
    tv[ltmp] = value;
-
-#define _ti(ltmp) ti[ltmp] & 0x7fffffff
-#define is_tainted(ltmp) (ti[ltmp] >> 31)
 
 // if <gtmp> goto <jk> dst
 VG_REGPARM(3)
@@ -2639,9 +2644,6 @@ void TNT_(h32_store_tt) (
    UInt value, 
    UInt taint ) {
 
-   H_EXIT_EARLY
-   H32_PC
-
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
    UInt atmp = addr->Iex.RdTmp.tmp;
@@ -2649,6 +2651,9 @@ void TNT_(h32_store_tt) (
 
    tl_assert( atmp < TI_MAX );
    tl_assert( dtmp < TI_MAX );
+
+   H_EXIT_EARLY_LDST
+   H32_PC
 
    UInt address = tv[atmp];
    H_VAR
@@ -2667,12 +2672,13 @@ void TNT_(h32_store_tt) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   if ( is_tainted(dtmp) )
-      VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
-   if ( is_tainted(dtmp) && is_tainted(atmp) )
-      VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, _ti(atmp), dtmp, _ti(dtmp) );
+   if ( is_tainted(dtmp) && is_tainted(atmp) ) {
+      VG_(printf)( "%s_%d <- t%d_%d", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "; %s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   } else if ( is_tainted(dtmp) )
+      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
    else if ( is_tainted(atmp) )
-      VG_(printf)( "t%d_%d <&- t%d_%d\n", atmp, _ti(atmp), dtmp, _ti(dtmp) );
+      VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
 }
 
 // STORE atmp = const
@@ -2682,15 +2688,15 @@ void TNT_(h32_store_tc) (
    UInt value, 
    UInt taint ) {
 
-   H_EXIT_EARLY
-   H32_PC
-
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
    UInt atmp    = addr->Iex.RdTmp.tmp;
    UInt c       = extract_IRConst(data->Iex.Const.con);
 
    tl_assert( atmp < TI_MAX );
+
+   H_EXIT_EARLY_LDST
+   H32_PC
 
    UInt address = tv[atmp];
    H_VAR
@@ -2707,8 +2713,7 @@ void TNT_(h32_store_tc) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   //VG_(printf)( "; t%d_%d\n", atmp, _ti(atmp) );
+   VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
 }
 
 // STORE const = dtmp
@@ -2737,17 +2742,15 @@ void TNT_(h32_store_ct) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   // Check if it hasn't been seen before
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
       myStringArray_push( &lvar_s, varname );
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( " <-&- t%d_%d\n", dtmp, _ti(dtmp) );
+   VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
 }
 
-// ltmp = LOAD <ty> rtmp
+// ltmp = LOAD <ty> atmp
 VG_REGPARM(3)
 void TNT_(h32_load_t) (
    IRStmt *clone, 
@@ -2756,33 +2759,37 @@ void TNT_(h32_load_t) (
 
    H_WRTMP_BOOKKEEPING
 
-   H_EXIT_EARLY
-   H32_PC
-
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
-   UInt rtmp    = addr->Iex.RdTmp.tmp;
+   UInt atmp    = addr->Iex.RdTmp.tmp;
 
-   tl_assert( rtmp < TI_MAX );
+   tl_assert( atmp < TI_MAX );
 
-   UInt address = tv[rtmp];
+   H_EXIT_EARLY_LDST
+   H32_PC
+
+   UInt address = tv[atmp];
    H_VAR
 
    VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
-                               IRType_string[ty], rtmp, _ti(rtmp) );
+                               IRType_string[ty], atmp, _ti(atmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
    // Information flow
-   // Check if it hasn't been seen before
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
       myStringArray_push( &lvar_s, varname );
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
+      VG_(printf)( "t%d_%d <- %s_%d", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
+   } else if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   else if ( is_tainted(atmp) )
+      VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
 }
 
 // ltmp = LOAD <ty> c
@@ -2811,14 +2818,12 @@ void TNT_(h32_load_c) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   // Check if it hasn't been seen before
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
       myStringArray_push( &lvar_s, varname );
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- 0x%x\n", ltmp, _ti(ltmp), c );
+   VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
 }
 
 VG_REGPARM(3)
@@ -3335,9 +3340,6 @@ void TNT_(h64_store_tt) (
    ULong value, 
    ULong taint ) {
 
-   H_EXIT_EARLY
-   H64_PC
-
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
    UInt atmp = addr->Iex.RdTmp.tmp;
@@ -3345,6 +3347,9 @@ void TNT_(h64_store_tt) (
 
    tl_assert( atmp < TI_MAX );
    tl_assert( dtmp < TI_MAX );
+
+   H_EXIT_EARLY_LDST
+   H64_PC
 
    ULong address = tv[atmp];
    H_VAR
@@ -3363,8 +3368,13 @@ void TNT_(h64_store_tt) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d <- t%d_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
-         VG_(printf)( "; t%d_%d <&- t%d_%d\n", atmp, _ti(atmp), dtmp, _ti(dtmp) );
+   if ( is_tainted(dtmp) && is_tainted(atmp) ) {
+      VG_(printf)( "%s_%d <- t%d_%d", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "; %s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   } else if ( is_tainted(dtmp) )
+      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   else if ( is_tainted(atmp) )
+      VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
 }
 
 // STORE atmp = c
@@ -3374,15 +3384,15 @@ void TNT_(h64_store_tc) (
    ULong value, 
    ULong taint ) {
 
-   H_EXIT_EARLY
-   H64_PC
-
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
    UInt atmp    = addr->Iex.RdTmp.tmp;
    ULong c      = extract_IRConst64(data->Iex.Const.con);
 
    tl_assert( atmp < TI_MAX );
+
+   H_EXIT_EARLY_LDST
+   H64_PC
 
    ULong address = c;
    H_VAR
@@ -3399,8 +3409,7 @@ void TNT_(h64_store_tc) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d\n", atmp, _ti(atmp) );
+   VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
 }
 
 // STORE c = dtmp
@@ -3435,11 +3444,10 @@ void TNT_(h64_store_ct) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) %s_%d", type, varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( " <-&- t%d_%d\n", dtmp, _ti(dtmp) );
+   VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
 }
 
-// ltmp = LOAD <ty> rtmp
+// ltmp = LOAD <ty> atmp
 VG_REGPARM(3)
 void TNT_(h64_load_t) (
    IRStmt *clone, 
@@ -3448,20 +3456,20 @@ void TNT_(h64_load_t) (
 
    H_WRTMP_BOOKKEEPING
 
-   H_EXIT_EARLY
-   H64_PC
-
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
-   UInt rtmp    = addr->Iex.RdTmp.tmp;
+   UInt atmp    = addr->Iex.RdTmp.tmp;
 
-   tl_assert( rtmp < TI_MAX );
+   tl_assert( atmp < TI_MAX );
 
-   ULong address = tv[rtmp];
+   H_EXIT_EARLY_LDST
+   H64_PC
+
+   ULong address = tv[atmp];
    H_VAR
 
    VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
-                         IRType_string[ty], rtmp, _ti(rtmp) );
+                         IRType_string[ty], atmp, _ti(atmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3473,8 +3481,13 @@ void TNT_(h64_load_t) (
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
+      VG_(printf)( "t%d_%d <- %s_%d", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
+   } else if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   else if ( is_tainted(atmp) )
+      VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
 }
 
 // ltmp = LOAD <ty> const
@@ -3503,14 +3516,12 @@ void TNT_(h64_load_c) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   // Check if it hasn't been seen before
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
       myStringArray_push( &lvar_s, varname );
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "(%d) t%d_%d <- %s_%d", type, ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
-   VG_(printf)( "; t%d_%d <*- 0x%llx\n", ltmp, _ti(ltmp), c );
+   VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
 }
 
 VG_REGPARM(3)
