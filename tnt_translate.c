@@ -3705,6 +3705,66 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
                    mkPCast32x8(mce, vatom2)
                 );
 
+      /* Q-and-Qshift-by-vector of the form (V128, V128) -> V256.
+         Handle the shifted results in the same way that other
+         binary Q ops are handled, eg QSub: UifU the two args,
+         then pessimise -- which is binaryNIxM.  But for the upper
+         V128, we require to generate just 1 bit which is the
+         pessimised shift result, with 127 defined zeroes above it.
+
+         Note that this overly pessimistic in that in fact only the
+         bottom 8 bits of each lane of the second arg determine the shift
+         amount.  Really we ought to ignore any undefinedness in the
+         rest of the lanes of the second arg. */
+      case Iop_QandSQsh64x2:  case Iop_QandUQsh64x2:
+      case Iop_QandSQRsh64x2: case Iop_QandUQRsh64x2:
+      case Iop_QandSQsh32x4:  case Iop_QandUQsh32x4:
+      case Iop_QandSQRsh32x4: case Iop_QandUQRsh32x4:
+      case Iop_QandSQsh16x8:  case Iop_QandUQsh16x8:
+      case Iop_QandSQRsh16x8: case Iop_QandUQRsh16x8:
+      case Iop_QandSQsh8x16:  case Iop_QandUQsh8x16:
+      case Iop_QandSQRsh8x16: case Iop_QandUQRsh8x16:
+      {
+         // The function to generate the pessimised shift result
+         IRAtom* (*binaryNIxM)(MCEnv*,IRAtom*,IRAtom*) = NULL;
+         switch (op) {
+            case Iop_QandSQsh64x2:
+            case Iop_QandUQsh64x2:
+            case Iop_QandSQRsh64x2:
+            case Iop_QandUQRsh64x2:
+               binaryNIxM = binary64Ix2;
+               break;
+            case Iop_QandSQsh32x4:
+            case Iop_QandUQsh32x4:
+            case Iop_QandSQRsh32x4:
+            case Iop_QandUQRsh32x4:
+               binaryNIxM = binary32Ix4;
+               break;
+            case Iop_QandSQsh16x8:
+            case Iop_QandUQsh16x8:
+            case Iop_QandSQRsh16x8:
+            case Iop_QandUQRsh16x8:
+               binaryNIxM = binary16Ix8;
+               break;
+            case Iop_QandSQsh8x16:
+            case Iop_QandUQsh8x16:
+            case Iop_QandSQRsh8x16:
+            case Iop_QandUQRsh8x16:
+               binaryNIxM = binary8Ix16;
+               break;
+            default:
+               tl_assert(0);
+         }
+         tl_assert(binaryNIxM);
+         // Pessimised shift result, shV[127:0]
+         IRAtom* shV = binaryNIxM(mce, vatom1, vatom2);
+         // Generates: Def--(127)--Def PCast-to-I1(shV)
+         IRAtom* qV = mkPCastXXtoXXlsb(mce, shV, Ity_V128);
+         // and assemble the result
+         return assignNew('V', mce, Ity_V256,
+                          binop(Iop_V128HLtoV256, qV, shV));
+      }
+
       default:
          ppIROp(op);
          VG_(tool_panic)("tnt_translate.c: expr2vbits_Binop");
