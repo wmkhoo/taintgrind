@@ -2593,7 +2593,10 @@ void TNT_(h32_exit_t) (
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
+   if ( is_tainted(gtmp) )
+      VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // if <const> goto <jk> dst
@@ -2624,7 +2627,10 @@ void TNT_(h32_next_t) (
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", next, ti[next] );
+   if ( is_tainted(next) )
+      VG_(printf)( "t%d_%d\n", next, ti[next] );
+   else
+      VG_(printf)("\n");
 }
 
 // JMP const 
@@ -2679,6 +2685,8 @@ void TNT_(h32_store_tt) (
       VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
    else if ( is_tainted(atmp) )
       VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // STORE atmp = const
@@ -2713,7 +2721,10 @@ void TNT_(h32_store_tc) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   if ( is_tainted(atmp) )
+      VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // STORE const = dtmp
@@ -2747,7 +2758,10 @@ void TNT_(h32_store_ct) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   if ( is_tainted(dtmp) )
+      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = LOAD <ty> atmp
@@ -2790,6 +2804,8 @@ void TNT_(h32_load_t) (
       VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
    else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = LOAD <ty> c
@@ -2823,7 +2839,10 @@ void TNT_(h32_load_c) (
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   else
+      VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -2851,7 +2870,10 @@ void TNT_(h32_get) (
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   else
+      VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -2887,7 +2909,10 @@ void TNT_(h32_put) (
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   if ( is_tainted(tmp) )
+      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   else
+      VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -2956,7 +2981,10 @@ void TNT_(h32_unop) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, const
@@ -2988,7 +3016,10 @@ void TNT_(h32_binop_tc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> Const rtmp1
@@ -3020,7 +3051,10 @@ void TNT_(h32_binop_ct) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1 rtmp2
@@ -3061,6 +3095,8 @@ void TNT_(h32_binop_tt) (
       VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
    else if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
       VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, rtmp2, rtmp3
@@ -3105,8 +3141,11 @@ void TNT_(h32_rdtmp) (
                                           rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                     rtmp, _ti(rtmp));
+   if ( is_tainted(ltmp) )
+      VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                        rtmp, _ti(rtmp));
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? rtmp1 : const
@@ -3138,7 +3177,10 @@ void TNT_(h32_ite_tc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? const : rtmp2
@@ -3169,7 +3211,10 @@ void TNT_(h32_ite_ct) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? rtmp1 : rtmp2
@@ -3203,8 +3248,17 @@ void TNT_(h32_ite_tt) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
+   if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
+      VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
                           rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else if ( is_tainted(rtmp1) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                         rtmp1, _ti(rtmp1) );
+   else if ( is_tainted(rtmp2) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                         rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? const1 : const2
@@ -3236,8 +3290,11 @@ void TNT_(h32_ite_cc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                      ctmp, _ti(ctmp) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                         ctmp, _ti(ctmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = callee( arg[0], ... )
@@ -3290,7 +3347,10 @@ void TNT_(h64_exit_t) (
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
+   if ( is_tainted(gtmp) )
+      VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // IF <gtmp> GOTO <jk> addr
@@ -3321,7 +3381,10 @@ void TNT_(h64_next_t) (
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d\n", next, ti[next] );
+   if ( is_tainted(next) )
+      VG_(printf)( "t%d_%d\n", next, ti[next] );
+   else
+      VG_(printf)("\n");
 }
 
 // JMP const 
@@ -3375,6 +3438,8 @@ void TNT_(h64_store_tt) (
       VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
    else if ( is_tainted(atmp) )
       VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // STORE atmp = c
@@ -3409,7 +3474,10 @@ void TNT_(h64_store_tc) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   if ( is_tainted(atmp) )
+      VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // STORE c = dtmp
@@ -3444,7 +3512,10 @@ void TNT_(h64_store_ct) (
    }
    lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   if ( is_tainted(dtmp) )
+      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = LOAD <ty> atmp
@@ -3488,6 +3559,8 @@ void TNT_(h64_load_t) (
       VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
    else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = LOAD <ty> const
@@ -3521,7 +3594,10 @@ void TNT_(h64_load_c) (
    }
    //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
 
-   VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+   else
+      VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -3550,7 +3626,10 @@ void TNT_(h64_get) (
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   else
+      VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -3587,7 +3666,10 @@ void TNT_(h64_put) (
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   if ( is_tainted(tmp) )
+      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   else
+      VG_(printf)("\n");
 }
 
 
@@ -3660,7 +3742,10 @@ void TNT_(h64_unop) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1 const
@@ -3693,7 +3778,10 @@ void TNT_(h64_binop_tc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> const rtmp2
@@ -3725,7 +3813,10 @@ void TNT_(h64_binop_ct) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1 rtmp2
@@ -3766,6 +3857,8 @@ void TNT_(h64_binop_tt) (
       VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
    else if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
       VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, rtmp2, rtmp3
@@ -3817,7 +3910,10 @@ void TNT_(h64_rdtmp) (
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
-   VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp));
+   if ( is_tainted(ltmp) )
+      VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp));
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? rtmp1 : const
@@ -3849,7 +3945,10 @@ void TNT_(h64_ite_tc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? const : rtmp2
@@ -3881,7 +3980,10 @@ void TNT_(h64_ite_ct) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? rtmp1 : rtmp2
@@ -3915,7 +4017,14 @@ void TNT_(h64_ite_tt) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
+      VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else if ( is_tainted(rtmp1) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
+   else if ( is_tainted(rtmp2) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = ctmp? const1 : const2
@@ -3947,8 +4056,11 @@ void TNT_(h64_ite_cc) (
       fnname, aTmp, value, taint );
 
    // Information flow
-   VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                      ctmp, _ti(ctmp) );
+   if ( is_tainted(ltmp) )
+      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                         ctmp, _ti(ctmp) );
+   else
+      VG_(printf)("\n");
 }
 
 // ltmp = callee( arg[0], ... )
