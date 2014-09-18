@@ -43,10 +43,12 @@
 #include "pub_tool_threadstate.h"   // VG_(get_running_tid)
 #include "pub_tool_xarray.h"		// VG_(*XA)
 #include "pub_tool_stacktrace.h"	// VG_(get_and_pp_StackTrace)
+#include "pub_tool_libcfile.h"      // VG_(readlink)
 
 #include "tnt_include.h"
 #include "tnt_strings.h"
 #include "tnt_structs.h"
+
 
 /*------------------------------------------------------------*/
 /*--- Fast-case knobs                                      ---*/
@@ -2521,11 +2523,16 @@ void infer_client_binary_name(UInt pc) {
 
 }
 
+// If stdout is not a tty, don't highlight text
+int istty = 0;
+
 /**** 32-bit helpers ****/
 
 // macros
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
+#define KRED "\e[31m"
+#define KNRM "\e[0m"
 
 #define H32_PC \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
@@ -2589,7 +2596,14 @@ void TNT_(h32_exit_t) (
 
    tl_assert( gtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
+   if ( istty && is_tainted(gtmp) )
+      VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx",
+                               KRED,
+                               gtmp, _ti(gtmp),
+                               KNRM,
+                               addr );
+   else
+      VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -2623,7 +2637,10 @@ void TNT_(h32_next_t) (
 
    tl_assert( next < TI_MAX );
 
-   VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
+   if ( istty && is_tainted(next) )
+      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, ti[next], KNRM );
+   else
+      VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -2664,9 +2681,16 @@ void TNT_(h32_store_tt) (
    UInt address = tv[atmp];
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
-                               atmp, _ti(atmp),
-                               dtmp, _ti(dtmp) );
+   if ( istty && is_tainted(dtmp) )
+      VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
+                                  atmp, _ti(atmp),
+                                  KRED,
+                                  dtmp, _ti(dtmp),
+                                  KNRM );
+   else
+      VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
+                                  atmp, _ti(atmp),
+                                  dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -2747,7 +2771,11 @@ void TNT_(h32_store_ct) (
    UInt address = c;
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
+   if ( istty && is_tainted(dtmp) )
+      VG_(sprintf)( aTmp, "STORE 0x%x = %st%d_%d%s",
+                    c, KRED, dtmp, _ti(dtmp), KNRM );
+   else
+      VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -2785,8 +2813,12 @@ void TNT_(h32_load_t) (
    UInt address = tv[atmp];
    H_VAR
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
-                               IRType_string[ty], atmp, _ti(atmp) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+                                  IRType_string[ty], atmp, _ti(atmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+                                  IRType_string[ty], atmp, _ti(atmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -2827,7 +2859,14 @@ void TNT_(h32_load_c) (
    UInt address = c;
    H_VAR
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, _ti(ltmp),
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%x",
+                                                 KRED,
+                                      ltmp, _ti(ltmp),
+                                                 KNRM,
+                                IRType_string[ty], c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, _ti(ltmp),
                                               IRType_string[ty], c );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
@@ -2864,9 +2903,16 @@ void TNT_(h32_get) (
 
    tl_assert( reg < RI_MAX );
 
-   VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
-                           ltmp, _ti(ltmp),
-                           reg, ri[reg], IRType_string[ty&0xff] );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
+                   KRED,
+                   ltmp, _ti(ltmp),
+                   KNRM,
+                   reg, ri[reg], IRType_string[ty&0xff] );
+   else
+      VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
+                   ltmp, _ti(ltmp),
+                   reg, ri[reg], IRType_string[ty&0xff] );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -2904,8 +2950,15 @@ void TNT_(h32_put) (
    tl_assert( tmp < TI_MAX );
    ri[reg]++;
 
-   VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
-                                         tmp, _ti(tmp) );
+   if ( istty && is_tainted(tmp) )
+      VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s",
+                   reg, ri[reg],
+                   KRED,
+                   tmp, _ti(tmp),
+                   KNRM );
+   else
+      VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -2932,7 +2985,12 @@ void TNT_(h32_puti) (
    UInt bias = (tt2 >> 16) & 0xffff;
    UInt tmp = tt2 & 0xffff;
 
-   VG_(sprintf)(aTmp, "0x%x PUTI<%s>[%x,%x] = t%d", Ist_PutI, IRType_string[elemTy], ix, bias, tmp);
+   if ( istty && is_tainted(tmp) )
+      VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = %st%d%s",
+                IRType_string[elemTy], ix, bias,
+                KRED, tmp, KNRM );
+   else
+      VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = t%d", IRType_string[elemTy], ix, bias, tmp);
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
    // TODO: Info flow
@@ -2974,9 +3032,17 @@ void TNT_(h32_unop) (
 
    tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                 ltmp, _ti(ltmp), IROp_string[op],
-                 rtmp, _ti(rtmp) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op],
+                    rtmp, _ti(rtmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
+                    ltmp, _ti(ltmp), IROp_string[op],
+                    rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
@@ -3009,9 +3075,16 @@ void TNT_(h32_binop_tc) (
 
    tl_assert( rtmp1 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%x",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], rtmp1, _ti(rtmp1), c );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%x",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op], rtmp1, _ti(rtmp1), c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%x",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op], rtmp1, _ti(rtmp1), c );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
@@ -3044,9 +3117,16 @@ void TNT_(h32_binop_ct) (
 
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x t%d_%d",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], c, rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%x t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x t%d_%d",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
@@ -3080,11 +3160,20 @@ void TNT_(h32_binop_tt) (
    tl_assert( rtmp1 < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op],
-                 rtmp1, _ti(rtmp1),
-                 rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op],
+                    rtmp1, _ti(rtmp1),
+                    rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op],
+                    rtmp1, _ti(rtmp1),
+                    rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
@@ -3137,7 +3226,14 @@ void TNT_(h32_rdtmp) (
 
    tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    rtmp, _ti(rtmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                           rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
 
@@ -3170,8 +3266,15 @@ void TNT_(h32_ite_tc) (
    tl_assert( ctmp  < TI_MAX );
    tl_assert( rtmp1 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%x",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3205,8 +3308,15 @@ void TNT_(h32_ite_ct) (
    tl_assert( ctmp  < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%x : t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
 
@@ -3240,9 +3350,17 @@ void TNT_(h32_ite_tt) (
    tl_assert( rtmp1 < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp),
-                 rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp),
+                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp),
+                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
 
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
       fnname, aTmp, value, taint );
@@ -3343,7 +3461,10 @@ void TNT_(h64_exit_t) (
 
    tl_assert( gtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
+   if ( istty && is_tainted(gtmp) )
+      VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx", KRED, gtmp, _ti(gtmp), KNRM, addr );
+   else
+      VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
@@ -3417,9 +3538,16 @@ void TNT_(h64_store_tt) (
    ULong address = tv[atmp];
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
-                               atmp, _ti(atmp),
-                               dtmp, _ti(dtmp) );
+   if ( istty && is_tainted(dtmp) )
+      VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
+                                  atmp, _ti(atmp),
+                                  KRED,
+                                  dtmp, _ti(dtmp),
+                                  KNRM );
+   else
+      VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
+                                  atmp, _ti(atmp),
+                                  dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3500,7 +3628,10 @@ void TNT_(h64_store_ct) (
    ULong address = c;
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
+   if ( istty && is_tainted(dtmp) )
+      VG_(sprintf)( aTmp, "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
+   else
+      VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3539,8 +3670,12 @@ void TNT_(h64_load_t) (
    ULong address = tv[atmp];
    H_VAR
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
-                         IRType_string[ty], atmp, _ti(atmp) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM,
+                            IRType_string[ty], atmp, _ti(atmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+                            IRType_string[ty], atmp, _ti(atmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3582,7 +3717,11 @@ void TNT_(h64_load_c) (
    ULong address = c;
    H_VAR
 
-   VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp),
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM,
+                                                IRType_string[ty], c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp),
                                                 IRType_string[ty], c );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
@@ -3620,7 +3759,14 @@ void TNT_(h64_get) (
 
    tl_assert( reg < RI_MAX );
 
-   VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
+                           KRED,
+                           ltmp, _ti(ltmp),
+                           KNRM,
+                           reg, ri[reg], IRType_string[ty&0xff] );
+   else
+      VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
                            ltmp, _ti(ltmp),
                            reg, ri[reg], IRType_string[ty&0xff] );
 
@@ -3661,8 +3807,14 @@ void TNT_(h64_put) (
    tl_assert( tmp < TI_MAX );
    ri[reg]++;
 
-   VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
-                                         tmp, _ti(tmp) );
+   if ( istty && is_tainted(tmp) )
+      VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s", reg, ri[reg],
+                                            KRED,
+                                            tmp, _ti(tmp),
+                                            KNRM );
+   else
+      VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
@@ -3693,7 +3845,10 @@ void TNT_(h64_puti) (
    UInt bias = (tt2 >> 16) & 0xffff;
    UInt tmp = tt2 & 0xffff;
 
-   VG_(sprintf)(aTmp, "0x%x PUTI<%d:%s:%d>[%x,%x] = t%d", Ist_PutI, base, IRType_string[elemTy], nElems, ix, bias, tmp);
+   if ( istty && is_tainted(tmp) )
+      VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = %st%d%s", base, IRType_string[elemTy], nElems, ix, bias, KRED, tmp, KNRM);
+   else
+      VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = t%d", base, IRType_string[elemTy], nElems, ix, bias, tmp);
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
    // TODO: Info flow
@@ -3735,9 +3890,17 @@ void TNT_(h64_unop) (
 
    tl_assert( rtmp < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                 ltmp, _ti(ltmp), IROp_string[op],
-                 rtmp, _ti(rtmp) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op],
+                    rtmp, _ti(rtmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
+                    ltmp, _ti(ltmp), IROp_string[op],
+                    rtmp, _ti(rtmp) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
@@ -3771,9 +3934,16 @@ void TNT_(h64_binop_tc) (
    
    tl_assert( rtmp1 < TI_MAX );
    
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%llx",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], rtmp1, _ti(rtmp1), c );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%llx",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op], rtmp1, _ti(rtmp1), c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%llx",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op], rtmp1, _ti(rtmp1), c );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
@@ -3806,9 +3976,16 @@ void TNT_(h64_binop_ct) (
 
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx t%d_%d",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], c, rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%llx t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx t%d_%d",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
@@ -3841,12 +4018,21 @@ void TNT_(h64_binop_tt) (
    
    tl_assert( rtmp1 < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
-   
-   VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op],
-                 rtmp1, _ti(rtmp1),
-                 rtmp2, _ti(rtmp2) );
+
+   if ( istty && is_tainted(ltmp) ) 
+      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    IROp_string[op],
+                    rtmp1, _ti(rtmp1),
+                    rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
+                    ltmp, _ti(ltmp),
+                    IROp_string[op],
+                    rtmp1, _ti(rtmp1),
+                    rtmp2, _ti(rtmp2) );
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
 
@@ -3905,8 +4091,15 @@ void TNT_(h64_rdtmp) (
       VG_(printf)("value 0x%llx != tv[rtmp] 0x%llx\n", value, tv[rtmp] );
    tl_assert( value == tv[rtmp] );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
-                                          rtmp, _ti(rtmp) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
+                                KRED,
+                                ltmp, _ti(ltmp),
+                                KNRM,
+                                rtmp, _ti(rtmp) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+                                             rtmp, _ti(rtmp) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
@@ -3938,8 +4131,15 @@ void TNT_(h64_ite_tc) (
    tl_assert( ctmp  < TI_MAX );
    tl_assert( rtmp1 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%llx",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -3973,8 +4173,15 @@ void TNT_(h64_ite_ct) (
    tl_assert( ctmp  < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%llx : t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -4009,9 +4216,17 @@ void TNT_(h64_ite_tt) (
    tl_assert( rtmp1 < TI_MAX );
    tl_assert( rtmp2 < TI_MAX );
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
-                 ltmp, _ti(ltmp), ctmp, _ti(ctmp),
-                 rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   if ( istty && is_tainted(ltmp) )
+      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM,
+                    ctmp, _ti(ctmp),
+                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+   else
+      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+                    ltmp, _ti(ltmp), ctmp, _ti(ctmp),
+                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
 
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
       fnname, aTmp, value, taint );
@@ -4527,6 +4742,24 @@ static void tnt_print_debug_usage(void)
    Valgrind core functions
 */                                                     
 
+static int tnt_isatty(void)
+{
+   HChar buf[256], dev2[11];
+   const HChar dev[] = "/dev/pts/";
+   int i;
+
+   // 2: stderr
+   VG_(readlink)("/proc/self/fd/2", buf, 255);
+   //VG_(printf)("isatty: %s\n", buf);
+   // If stderr goes to terminal, buf should be /dev/pts/[0-9]
+   for ( i=0; i<10; i++ )
+   {
+      VG_(sprintf)(dev2, "%s%d", dev, i);
+      if ( VG_(strncmp)(buf, dev2, 10) == 0 ) return 1;
+   }
+   return 0;
+}
+
 static void tnt_post_clo_init(void)
 {
    if(*TNT_(clo_file_filter) == '\0'){
@@ -4576,6 +4809,9 @@ static void tnt_post_clo_init(void)
 
    // DEBUG
    //tnt_read = 0;
+
+   // If stdout is not a tty, don't highlight text
+   istty = tnt_isatty();
 }
 
 static void tnt_fini(Int exitcode)
