@@ -2532,6 +2532,7 @@ int istty = 0;
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
 #define KRED "\e[31m"
+#define KMAG "\e[35m"
 #define KNRM "\e[0m"
 
 #define H32_PC \
@@ -2579,6 +2580,19 @@ int istty = 0;
       ti[ltmp] &= 0x7fffffff; \
    tv[ltmp] = value;
 
+#define H32_PRINT \
+   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint);
+
+#define H32_PRINTC \
+   VG_(printf)("%s%s%s | %s | 0x%x | 0x%x | ", KMAG, fnname, KNRM, aTmp, value, taint);
+
+#define H64_PRINT \
+   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint);
+
+#define H64_PRINTC \
+   VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, value, taint);
+
+
 // if <gtmp> goto <jk> dst
 VG_REGPARM(3)
 void TNT_(h32_exit_t) (
@@ -2597,15 +2611,17 @@ void TNT_(h32_exit_t) (
    tl_assert( gtmp < TI_MAX );
 
    if ( istty && is_tainted(gtmp) )
+   {
       VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx",
                                KRED,
                                gtmp, _ti(gtmp),
                                KNRM,
                                addr );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    if ( is_tainted(gtmp) )
       VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
@@ -2638,11 +2654,13 @@ void TNT_(h32_next_t) (
    tl_assert( next < TI_MAX );
 
    if ( istty && is_tainted(next) )
+   {
       VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, ti[next], KNRM );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    if ( is_tainted(next) )
       VG_(printf)( "t%d_%d\n", next, ti[next] );
@@ -2682,18 +2700,19 @@ void TNT_(h32_store_tt) (
    H_VAR
 
    if ( istty && is_tainted(dtmp) )
+   {
       VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
                                   atmp, _ti(atmp),
                                   KRED,
                                   dtmp, _ti(dtmp),
                                   KNRM );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
                                   atmp, _ti(atmp),
                                   dtmp, _ti(dtmp) );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    // Check if it hasn't been seen before
@@ -2734,9 +2753,7 @@ void TNT_(h32_store_tc) (
    H_VAR
 
    VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%x", atmp, _ti(atmp), c );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+   H32_PRINT
 
    // Information flow
    // Check if it hasn't been seen before
@@ -2772,13 +2789,14 @@ void TNT_(h32_store_ct) (
    H_VAR
 
    if ( istty && is_tainted(dtmp) )
+   {
       VG_(sprintf)( aTmp, "STORE 0x%x = %st%d_%d%s",
                     c, KRED, dtmp, _ti(dtmp), KNRM );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
@@ -2814,14 +2832,15 @@ void TNT_(h32_load_t) (
    H_VAR
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
                                   IRType_string[ty], atmp, _ti(atmp) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
                                   IRType_string[ty], atmp, _ti(atmp) );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
@@ -2860,17 +2879,18 @@ void TNT_(h32_load_c) (
    H_VAR
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%x",
                                                  KRED,
                                       ltmp, _ti(ltmp),
                                                  KNRM,
                                 IRType_string[ty], c );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, _ti(ltmp),
-                                              IRType_string[ty], c );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+                                            IRType_string[ty], c );
+      H32_PRINT
+   }
 
    // Information flow
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
@@ -2904,17 +2924,19 @@ void TNT_(h32_get) (
    tl_assert( reg < RI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
                    KRED,
                    ltmp, _ti(ltmp),
                    KNRM,
                    reg, ri[reg], IRType_string[ty&0xff] );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
                    ltmp, _ti(ltmp),
                    reg, ri[reg], IRType_string[ty&0xff] );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    if ( is_tainted(ltmp) )
       VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
@@ -2951,16 +2973,18 @@ void TNT_(h32_put) (
    ri[reg]++;
 
    if ( istty && is_tainted(tmp) )
+   {
       VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s",
                    reg, ri[reg],
                    KRED,
                    tmp, _ti(tmp),
                    KNRM );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
                                             tmp, _ti(tmp) );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    if ( is_tainted(tmp) )
       VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
@@ -2986,12 +3010,15 @@ void TNT_(h32_puti) (
    UInt tmp = tt2 & 0xffff;
 
    if ( istty && is_tainted(tmp) )
+   {
       VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = %st%d%s",
                 IRType_string[elemTy], ix, bias,
                 KRED, tmp, KNRM );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = t%d", IRType_string[elemTy], ix, bias, tmp);
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // TODO: Info flow
    //tl_assert( reg < RI_MAX );
@@ -3033,18 +3060,20 @@ void TNT_(h32_unop) (
    tl_assert( rtmp < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op],
                     rtmp, _ti(rtmp) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
                     ltmp, _ti(ltmp), IROp_string[op],
                     rtmp, _ti(rtmp) );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3076,17 +3105,19 @@ void TNT_(h32_binop_tc) (
    tl_assert( rtmp1 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%x",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op], rtmp1, _ti(rtmp1), c );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%x",
                     ltmp, _ti(ltmp),
                     IROp_string[op], rtmp1, _ti(rtmp1), c );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3118,17 +3149,19 @@ void TNT_(h32_binop_ct) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%x t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op], c, rtmp2, _ti(rtmp2) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x t%d_%d",
                     ltmp, _ti(ltmp),
                     IROp_string[op], c, rtmp2, _ti(rtmp2) );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3161,6 +3194,7 @@ void TNT_(h32_binop_tt) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
@@ -3168,14 +3202,15 @@ void TNT_(h32_binop_tt) (
                     IROp_string[op],
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
                     ltmp, _ti(ltmp),
                     IROp_string[op],
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(rtmp1) && !is_tainted(rtmp2) )
@@ -3227,15 +3262,18 @@ void TNT_(h32_rdtmp) (
    tl_assert( rtmp < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     rtmp, _ti(rtmp) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                           rtmp, _ti(rtmp) );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    if ( is_tainted(ltmp) )
       VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
@@ -3267,17 +3305,18 @@ void TNT_(h32_ite_tc) (
    tl_assert( rtmp1 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%x",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3309,16 +3348,18 @@ void TNT_(h32_ite_ct) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%x : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3351,19 +3392,20 @@ void TNT_(h32_ite_tt) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-   else
+      H32_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+      H32_PRINT
+   }
 
    // Information flow
    if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
@@ -3403,9 +3445,7 @@ void TNT_(h32_ite_cc) (
 
    VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : 0x%x",
                  ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
-
-   VG_(printf)("%s | %s | 0x%x | 0x%x | ", 
-      fnname, aTmp, value, taint );
+   H32_PRINT
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3437,9 +3477,10 @@ void TNT_(h32_none) (
    H_EXIT_EARLY
    H32_PC
 
+   VG_(sprintf)( aTmp, "%s", str);
+   H32_PRINT
    // No information flow info
-   VG_(printf)("%s | %s | 0x%x | 0x%x\n", 
-      fnname, str, value, taint );
+   VG_(printf)("\n");
 }
 
 /**** 64-bit helpers ****/
@@ -3462,11 +3503,14 @@ void TNT_(h64_exit_t) (
    tl_assert( gtmp < TI_MAX );
 
    if ( istty && is_tainted(gtmp) )
+   {
       VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx", KRED, gtmp, _ti(gtmp), KNRM, addr );
-   else
+      H64_PRINTC 
+   } else {
       VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
+      H64_PRINT 
+   }
 
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
    if ( is_tainted(gtmp) )
       VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
@@ -3498,9 +3542,15 @@ void TNT_(h64_next_t) (
 
    tl_assert( next < TI_MAX );
 
-   VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
+   if ( istty && is_tainted(next) )
+   {
+      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, ti[next], KNRM );
+      H64_PRINTC
+   } else {
+      VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
+      H64_PRINT
+   }
 
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
 
    if ( is_tainted(next) )
       VG_(printf)( "t%d_%d\n", next, ti[next] );
@@ -3539,18 +3589,21 @@ void TNT_(h64_store_tt) (
    H_VAR
 
    if ( istty && is_tainted(dtmp) )
+   {
       VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
                                   atmp, _ti(atmp),
                                   KRED,
                                   dtmp, _ti(dtmp),
                                   KNRM );
-   else
+      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ",
+             KMAG, fnname, KNRM, aTmp, value, taint );
+   } else {
       VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
                                   atmp, _ti(atmp),
                                   dtmp, _ti(dtmp) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+             fnname, aTmp, value, taint );
+   }
 
    // Information flow
    // Check if it hasn't been seen before
@@ -3629,12 +3682,15 @@ void TNT_(h64_store_ct) (
    H_VAR
 
    if ( istty && is_tainted(dtmp) )
+   {
       VG_(sprintf)( aTmp, "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
-   else
+      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
+         KMAG, fnname, KNRM, aTmp, value, taint );
+   } else {
       VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+         fnname, aTmp, value, taint );
+   }
 
    // Information flow
    // Check if it hasn't been seen before
@@ -3671,14 +3727,17 @@ void TNT_(h64_load_t) (
    H_VAR
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM,
                             IRType_string[ty], atmp, _ti(atmp) );
-   else
+      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
+         KMAG, fnname, KNRM, aTmp, value, taint );
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
                             IRType_string[ty], atmp, _ti(atmp) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+         fnname, aTmp, value, taint );
+   }
 
    // Information flow
    // Check if it hasn't been seen before
@@ -3718,14 +3777,15 @@ void TNT_(h64_load_c) (
    H_VAR
 
    if ( istty && is_tainted(ltmp) )
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM,
-                                                IRType_string[ty], c );
-   else
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp),
-                                                IRType_string[ty], c );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+   {
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], c );
+      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
+         KMAG, fnname, KNRM, aTmp, value, taint );
+   } else {
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp), IRType_string[ty], c );
+      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
+         fnname, aTmp, value, taint );
+   }
 
    // Information flow
    if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
@@ -3760,17 +3820,19 @@ void TNT_(h64_get) (
    tl_assert( reg < RI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
                            KRED,
                            ltmp, _ti(ltmp),
                            KNRM,
                            reg, ri[reg], IRType_string[ty&0xff] );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
                            ltmp, _ti(ltmp),
                            reg, ri[reg], IRType_string[ty&0xff] );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    if ( is_tainted(ltmp) )
       VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
@@ -3808,15 +3870,17 @@ void TNT_(h64_put) (
    ri[reg]++;
 
    if ( istty && is_tainted(tmp) )
+   {
       VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s", reg, ri[reg],
                                             KRED,
                                             tmp, _ti(tmp),
                                             KNRM );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
                                             tmp, _ti(tmp) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    if ( is_tainted(tmp) )
       VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
@@ -3846,10 +3910,13 @@ void TNT_(h64_puti) (
    UInt tmp = tt2 & 0xffff;
 
    if ( istty && is_tainted(tmp) )
+   {
       VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = %st%d%s", base, IRType_string[elemTy], nElems, ix, bias, KRED, tmp, KNRM);
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = t%d", base, IRType_string[elemTy], nElems, ix, bias, tmp);
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // TODO: Info flow
    //tl_assert( reg < RI_MAX );
@@ -3891,18 +3958,20 @@ void TNT_(h64_unop) (
    tl_assert( rtmp < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op],
                     rtmp, _ti(rtmp) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
                     ltmp, _ti(ltmp), IROp_string[op],
                     rtmp, _ti(rtmp) );
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3935,17 +4004,19 @@ void TNT_(h64_binop_tc) (
    tl_assert( rtmp1 < TI_MAX );
    
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%llx",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op], rtmp1, _ti(rtmp1), c );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%llx",
                     ltmp, _ti(ltmp),
                     IROp_string[op], rtmp1, _ti(rtmp1), c );
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -3977,17 +4048,19 @@ void TNT_(h64_binop_ct) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%llx t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     IROp_string[op], c, rtmp2, _ti(rtmp2) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx t%d_%d",
                     ltmp, _ti(ltmp),
                     IROp_string[op], c, rtmp2, _ti(rtmp2) );
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -4020,6 +4093,7 @@ void TNT_(h64_binop_tt) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) ) 
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
@@ -4027,14 +4101,15 @@ void TNT_(h64_binop_tt) (
                     IROp_string[op],
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
                     ltmp, _ti(ltmp),
                     IROp_string[op],
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(rtmp1) && !is_tainted(rtmp2) )
@@ -4092,16 +4167,18 @@ void TNT_(h64_rdtmp) (
    tl_assert( value == tv[rtmp] );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
                                 KRED,
                                 ltmp, _ti(ltmp),
                                 KNRM,
                                 rtmp, _ti(rtmp) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                              rtmp, _ti(rtmp) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    if ( is_tainted(ltmp) )
       VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp));
@@ -4132,17 +4209,18 @@ void TNT_(h64_ite_tc) (
    tl_assert( rtmp1 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%llx",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -4174,17 +4252,18 @@ void TNT_(h64_ite_ct) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%llx : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -4217,19 +4296,20 @@ void TNT_(h64_ite_tt) (
    tl_assert( rtmp2 < TI_MAX );
 
    if ( istty && is_tainted(ltmp) )
+   {
       VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-   else
+      H64_PRINTC
+   } else {
       VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+      H64_PRINT
+   }
 
    // Information flow
    if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
@@ -4266,9 +4346,7 @@ void TNT_(h64_ite_cc) (
 
    VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : 0x%llx",
                  ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+   H64_PRINT
 
    // Information flow
    if ( is_tainted(ltmp) )
@@ -4300,9 +4378,11 @@ void TNT_(h64_none) (
    H_EXIT_EARLY
    H64_PC
 
+   VG_(sprintf)( aTmp, "%s", str);
+   H64_PRINT
+
    // No information flow info
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx\n", 
-      fnname, str, value, taint );
+   VG_(printf)("\n");
 }
 /*-- End of 64-bit helpers --*/
 
