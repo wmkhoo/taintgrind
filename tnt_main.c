@@ -3595,14 +3595,12 @@ void TNT_(h64_store_tt) (
                                   KRED,
                                   dtmp, _ti(dtmp),
                                   KNRM );
-      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ",
-             KMAG, fnname, KNRM, aTmp, value, taint );
+      H64_PRINTC
    } else {
       VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
                                   atmp, _ti(atmp),
                                   dtmp, _ti(dtmp) );
-      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-             fnname, aTmp, value, taint );
+      H64_PRINT
    }
 
    // Information flow
@@ -3644,9 +3642,7 @@ void TNT_(h64_store_tc) (
    H_VAR
 
    VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
-
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-      fnname, aTmp, value, taint );
+   H64_PRINT
 
    // Information flow
    // Check if it hasn't been seen before
@@ -3684,12 +3680,10 @@ void TNT_(h64_store_ct) (
    if ( istty && is_tainted(dtmp) )
    {
       VG_(sprintf)( aTmp, "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
-      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
-         KMAG, fnname, KNRM, aTmp, value, taint );
+      H64_PRINTC
    } else {
       VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
-      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-         fnname, aTmp, value, taint );
+      H64_PRINT
    }
 
    // Information flow
@@ -3728,15 +3722,11 @@ void TNT_(h64_load_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM,
-                            IRType_string[ty], atmp, _ti(atmp) );
-      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
-         KMAG, fnname, KNRM, aTmp, value, taint );
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], atmp, _ti(atmp) );
+      H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
-                            IRType_string[ty], atmp, _ti(atmp) );
-      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-         fnname, aTmp, value, taint );
+      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp), IRType_string[ty], atmp, _ti(atmp) );
+      H64_PRINT
    }
 
    // Information flow
@@ -3779,12 +3769,10 @@ void TNT_(h64_load_c) (
    if ( istty && is_tainted(ltmp) )
    {
       VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], c );
-      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", 
-         KMAG, fnname, KNRM, aTmp, value, taint );
+      H64_PRINTC
    } else {
       VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp), IRType_string[ty], c );
-      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", 
-         fnname, aTmp, value, taint );
+      H64_PRINT
    }
 
    // Information flow
