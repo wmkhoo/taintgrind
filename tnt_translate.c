@@ -5749,18 +5749,24 @@ IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data )
    void*        fn;
    IRExpr**     args;
 
-   if(data->tag == Iex_Const) return NULL;
+   //if(data->tag == Iex_Const) return NULL;
 
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                           convert_Value( mce, data ),
                           convert_Value( mce, atom2vbits( mce, data ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_put);
-      nm    = "TNT_(h32_put)";
-   }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_put);
-      nm    = "TNT_(h64_put)";
+   if(mce->hWordTy == Ity_I32 && data->tag == Iex_RdTmp){
+      fn    = &TNT_(h32_put_t);
+      nm    = "TNT_(h32_put_t)";
+   } else if(mce->hWordTy == Ity_I32 && data->tag == Iex_Const){
+      fn    = &TNT_(h32_put_c);
+      nm    = "TNT_(h32_put_c)";
+   }else if(mce->hWordTy == Ity_I64 && data->tag == Iex_RdTmp){
+      fn    = &TNT_(h64_put_t);
+      nm    = "TNT_(h64_put_t)";
+   } else if(mce->hWordTy == Ity_I64 && data->tag == Iex_Const){
+      fn    = &TNT_(h64_put_c);
+      nm    = "TNT_(h64_put_c)";
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_PUT: Unknown type");
 
@@ -6354,8 +6360,7 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
 
    // Iop_INVALID = 0x1400
    //if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const )  return NULL;
-   if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const )
-      return create_dirty_WRTMP_const(mce, clone, tmp);
+      //return create_dirty_WRTMP_const(mce, clone, tmp);
    
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
@@ -6368,6 +6373,9 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
          fn       = &TNT_(h32_binop_ct);
          nm       = "TNT_(h32_binop_ct)";
+      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
+         fn       = &TNT_(h32_binop_cc);
+         nm       = "TNT_(h32_binop_cc)";
       } else {
          fn    = &TNT_(h32_binop_tt);
          nm    = "TNT_(h32_binop_tt)";
@@ -6379,6 +6387,9 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
          fn       = &TNT_(h64_binop_ct);
          nm       = "TNT_(h64_binop_ct)";
+      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
+         fn       = &TNT_(h64_binop_cc);
+         nm       = "TNT_(h64_binop_cc)";
       } else {
          fn    = &TNT_(h64_binop_tt);
          nm    = "TNT_(h64_binop_tt)";
@@ -6397,18 +6408,22 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op, IREx
    IRExpr** args;
 
    //if ( arg->tag == Iex_Const )  return NULL;
-   if ( arg->tag == Iex_Const )
-      return create_dirty_WRTMP_const(mce, clone, tmp);
    
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                  convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                  convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-   if ( mce->hWordTy == Ity_I32 ) {
-      fn    = &TNT_(h32_unop);
-      nm    = "TNT_(h32_unop)";
-   } else if ( mce->hWordTy == Ity_I64 ){
-      fn    = &TNT_(h64_unop);
-      nm    = "TNT_(h64_unop)";
+   if ( mce->hWordTy == Ity_I32 && arg->tag == Iex_Const ) {
+         fn    = &TNT_(h32_unop_c);
+         nm    = "TNT_(h32_unop_c)";
+   } else if ( mce->hWordTy == Ity_I32 && arg->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h32_unop_t);
+         nm    = "TNT_(h32_unop_t)";
+   } else if ( mce->hWordTy == Ity_I64 && arg->tag == Iex_Const ) {
+         fn    = &TNT_(h64_unop_c);
+         nm    = "TNT_(h64_unop_c)";
+   } else if ( mce->hWordTy == Ity_I64 && arg->tag == Iex_RdTmp ) {
+         fn    = &TNT_(h64_unop_t);
+         nm    = "TNT_(h64_unop_t)";
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP: Unknown platform");
 
@@ -6873,6 +6888,7 @@ typedef
       first_stmt = sb_out->stmts_used;
 
       if (verboze) {
+      //if (1) {
          VG_(printf)("\n");
          ppIRStmt(st);
          VG_(printf)("\n");
@@ -6996,6 +7012,7 @@ typedef
    if ( di2 ) complainIfTainted( &mce, sb_in->next, di2 );
 
    if (0 && verboze) {
+   //if (1) {
       for (j = first_stmt; j < sb_out->stmts_used; j++) {
          VG_(printf)("   ");
          ppIRStmt(sb_out->stmts[j]);

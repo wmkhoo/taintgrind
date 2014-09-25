@@ -74,12 +74,16 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
    UInt  result       = args[3];
    UInt  whence       = args[4];
    ULong offset;
+   Bool  verbose      = False;
 
    if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
       return;
 
-   VG_(printf)("syscall _llseek %d %d ", tid, fd);
-   VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", (UInt)offset_high, (UInt)offset_low, result, whence);
+   if ( verbose )
+   {
+      VG_(printf)("syscall _llseek %d %d ", tid, fd);
+      VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", (UInt)offset_high, (UInt)offset_low, result, whence);
+   }
 
    offset = (offset_high<<32) | offset_low;
 
@@ -109,7 +113,7 @@ void read_common ( UInt taint_offset, Int taint_len,
                    HChar *data ) {
    UWord addr;
    Int   len;
-   Int   i;
+   //Int   i;
 
    if( TNT_(clo_taint_all) ){
       addr = (UWord)data;
@@ -178,8 +182,8 @@ void read_common ( UInt taint_offset, Int taint_len,
 
    TNT_(make_mem_tainted)( addr, len );
 
-   for( i=0; i<len; i++) 
-      VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));
+   //for( i=0; i<len; i++) 
+   //   VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));
 }
 
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
@@ -191,17 +195,18 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
    Int   curr_len     = sr_Res(res);
    UInt  taint_offset = TNT_(clo_taint_start);
    Int   taint_len    = TNT_(clo_taint_len);
+   Bool  verbose      = False;
 
    TNT_(check_fd_access)(tid, fd, FD_READ);
 
    if (curr_len == 0) return;
 
-   TNT_(make_mem_defined)( (UWord)data, curr_len );
+   TNT_(make_mem_untainted)( (UWord)data, curr_len );
 
    if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
       return;
 
-   if(1){
+   if(verbose){
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
       VG_(printf)("syscall read %d %d ", tid, fd);
@@ -215,78 +220,6 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
    }
 
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
-
-//   if( TNT_(clo_taint_all) ){
-//      addr = (UWord)data;
-//      len  = curr_len;
-//   }else
-
-   /* Here we determine what bytes to taint
-      We have 4 variables -
-      taint_offset    Starting file offset to taint
-      taint_len       Number of bytes to taint
-      curr_offset     Starting file offset currently read
-      curr_len        Number of bytes currently read
-      We have to deal with 4 cases: (= refers to the region to be tainted)
-      Case 1:
-                          taint_len
-      taint_offset   |-----------------|
-                          curr_len
-      curr_offset |---=================---|
-      Case 2:
-                          taint_len
-      taint_offset   |-----------------------|
-                          curr_len
-      curr_offset |---====================|
-      Case 3:
-                          taint_len
-      taint_offset |----------------------|
-                          curr_len
-      curr_offset    |====================---|
-      Case 4:
-                          taint_len
-      taint_offset |-----------------------|
-                          curr_len
-      curr_offset    |====================|
-   */
-
-//   if( taint_offset >= curr_offset &&
-//       taint_offset <= curr_offset + curr_len ){
-//       if( (taint_offset + taint_len) <= (curr_offset + curr_len) ){
-//         // Case 1
-//         addr = (UWord)(data + taint_offset - curr_offset);
-//         len  = taint_len;
-//      }else{
-//          // Case 2
-//          addr = (UWord)(data + taint_offset - curr_offset);
-//          len  = curr_len - taint_offset + curr_offset;
-//      }
-//
-//   }else if( ( ( taint_offset + taint_len ) >= curr_offset ) &&
-//             ( ( taint_offset + taint_len ) <= (curr_offset + curr_len ) ) ){
-//      // Case 3
-//      addr = (UWord)data;
-//      len  = taint_len - curr_offset + taint_offset;
-//   }else if( ( taint_offset <= curr_offset ) &&
-//       ( taint_offset + taint_len ) >= ( curr_offset + curr_len ) ){
-//      // Case 4
-//      addr = (UWord)data;
-//      len  = curr_len;
-//   }else{
-//      // Update file position
-//      read_offset += curr_len;
-//      return;
-//   }
-//
-//   TNT_(make_mem_tainted)( addr, len );
-////   if(isPread)
-////      VG_(printf)("syscall pread %d %d ", tid, fd);
-////   else
-////      VG_(printf)("syscall read %d %d ", tid, fd);
-////   VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, curr_len, (Int)data, len);
-//
-//   for( i=0; i<len; i++) 
-//      VG_(printf)("taint_byte 0x%08lx 0x%x\n", addr+i, *(Char *)(addr+i));
 
    // Update file position
    read_offset += curr_len;
@@ -304,18 +237,16 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
    Int   curr_len     = sr_Res(res);
    UInt  taint_offset = TNT_(clo_taint_start);
    Int   taint_len    = TNT_(clo_taint_len);
-//   UWord addr;
-//   Int   len;
-//   Int   i;
+   Bool  verbose      = False;
 
    if (curr_len == 0) return;
 
-   TNT_(make_mem_defined)( (UWord)data, curr_len );
+   TNT_(make_mem_untainted)( (UWord)data, curr_len );
 
    if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
       return;
 
-   if(1){
+   if(verbose){
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
       VG_(printf)("syscall pread %d %d ", tid, fd);
@@ -329,76 +260,6 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
    }
 
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
-
-//   if( TNT_(clo_taint_all) ){
-//      addr = (UWord)data;
-//      len  = curr_len;
-//   }else
-
-   /* Here we determine what bytes to taint
-      We have 4 variables -
-      taint_offset    Starting file offset to taint
-      taint_len       Number of bytes to taint
-      curr_offset     Starting file offset currently read
-      curr_len        Number of bytes currently read
-      We have to deal with 4 cases: (= refers to the region to be tainted)
-      Case 1:
-                          taint_len
-      taint_offset   |-----------------|
-                          curr_len
-      curr_offset |---=================---|
-      Case 2:
-                          taint_len
-      taint_offset   |-----------------------|
-                          curr_len
-      curr_offset |---====================|
-      Case 3:
-                          taint_len
-      taint_offset |----------------------|
-                          curr_len
-      curr_offset    |====================---|
-      Case 4:
-                          taint_len
-      taint_offset |-----------------------|
-                          curr_len
-      curr_offset    |====================|
-   */
-
-//   if( taint_offset >= curr_offset &&
-//       taint_offset <= curr_offset + curr_len ){
-//       if( (taint_offset + taint_len) <= (curr_offset + curr_len) ){
-//         // Case 1
-//         addr = (UWord)(data + taint_offset - curr_offset);
-//         len  = taint_len;
-//      }else{
-//          // Case 2
-//          addr = (UWord)(data + taint_offset - curr_offset);
-//          len  = curr_len - taint_offset + curr_offset;
-//      }
-//
-//   }else if( ( ( taint_offset + taint_len ) >= curr_offset ) &&
-//             ( ( taint_offset + taint_len ) <= (curr_offset + curr_len ) ) ){
-//      // Case 3
-//      addr = (UWord)data;
-//      len  = taint_len - curr_offset + taint_offset;
-//   }else if( ( taint_offset <= curr_offset ) &&
-//       ( taint_offset + taint_len ) >= ( curr_offset + curr_len ) ){
-//      // Case 4
-//      addr = (UWord)data;
-//      len  = curr_len;
-//   }else{
-//      return;
-//   }
-//
-//   TNT_(make_mem_tainted)( addr, len );
-////   if(isPread)
-////      VG_(printf)("syscall pread %d %d ", tid, fd);
-////   else
-////      VG_(printf)("syscall read %d %d ", tid, fd);
-////   VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, curr_len, (Int)data, len);
-//
-//   for( i=0; i<len; i++) 
-//      VG_(printf)("taint_byte 0x%08lx 0x%x\n", addr+i, *(Char *)(addr+i));
 }
 
 
@@ -406,6 +267,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 //  int open (const char *filename, int flags[, mode_t mode])
    HChar fdpath[FD_MAX_PATH];
    Int fd = sr_Res(res);
+   Bool verbose = False;
 
    // check if we have already created a sandbox
    if (have_created_sandbox && !IN_SANDBOX) {
@@ -440,14 +302,16 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
         if( TNT_(clo_taint_all) ){
 
             tainted_fds[tid][fd] = True;
-            VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+            if ( verbose )
+               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
             read_offset = 0;
 
         } else if ( VG_(strncmp)(fdpath, TNT_(clo_file_filter), 
                             VG_(strlen)( TNT_(clo_file_filter))) == 0 ) {
 
             tainted_fds[tid][fd] = True;
-            VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+            if ( verbose )
+               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
             read_offset = 0;
 
         } else if ( TNT_(clo_file_filter)[0] == '*' &&
@@ -457,7 +321,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
                           VG_(strlen)( TNT_(clo_file_filter)) - 1 ) == 0 ) {
 
             tainted_fds[tid][fd] = True;
-            VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+            if ( verbose )
+               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
             read_offset = 0;
         } else
             tainted_fds[tid][fd] = False;
@@ -469,8 +334,8 @@ void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
    Int fd = args[0];
 
    if (fd > -1 && fd < FD_MAX){
-     if (tainted_fds[tid][fd] == True)
-         VG_(printf)("syscall close %d %d\n", tid, fd);
+     //if (tainted_fds[tid][fd] == True)
+     //    VG_(printf)("syscall close %d %d\n", tid, fd);
 
      shared_fds[fd] = 0;
      tainted_fds[tid][fd] = False;

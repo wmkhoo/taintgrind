@@ -57,7 +57,7 @@ void* record_block( ThreadId tid, void* p, SizeT req_szB, SizeT slop_szB )
    VG_(HT_add_node)(TNT_(malloc_list), hc);
 
    // Untaint malloc'd block
-   TNT_(make_mem_defined)( (Addr)p, hc->req_szB + hc->slop_szB ); 
+   TNT_(make_mem_untainted)( (Addr)p, hc->req_szB + hc->slop_szB ); 
 
    return p;
 }
@@ -97,7 +97,7 @@ void unrecord_block ( void* p )
    }
 
    // Untaint freed block
-   TNT_(make_mem_defined)( (Addr)p, hc->req_szB + hc->slop_szB ); 
+   TNT_(make_mem_untainted)( (Addr)p, hc->req_szB + hc->slop_szB ); 
 
    // Actually free the chunk, and the heap block (if necessary)
    VG_(free)( hc );  hc = NULL;

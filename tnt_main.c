@@ -41,9 +41,10 @@
 #include "pub_tool_options.h"       // VG_STR/BHEX/BINT_CLO
 #include "pub_tool_oset.h"          // OSet operations
 #include "pub_tool_threadstate.h"   // VG_(get_running_tid)
-#include "pub_tool_xarray.h"		// VG_(*XA)
-#include "pub_tool_stacktrace.h"	// VG_(get_and_pp_StackTrace)
+#include "pub_tool_xarray.h"        // VG_(*XA)
+#include "pub_tool_stacktrace.h"    // VG_(get_and_pp_StackTrace)
 #include "pub_tool_libcfile.h"      // VG_(readlink)
+#include "pub_tool_addrinfo.h"      // VG_(describe_addr)
 
 #include "tnt_include.h"
 #include "tnt_strings.h"
@@ -1460,10 +1461,10 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )//1608
 //      ocache_sarp_Clear_Origins ( a, len );
 }
 
-void TNT_(make_mem_defined) ( Addr a, SizeT len )
+void TNT_(make_mem_untainted) ( Addr a, SizeT len )
 {
-   PROF_EVENT(42, "TNT_(make_mem_defined)");
-//   DEBUG("TNT_(make_mem_defined)(%p, %lu)\n", a, len);
+   PROF_EVENT(42, "TNT_(make_mem_untainted)");
+//   DEBUG("TNT_(make_mem_untainted)(%p, %lu)\n", a, len);
    set_address_range_perms ( a, len, VA_BITS16_UNTAINTED, SM_DIST_UNTAINTED );
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
 //      ocache_sarp_Clear_Origins ( a, len );
@@ -2454,7 +2455,7 @@ Int atoi( HChar *s ){
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
 // see libvex_guest_amd64.h
-#define TI_MAX 430
+#define TI_MAX 440
 #define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
@@ -2953,8 +2954,9 @@ void TNT_(h32_geti) (
    H_WRTMP_BOOKKEEPING
 }
 
+// reg = tmp
 VG_REGPARM(3)
-void TNT_(h32_put) (
+void TNT_(h32_put_t) (
    IRStmt *clone, 
    UInt value, 
    UInt taint ) {
@@ -2990,6 +2992,31 @@ void TNT_(h32_put) (
       VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
    else
       VG_(printf)("\n");
+}
+
+// reg = const 
+VG_REGPARM(3)
+void TNT_(h32_put_c) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   UInt reg     = clone->Ist.Put.offset;
+   IRExpr *data = clone->Ist.Put.data;
+   UInt c       = extract_IRConst(data->Iex.Const.con);
+
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
+
+   VG_(sprintf)(aTmp, "r%d_%d = 0x%x", reg, ri[reg], c);
+   H32_PRINT
+
+   VG_(printf)("\n");
 }
 
 VG_REGPARM(3)
@@ -3037,11 +3064,12 @@ void TNT_(h32_wrtmp_c) (
    UInt taint ) {
 
    H_WRTMP_BOOKKEEPING
+   VG_(printf)("%x %x\n", value, taint);
 }
 
 // ltmp = <op> rtmp
 VG_REGPARM(3)
-void TNT_(h32_unop) (
+void TNT_(h32_unop_t) (
    IRStmt *clone, 
    UInt value, 
    UInt taint ) {
@@ -3080,6 +3108,32 @@ void TNT_(h32_unop) (
       VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
    else
       VG_(printf)("\n");
+}
+
+// ltmp = <op> const
+VG_REGPARM(3)
+void TNT_(h32_unop_c) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
+   UInt c = extract_IRConst( arg->Iex.Const.con );
+
+   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x",
+                 ltmp, _ti(ltmp), IROp_string[op], c );
+   H32_PRINT
+
+   // No information flow
+   VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, const
@@ -3221,6 +3275,35 @@ void TNT_(h32_binop_tt) (
       VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
    else
       VG_(printf)("\n");
+}
+
+// ltmp = <op> const1 const2
+VG_REGPARM(3)
+void TNT_(h32_binop_cc) (
+   IRStmt *clone,
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H32_PC
+
+   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
+   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
+   UInt c1 = extract_IRConst( arg1->Iex.Const.con );
+   UInt c2 = extract_IRConst( arg2->Iex.Const.con );
+
+   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x 0x%x",
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], c1, c2 );
+   H32_PRINT
+
+   // No information flow
+   VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, rtmp2, rtmp3
@@ -3564,6 +3647,12 @@ void TNT_(h64_next_c) (
    IRExpr *clone, 
    ULong value, 
    ULong taint ) {
+
+   H_EXIT_EARLY
+   H64_PC
+   VG_(sprintf)( aTmp, "JMP 0x%llx", value );
+   H64_PRINT
+   VG_(printf)("\n");
    // End of BB
 }
 
@@ -3837,8 +3926,9 @@ void TNT_(h64_geti) (
    H_WRTMP_BOOKKEEPING
 }
 
+// reg = tmp
 VG_REGPARM(3)
-void TNT_(h64_put) (
+void TNT_(h64_put_t) (
    IRStmt *clone, 
    ULong value, 
    ULong taint ) {
@@ -3874,6 +3964,32 @@ void TNT_(h64_put) (
       VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
    else
       VG_(printf)("\n");
+}
+
+// reg = const
+VG_REGPARM(3)
+void TNT_(h64_put_c) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+   //H_VAR
+
+   UInt reg     = clone->Ist.Put.offset;
+   IRExpr *data = clone->Ist.Put.data;
+   ULong c      = extract_IRConst(data->Iex.Const.con);
+
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
+
+   VG_(sprintf)(aTmp, "r%d_%d = 0x%llx", reg, ri[reg], c);
+   H64_PRINT
+
+   VG_(printf)("\n");
 }
 
 
@@ -3923,11 +4039,13 @@ void TNT_(h64_wrtmp_c) (
    ULong taint ) {
 
    H_WRTMP_BOOKKEEPING
+
+   VG_(printf)("%llx %llx\n", value, taint);
 }
 
 // ltmp = <op> rtmp
 VG_REGPARM(3)
-void TNT_(h64_unop) (
+void TNT_(h64_unop_t) (
    IRStmt *clone,
    ULong value, 
    ULong taint ) {
@@ -3966,6 +4084,32 @@ void TNT_(h64_unop) (
       VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
    else
       VG_(printf)("\n");
+}
+
+// ltmp = <op> const
+VG_REGPARM(3)
+void TNT_(h64_unop_c) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
+   ULong c = extract_IRConst( arg->Iex.Const.con );
+
+   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx",
+                 ltmp, _ti(ltmp), IROp_string[op], c );
+   H64_PRINT
+
+   // No information flow
+   VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1 const
@@ -4108,6 +4252,35 @@ void TNT_(h64_binop_tt) (
       VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
    else
       VG_(printf)("\n");
+}
+
+// ltmp = <op> const1 const2
+VG_REGPARM(3)
+void TNT_(h64_binop_cc) (
+   IRStmt *clone,
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
+   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
+   ULong c1 = extract_IRConst( arg1->Iex.Const.con );
+   ULong c2 = extract_IRConst( arg2->Iex.Const.con );
+
+   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx 0x%llx",
+                 ltmp, _ti(ltmp),
+                 IROp_string[op], c1, c2 );
+   H64_PRINT
+
+   // No information flow
+   VG_(printf)("\n");
 }
 
 // ltmp = <op> rtmp1, rtmp2, rtmp3
@@ -4385,6 +4558,30 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 	// first try to see if it is a global var
 	PtrdiffT pdt;
 	VG_(get_datasym_and_offset)( addr, varnamebuf, bufsize, &pdt );
+
+	// Seems to get exe name?
+	if ( VG_(get_objname)(addr, varnamebuf, bufsize) )
+	{
+	   //VG_(printf)("varname %s\n", varnamebuf);
+	   return;
+	}
+
+        AddrInfo ai; ai.tag = Addr_Undescribed;
+        VG_(describe_addr)(addr, &ai);
+        //VG_(pp_addrinfo)(addr, &ai);
+        //VG_(printf)("ai->tag %x\n", ai.tag);
+
+        if ( ai.tag == Addr_DataSym )
+        {
+           VG_(strncpy)(varnamebuf, ai.Addr.DataSym.name, bufsize);
+           return;
+        } else if ( ai.tag == Addr_Variable )
+        {
+           //VG_(printf)("descr1 %s\n", VG_(indexXA)(ai.Addr.Variable.descr1,0) );
+           //VG_(printf)("descr2 %s\n", VG_(indexXA)(ai.Addr.Variable.descr2,0) );
+           //VG_(strncpy)(varnamebuf, VG_(indexXA)(ai.Addr.Variable.descr1,0), bufsize );
+           return;
+        }
 
 	if( varnamebuf[0] == '\0' ){
 		// now let's try for local var
@@ -4737,6 +4934,24 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			callgate_nesting_depth--;
 			break;
 		}
+		case VG_USERREQ__TAINTGRIND_MAKE_MEM_TAINTED: {
+			TNT_(make_mem_tainted)(arg[1], arg[2]);
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_MAKE_MEM_UNTAINTED: {
+			TNT_(make_mem_untainted)(arg[1], arg[2]);
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_START_PRINT: {
+			TNT_(do_print) = 1;
+			TNT_(clo_tainted_ins_only) = False;
+			TNT_(clo_critical_ins_only) = False;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_STOP_PRINT: {
+			TNT_(do_print) = 0;
+			break;
+		}
 	}
 	return True;
 }
@@ -4932,9 +5147,9 @@ static void tnt_pre_clo_init(void)
 
 //   VG_(track_new_mem_mmap)        ( tnt_new_mem_mmap );
    VG_(track_copy_mem_remap)      ( TNT_(copy_address_range_state) );
-   VG_(track_die_mem_stack_signal)( TNT_(make_mem_defined) );
-   VG_(track_die_mem_brk)         ( TNT_(make_mem_defined) );
-   VG_(track_die_mem_munmap)      ( TNT_(make_mem_defined) );
+   VG_(track_die_mem_stack_signal)( TNT_(make_mem_untainted) );
+   VG_(track_die_mem_brk)         ( TNT_(make_mem_untainted) );
+   VG_(track_die_mem_munmap)      ( TNT_(make_mem_untainted) );
 }
 
 VG_DETERMINE_INTERFACE_VERSION(tnt_pre_clo_init)

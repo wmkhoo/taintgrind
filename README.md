@@ -1,6 +1,7 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2014-09-25 Support for client requests
 
 2014-09-15 Support for Valgrind 3.10.0, x86\_linux and amd64\_linux
 
@@ -22,7 +23,7 @@ Installation
 		[me@machine ~/valgrind-X.X.X] ./configure --prefix=`pwd`/inst
 		[me@machine ~/valgrind-X.X.X] make && make install
 
-2. Git clone and build Taintgrind
+2. Git clone and build taintgrind
 
 
 		[me@machine ~/valgrind-X.X.X] git clone http://github.com/wmkhoo/taintgrind.git
@@ -38,72 +39,135 @@ Usage
 	...
 	user options for Taintgrind:
 	    --file-filter=<full_path>   full path of file to taint [""]
+
+If this field is '\*', it is equivalent to --taint-all=yes
+
 	    --taint-start=[0,800000]    starting byte to taint (in hex) [0]
 	    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]
 	    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]
 	    --tainted-ins-only= no|yes  print tainted instructions only [yes]
+
+Tainted instructions are really instructions where one or more of its input/output variables are tainted.
+
 	    --critical-ins-only= no|yes print critical instructions only [no]
+
+At the moment, critical instructions include loads, stores, conditional jumps and indirect jumps/calls. If --critical-ins-only is turned on, all other instructions are not printed.
+The last two options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
+Run without any parameters, taintgrind will not taint anything and the program output should be printed.
 
 
 Sample output
 -------------
 
-The output of Taintgrind is a list of Valgrind IR (VEX) statements in the form
+Run Taintgrind with e.g.
 
-	Address Location | VEX-ID VEX-IRStmt | Runtime value(s) | Taint value(s) | Information flow
+	> valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
+The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
 
-E.g.
+	Address/Location | VEX-IRStmt | Runtime value(s) | Taint value(s) | Information flow
+	0x8049A1B: lm_init (deflate.c:345) | t24_1 = LOAD I8 0x8097ae0 | 0x61 | 0xff | t24_1 <- window
 
+The first instruction indicates a byte (type I8, or int8\_t) is loaded from address 0x8097ae0 into temporary variable t24\_1. Its run-time value is 0x61, and its taint value is 0xff, which means all 8 bits are tainted. The information flow indicates that taint is flowing from 0x8097ae0 (or window symbol) to t24\_1. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (lm\_init at deflate.c:345) and the variable name (window).
 
-	> valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 --critical-ins-only=no gzip -c path/to/test.txt
-	==31644== Taintgrind, the taint analysis tool
-	==31644== Copyright (C) 2010, and GNU GPL'd, by Wei Ming Khoo.
-	==31644== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
-	==31644== Command: gzip -c /test.txt
-	==31644== 
-	BBs read: 1000 On
-	syscall open 1 /path/to/test.txt 8900 3
-	syscall read 1 3 0x0 0x5 0x8097ae0 0x61
-	taint_byte 0x08097ae0 0x61
-	0x8049A1B: lm_init (deflate.c:345) | 0x15008 t24 = LD I8 0x8097ae0 | 0x61 0x8097ae0 | 0xff 0x0 | t24 <- window
-	0x8049A1B: lm_init (deflate.c:345) | 0x15007 t23 = 8Sto16 t24 | 0x61 0x61 | 0xff 0xff | t23 <- t24
-	0x8049A22: lm_init (deflate.c:345) | 0x15006 t5 = Shl32 t23 0x5 | 0xc20 0x61 | 0x1fe0 0xff | t5 <- t23
-	0x8049A22: lm_init (deflate.c:345) | 0x15006 t8 = Xor32 t5 t25 | 0xc42 0xc20 0x62 | 0x1fe0 0x1fe0 0x0 | t8 <- t5
-	0x8049A22: lm_init (deflate.c:345) | 0x19003 put 0 = t8 | 0xc42 | 0x1fe0 | r0 <- t8
-	0x8049A2E: lm_init (deflate.c:345) | 0x19006 ST 0x805badc = t8 I32 | 0x805badc 0xc42 | 0x0 0x1fe0 | ins_h <- t8
-	0x8049D45: deflate (deflate.c:684) | 0x15008 t35 = LD I32 0x805badc | 0x823 0x805badc | 0x7c00 0x0 | t35 <- ins_h
-	0x8049D51: deflate (deflate.c:684) | 0x15006 t7 = Shl32 t35 0x5 | 0x10460 0x823 | 0xf8000 0x7c00 | t7 <- t35
-	0x8049D51: deflate (deflate.c:684) | 0x15006 t10 = Xor32 t39 t7 | 0x10404 0x64 0x10460 | 0xf8000 0x0 0xf8000 | t10 <- t7
-	0x8049D51: deflate (deflate.c:684) | 0x15006 t13 = And32 t10 0x7fff | 0x404 0x10404 | 0x0 0xf8000 | 
-	0x8049E90: deflate (deflate.c:744) | 0x15008 t29 = LD I8 t26 | 0x61 0x8097ae0 | 0xff 0x0 | t29 <- window
-	0x8049E90: deflate (deflate.c:744) | 0x15007 t61 = 8Sto16 t29 | 0x61 0x61 | 0xff 0xff | t61 <- t29
-	0x8049E90: deflate (deflate.c:744) | 0x15003 t28 = t61 | 0x61 | 0xff | t28 <- t61
-	0x8049E9E: deflate (deflate.c:744) | 0x19006 ST t30 = t28 I32 | 0xbef37c34 0x61 | 0x0 0xff | bef37c34_unknownobj <- t28
-	0x804FD52: ct_tally (trees.c:966) | 0x15008 t50 = LD I32 t48 | 0x61 0xbef37c34 | 0xff 0x0 | t50 <- bef37c34_unknownobj
-	0x804FD52: ct_tally (trees.c:966) | 0x19003 put 0 = t50 | 0x61 | 0xff | r0 <- t50
-	0x804FD55: ct_tally (trees.c:967) | 0x15001 t53 = get 0 i8 | 0x61 | 0xff | t53 <- r0
-	0x804FD55: ct_tally (trees.c:967) | 0x19006 ST t51 = t53 I8 | 0x807f240 0x61 | 0x0 0xff | inbuf <- t53
-	0x804F1E8: compress_block (trees.c:1031) | 0x15008 t25 = LD I8 t22 | 0x61 0x807f240 | 0xff 0x0 | t25 <- inbuf
-	0x804F1E8: compress_block (trees.c:1031) | 0x15007 t35 = 8Sto16 t25 | 0x61 0x61 | 0xff 0xff | t35 <- t25
-	0x804F1E8: compress_block (trees.c:1031) | 0x15003 t24 = t35 | 0x61 | 0xff | t24 <- t35
-	0x804F1E8: compress_block (trees.c:1031) | 0x19003 put 28 = t24 | 0x61 | 0xff | r28 <- t24
-	0x804F1A8: compress_block (trees.c:1033) | 0x15001 t27 = get 28 i32 | 0x61 | 0xff | t27 <- r28
-	0x804F1A8: compress_block (trees.c:1033) | 0x15006 t26 = Shl32 t27 0x2 | 0x184 0x61 | 0x3fc 0xff | t26 <- t27
-	0x804F1A8: compress_block (trees.c:1033) | 0x15006 t25 = Add32 t24 t26 | 0x805daa4 0x805d920 0x184 | 0xfffffffc 0x0 0x3fc | t25 <- t26
-	0x804F1AE: compress_block (trees.c:1033) | 0x15006 t29 = Add32 t25 0x2 | 0x805daa6 0x805daa4 | 0xfffffffc 0xfffffffc | t29 <- t25
+	0x8049A1B: lm_init (deflate.c:345) | t23_1 = 8Sto16 t24_1 | 0x61 | 0xff | t23_1 <- t24_1
 
-Details of VEX-IDs and VEX-IRStmts can be found in VEX/pub/libvex\_ir.h .
+Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. Loads and stores have two possible useful run-time values: the address and the data being loaded/stored. We have simply chosen to print the data.
+Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
+
 
 Notes
 -----
+
 Taintgrind is based on [Valgrind](http://valgrind.org)'s MemCheck and [Flayer](http://code.google.com/p/flayer/).
 
 Taintgrind borrows the bit-precise shadow memory from MemCheck and only propagates explicit data flow. This means that Taintgrind will not propagate taint in control structures such as if-else, for-loops and while-loops. Taintgrind will also not propagate taint in dereferenced tainted pointers.
 
-Run without any parameters, Taintgrind will not taint anything and the program output should be printed. Run with the "--file-filter=[file]" option, Taintgrind will output an execution trace starting at the point [file] is read, with all bytes of [file] tainted. The taint can be restricted at the byte level using the "--taint-start" and "--taint-len" options. Running with the "--tainted-ins-only=yes" option restricts the output to instructions with tainted data only.
 
-The output of Taintgrind can be *huge*. You might consider piping the output to gzip.
 
-	[valgrind command] 2>&1 | gzip > output.gz
+Client requests
+---------------
+
+Taintgrind may be further controlled via client requests:
+
+On a 32-bit OS,
+
+	TNT_MAKE_MEM_TAINTED ( UInt *buffer, Size_t len )
+	TNT_MAKE_MEM_UNTAINTED ( UInt *buffer, Size_t len )
+	TNT_START_PRINT()
+	TNT_STOP_PRINT()
+
+For example,
+
+	> cat -n sign.c
+	1  #include "taintgrind.h"
+
+The header file taintgrind.h includes all available client requests.
+
+	2  int get_sign(int x) {
+	3      if (x == 0) return 0;
+	4      if (x < 0)  return -1;
+	5      return 1;
+	6  }
+
+Let us assume get\_sign is our function of interest.
+
+	7  int main(int argc, char **argv)
+	8  {
+	9      // Turns on printing
+	10     TNT_START_PRINT();
+
+The request TNT\_START\_PRINT() turns on printing and turns off the variables --tainted-ins-only and --critical-ins-only.
+
+	11     int a = 1000;
+	12     // Defines int a as tainted
+	13     TNT_MAKE_MEM_TAINTED(&a,4);
+
+The request TNT\_MAKE\_MEM\_TAINTED allows any buffer to be tainted, not just through file I/O or system calls.
+
+	14     int s = get_sign(a);
+	15     // Turns off printing
+	16     TNT_STOP_PRINT();
+
+TNT\_STOP\_PRINT() stops further output.
+
+	17     return s;
+	18 }
+
+Compile with
+
+	> gcc -Ivalgrind-x.x.x/taintgrind/ -Ivalgrind-x.xx.x/include/ -g sign.c -o sign-cl
+
+Run with
+
+	[valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind ~/sign-cl
+
+Should give the first instruction
+
+	0x4007C0: main (sign.c:10) | t11_10756 = r32_0 I64 | 0xdeadbeefdeadbeef | 0x0 | 
+
+And the last instruction
+
+	0x400878: main (sign.c:16) | JMP 0x40089e | 0x40089e | 0x0 | 
+
+The first tainted instruction should be
+
+	0x40083D: main (sign.c:14) | t22_6841 = LOAD I32 t19_5868 | 0x3e8 | 0xffffffff | t22_6841 <- ffefffda8_unknownobj_0
+
+The 2 tainted if-gotos should come up as
+
+	0x400730: get_sign (sign.c:3) | IF t40_1543 GOTO 0x400732 | 0x0 | 0x1 | t40_1543
+	0x40073D: get_sign (sign.c:4) | IF t8_9848 GOTO 0x40073f | 0x0 | 0x1 | t8_9848
+
+As expected, the conditions are both false, and are thus 0.
+Finally the return value of get\_sign should be
+
+	0x400746: get_sign (sign.c:5) | r16_3 = 0x1 | 0x1 | 0x0 | 
+
+
+
+License
+-------
+
+Taintgrind is licensed under GNU GPLv2.
 
