@@ -215,6 +215,7 @@ extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
 extern Int    TNT_(do_print);
+extern Bool   TNT_(clo_smt2);
 //extern Char* TNT_(clo_allowed_syscalls);
 //extern Bool  TNT_(read_syscalls_file);
 
@@ -377,6 +378,19 @@ extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum
 extern void TNT_(get_fnname)(ThreadId tid, HChar* buf, UInt buf_size);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
+
+/* SMT2 functions */
+#define TI_MAX 440
+#define RI_MAX 740 
+// Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
+extern UInt  ti[TI_MAX];
+// Tmp variable values
+extern ULong tv[TI_MAX];
+
+#define _ti(ltmp) ti[ltmp] & 0x7fffffff
+extern void TNT_(smt2_preamble)(void);
+extern void TNT_(smt2_h64_load_t)   ( IRStmt *, ULong, ULong );
+extern void TNT_(smt2_h64_unop_t)   ( IRStmt *, ULong, ULong );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

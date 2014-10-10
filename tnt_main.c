@@ -1459,6 +1459,18 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )//1608
    set_address_range_perms ( a, len, VA_BITS16_TAINTED, SM_DIST_TAINTED );
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
 //      ocache_sarp_Clear_Origins ( a, len );
+
+   // SMT2
+   if ( TNT_(clo_smt2) )
+   {
+      UInt i = 0;
+      for ( ; i<len; i++ )
+      {
+         VG_(printf)("(declare-fun byte%d () (_ BitVec 8))\n", i);
+         VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
+         VG_(printf)("(assert (= byte%d a%lx))\n", i, a+i);
+      }
+   }
 }
 
 void TNT_(make_mem_untainted) ( Addr a, SizeT len )
@@ -2455,8 +2467,8 @@ Int atoi( HChar *s ){
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
 // see libvex_guest_amd64.h
-#define TI_MAX 440
-#define RI_MAX 740 
+//#define TI_MAX 440
+//#define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
 UInt  ti[TI_MAX];
@@ -2516,7 +2528,7 @@ void infer_client_binary_name(UInt pc) {
    if (client_binary_name == NULL) {
       DebugInfo* di = VG_(find_DebugInfo)(pc);
       if (di && VG_(strcmp)(VG_(DebugInfo_get_soname)(di), "NONE") == 0) {
-         VG_(printf)("client_binary_name: %s\n", VG_(DebugInfo_get_filename)(di));
+         //VG_(printf)("client_binary_name: %s\n", VG_(DebugInfo_get_filename)(di));
          client_binary_name = (HChar*)VG_(malloc)("client_binary_name",sizeof(HChar)*(VG_(strlen)(VG_(DebugInfo_get_filename)(di)+1)));
          VG_(strcpy)(client_binary_name, VG_(DebugInfo_get_filename)(di));
       }  
@@ -2530,7 +2542,8 @@ int istty = 0;
 /**** 32-bit helpers ****/
 
 // macros
-#define _ti(ltmp) ti[ltmp] & 0x7fffffff
+// Defined in tnt_include.h
+//#define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
 #define KRED "\e[31m"
 #define KMAG "\e[35m"
@@ -2592,6 +2605,13 @@ int istty = 0;
 
 #define H64_PRINTC \
    VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, value, taint);
+
+#define H_SMT2( fn ) \
+   if ( TNT_(clo_smt2) ) \
+   { \
+      TNT_(fn)(clone, value, taint); \
+      return; \
+   }
 
 
 // if <gtmp> goto <jk> dst
@@ -3804,6 +3824,7 @@ void TNT_(h64_load_t) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2(smt2_h64_load_t);
    H64_PC
 
    ULong address = tv[atmp];
@@ -4055,6 +4076,7 @@ void TNT_(h64_unop_t) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_h64_unop_t);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
@@ -4946,6 +4968,13 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			TNT_(do_print) = 1;
 			TNT_(clo_tainted_ins_only) = False;
 			TNT_(clo_critical_ins_only) = False;
+
+                        if ( TNT_(clo_smt2) )
+                        {
+                           TNT_(do_print) = 0;
+			   TNT_(clo_tainted_ins_only) = True;
+			   TNT_(clo_critical_ins_only) = False;
+                        }
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_STOP_PRINT: {
@@ -4974,6 +5003,7 @@ Bool          TNT_(clo_critical_ins_only)      = False;
 Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
+Bool          TNT_(clo_smt2)                   = False;
 
 void init_soaap_data(void);
 
@@ -4994,6 +5024,7 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
 //   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
 //	   TNT_(read_syscalls_file) = True;
 //   }
+   else if VG_BOOL_CLO(arg, "--smt2", TNT_(clo_smt2)) {}
    else
       return VG_(replacement_malloc_process_cmd_line_option)(arg);
 
@@ -5010,6 +5041,7 @@ static void tnt_print_usage(void) {
 //"    --before-kbb=[0,1000000]    stop instrumentation after # of BBs, in thousands [-1]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
+"    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
    );
 }
 
@@ -5095,6 +5127,14 @@ static void tnt_post_clo_init(void)
 
    // If stdout is not a tty, don't highlight text
    istty = tnt_isatty();
+
+   // Print SMT2 preamble if output is smt2
+   if ( TNT_(clo_smt2) )
+   {
+      TNT_(smt2_preamble)();
+      TNT_(clo_tainted_ins_only) = True;
+      TNT_(clo_critical_ins_only) = False;
+   }
 }
 
 static void tnt_fini(Int exitcode)
