@@ -388,6 +388,8 @@ extern UInt  ti[TI_MAX];
 extern ULong tv[TI_MAX];
 // Reg variable indices
 extern UInt  ri[RI_MAX];
+// Tmp variable Types/Widths
+extern UInt  tt[TI_MAX];
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 extern void TNT_(smt2_preamble)(void);

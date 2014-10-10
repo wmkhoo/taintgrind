@@ -5113,6 +5113,7 @@ static void tnt_post_clo_init(void)
    for( i=0; i< TI_MAX; i++ ) {
       ti[i] = 0;
       tv[i] = 0;
+      tt[i] = 0;
    }
    for( i=0; i< RI_MAX; i++ )
       ri[i] = 0;
