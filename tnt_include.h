@@ -386,11 +386,15 @@ extern void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request
 extern UInt  ti[TI_MAX];
 // Tmp variable values
 extern ULong tv[TI_MAX];
+// Reg variable indices
+extern UInt  ri[RI_MAX];
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 extern void TNT_(smt2_preamble)(void);
 extern void TNT_(smt2_h64_load_t)   ( IRStmt *, ULong, ULong );
 extern void TNT_(smt2_h64_unop_t)   ( IRStmt *, ULong, ULong );
+extern void TNT_(smt2_h64_rdtmp)    ( IRStmt *, ULong, ULong );
+extern void TNT_(smt2_h64_put_t)    ( IRStmt *, ULong, ULong );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

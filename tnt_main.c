@@ -3957,6 +3957,7 @@ void TNT_(h64_put_t) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_h64_put_t);
    H64_PC
    //H_VAR
 
@@ -4336,6 +4337,7 @@ void TNT_(h64_rdtmp) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_h64_rdtmp);
    H64_PC
    //H_VAR
 

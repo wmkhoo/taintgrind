@@ -28,6 +28,8 @@ const Int SMT2_ty[] = {
    256   /* 256-bit SIMD */
 };
 
+// Array for tracking tmp variable types
+UInt tt[TI_MAX];
 
 void TNT_(smt2_preamble)()
 {
@@ -66,6 +68,7 @@ void TNT_(smt2_h64_load_t) (
       VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
       //VG_(printf)("(assert (= t%d_%d (concat a%llx %s)))\n", ltmp, _ti(ltmp), address, TNT_(smt2_concat)(buf, address+1, 1) );
       VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 2) );
+      tt[ltmp] = SMT2_ty[ty];
    } else {
       VG_(printf)("SMT2_ty[ty] = %d\n", SMT2_ty[ty]);
       tl_assert(0);
@@ -83,12 +86,62 @@ void TNT_(smt2_h64_unop_t) (
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt rtmp   = arg->Iex.RdTmp.tmp;
 
-   if ( op == Iop_32Uto64 )
-   {
-      VG_(printf)("(declare-fun t%d_%d () (_ BitVec 64))\n", ltmp, _ti(ltmp));
-      VG_(printf)("(assert (= t%d_%d (_ zero_extend t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
-   } else {
-      VG_(printf)("%s\n", IROp_string[op-Iop_INVALID]);
-      tl_assert(0);
+   switch(op) {
+      case Iop_1Uto64:
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 64))\n", ltmp, _ti(ltmp));
+         VG_(printf)("(assert (= t%d_%d ((_ zero_extend 63) t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+         tt[ltmp] = 64;
+         break;
+      case Iop_32Uto64:
+   
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 64))\n", ltmp, _ti(ltmp));
+         VG_(printf)("(assert (= t%d_%d ((_ zero_extend 32) t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+         tt[ltmp] = 64;
+         break;
+      case Iop_64to1:
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
+         VG_(printf)("(assert (= t%d_%d ((_ extract 1 0) t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+         tt[ltmp] = 1;
+         break;
+      case Iop_64to32:
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 32))\n", ltmp, _ti(ltmp));
+         VG_(printf)("(assert (= t%d_%d ((_ extract 31 0) t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+         tt[ltmp] = 32;
+         break;
+      default:
+         VG_(printf)("%s\n", IROp_string[op-Iop_INVALID]);
+         tl_assert(0);
    }
+}
+
+// ltmp = rtmp
+void TNT_(smt2_h64_rdtmp) (
+   IRStmt *clone,
+   ULong value,
+   ULong taint ) {
+
+   UInt ltmp = clone->Ist.WrTmp.tmp;
+   UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
+
+   tl_assert(tt[rtmp]);
+
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[rtmp]);
+   VG_(printf)("(assert (= t%d_%d t%d_%d))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   tt[ltmp] = tt[rtmp];
+}
+
+// reg = tmp
+void TNT_(smt2_h64_put_t) (
+   IRStmt *clone,
+   ULong value,
+   ULong taint ) {
+
+   UInt reg     = clone->Ist.Put.offset;
+   IRExpr *data = clone->Ist.Put.data;
+   UInt tmp     = data->Iex.RdTmp.tmp;
+
+   tl_assert(tt[tmp]);
+
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec %d))\n", reg, ri[reg], tt[tmp]);
+   VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
 }
