@@ -2715,6 +2715,7 @@ void TNT_(h32_store_tt) (
    tl_assert( dtmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2(smt2_store_tt);
    H32_PC
 
    UInt address = tv[atmp];
@@ -2847,6 +2848,7 @@ void TNT_(h32_load_t) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2(smt2_load_t);
    H32_PC
 
    UInt address = tv[atmp];
@@ -2984,6 +2986,7 @@ void TNT_(h32_put_t) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_put_t);
    H32_PC
 
    UInt reg     = clone->Ist.Put.offset;
@@ -3358,6 +3361,7 @@ void TNT_(h32_rdtmp) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   //H_SMT2(smt2_rdtmp);
    H32_PC
 
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
@@ -3692,6 +3696,7 @@ void TNT_(h64_store_tt) (
    tl_assert( dtmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2(smt2_store_tt);
    H64_PC
 
    ULong address = tv[atmp];
@@ -3824,7 +3829,7 @@ void TNT_(h64_load_t) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
-   H_SMT2(smt2_h64_load_t);
+   H_SMT2(smt2_load_t);
    H64_PC
 
    ULong address = tv[atmp];
@@ -3957,7 +3962,7 @@ void TNT_(h64_put_t) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_h64_put_t);
+   H_SMT2(smt2_put_t);
    H64_PC
    //H_VAR
 
@@ -4077,7 +4082,7 @@ void TNT_(h64_unop_t) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_h64_unop_t);
+   H_SMT2(smt2_unop_t);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
@@ -4337,7 +4342,7 @@ void TNT_(h64_rdtmp) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_h64_rdtmp);
+   H_SMT2(smt2_rdtmp);
    H64_PC
    //H_VAR
 

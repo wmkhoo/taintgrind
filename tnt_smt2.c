@@ -51,7 +51,7 @@ char *TNT_(smt2_concat)( char *buf, ULong addr, UInt c )
 }
 
 // ltmp = LOAD <ty> atmp
-void TNT_(smt2_h64_load_t) (
+void TNT_(smt2_load_t) (
    IRStmt *clone,
    ULong value,
    ULong taint ) {
@@ -75,8 +75,33 @@ void TNT_(smt2_h64_load_t) (
    }
 }
 
+// STORE atmp = dtmp
+void TNT_(smt2_store_tt) (
+   IRStmt *clone,
+   ULong value,
+   ULong taint ) {
+
+   IRExpr *addr = clone->Ist.Store.addr;
+   IRExpr *data = clone->Ist.Store.data;
+   UInt atmp    = addr->Iex.RdTmp.tmp;
+   UInt dtmp    = data->Iex.RdTmp.tmp;
+   ULong address = tv[atmp];
+   int i;
+
+   tl_assert(tt[dtmp]);
+
+   int numbytes = tt[dtmp]/8;
+
+   for ( i=0; i<numbytes; i++ )
+   {
+      VG_(printf)("(declare-fun a%llx () (_ BitVec 8))\n", address+i);
+      VG_(printf)("(assert (= a%llx ((_ extract %d %d) t%d_%d)))\n", address+i, ((i+1)*8)-1, i*8, dtmp, _ti(dtmp) );
+   }
+}
+
+
 // ltmp = <op> rtmp
-void TNT_(smt2_h64_unop_t) (
+void TNT_(smt2_unop_t) (
    IRStmt *clone,
    ULong value,
    ULong taint ) {
@@ -115,7 +140,7 @@ void TNT_(smt2_h64_unop_t) (
 }
 
 // ltmp = rtmp
-void TNT_(smt2_h64_rdtmp) (
+void TNT_(smt2_rdtmp) (
    IRStmt *clone,
    ULong value,
    ULong taint ) {
@@ -131,7 +156,7 @@ void TNT_(smt2_h64_rdtmp) (
 }
 
 // reg = tmp
-void TNT_(smt2_h64_put_t) (
+void TNT_(smt2_put_t) (
    IRStmt *clone,
    ULong value,
    ULong taint ) {
