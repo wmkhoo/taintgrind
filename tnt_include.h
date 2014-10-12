@@ -399,6 +399,7 @@ extern void TNT_(smt2_store_tt) ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );
 extern void TNT_(smt2_rdtmp)    ( IRStmt * );
+extern void TNT_(smt2_get)      ( IRStmt * );
 extern void TNT_(smt2_put_t)    ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */

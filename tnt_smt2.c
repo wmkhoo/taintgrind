@@ -87,8 +87,14 @@ void TNT_(smt2_load_t) ( IRStmt *clone )
       //VG_(printf)("(assert (= t%d_%d (concat a%llx %s)))\n", ltmp, _ti(ltmp), address, TNT_(smt2_concat)(buf, address+1, 1) );
       VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 2) );
       tt[ltmp] = SMT2_ty[ty];
+   } else if ( SMT2_ty[ty] == 16 )
+   {
+      VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+      //VG_(printf)("(assert (= t%d_%d (concat a%llx %s)))\n", ltmp, _ti(ltmp), address, TNT_(smt2_concat)(buf, address+1, 1) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 0) );
+      tt[ltmp] = SMT2_ty[ty];
    } else {
-      VG_(printf)("SMT2_ty[ty] = %d\n", SMT2_ty[ty]);
+      VG_(printf)("smt2_load_t: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
       tl_assert(0);
    }
 }
@@ -173,7 +179,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       case Iop_128to64:   smt2_extract(0, 63, 64);   break;
       case Iop_128HIto64: smt2_extract(64, 127, 64); break;
       default:
-         VG_(printf)("smt2_unop_t %s\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_unop_t: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
          tl_assert(0);
    }
 }
@@ -219,7 +225,7 @@ void TNT_(smt2_binop_tc) ( IRStmt *clone )
       case Iop_Sub32:    smt2_binop_tc_add32(32, bvsub);  break;
       case Iop_Xor32:    smt2_binop_tc_add32(32, bvxor);  break;
       default:
-         VG_(printf)("smt2_binop_tc %s\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_binop_tc: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
          tl_assert(0);
    }
 }
@@ -237,6 +243,26 @@ void TNT_(smt2_rdtmp) ( IRStmt *clone )
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[rtmp]);
    VG_(printf)("(assert (= t%d_%d t%d_%d))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
    tt[ltmp] = tt[rtmp];
+}
+
+// tmp = reg
+void TNT_(smt2_get) ( IRStmt *clone )
+{
+   UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ty      = data->Iex.Get.ty - Ity_INVALID;
+   UInt reg     = data->Iex.Get.offset;
+
+   if ( SMT2_ty[ty] == 16 ) {
+      VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+      VG_(printf)("(assert (= t%d_%d ((_ extract 15 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   } else if ( SMT2_ty[ty] == 32 ) {
+      VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+      VG_(printf)("(assert (= t%d_%d r%d_%d))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+   } else {
+      VG_(printf)("smt2_get: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
+      tl_assert(0);
+   }
 }
 
 // reg = tmp

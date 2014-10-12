@@ -2939,6 +2939,7 @@ void TNT_(h32_get) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_get);
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
