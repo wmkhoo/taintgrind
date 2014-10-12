@@ -392,12 +392,14 @@ extern UInt  ri[RI_MAX];
 extern UInt  tt[TI_MAX];
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
-extern void TNT_(smt2_preamble)(void);
-extern void TNT_(smt2_load_t)   ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_store_tt) ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_unop_t)   ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_rdtmp)    ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_put_t)    ( IRStmt *, ULong, ULong );
+extern void TNT_(smt2_preamble) (void);
+extern void TNT_(smt2_exit)     ( IRStmt * );
+extern void TNT_(smt2_load_t)   ( IRStmt * );
+extern void TNT_(smt2_store_tt) ( IRStmt * );
+extern void TNT_(smt2_unop_t)   ( IRStmt * );
+extern void TNT_(smt2_binop_tc) ( IRStmt * );
+extern void TNT_(smt2_rdtmp)    ( IRStmt * );
+extern void TNT_(smt2_put_t)    ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

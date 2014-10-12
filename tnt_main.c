@@ -2609,7 +2609,7 @@ int istty = 0;
 #define H_SMT2( fn ) \
    if ( TNT_(clo_smt2) ) \
    { \
-      TNT_(fn)(clone, value, taint); \
+      TNT_(fn)(clone); \
       return; \
    }
 
@@ -2622,6 +2622,7 @@ void TNT_(h32_exit_t) (
    UInt taint ) {
 
    H_EXIT_EARLY
+   H_SMT2(smt2_exit);
    H32_PC
 
    IRExpr *guard = clone->Ist.Exit.guard;
@@ -2982,6 +2983,10 @@ void TNT_(h32_put_t) (
    IRStmt *clone, 
    UInt value, 
    UInt taint ) {
+   // Reg book-keeping
+   UInt reg     = clone->Ist.Put.offset;
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
@@ -2989,13 +2994,10 @@ void TNT_(h32_put_t) (
    H_SMT2(smt2_put_t);
    H32_PC
 
-   UInt reg     = clone->Ist.Put.offset;
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
-   tl_assert( reg < RI_MAX );
    tl_assert( tmp < TI_MAX );
-   ri[reg]++;
 
    if ( istty && is_tainted(tmp) )
    {
@@ -3023,18 +3025,18 @@ void TNT_(h32_put_c) (
    IRStmt *clone, 
    UInt value, 
    UInt taint ) {
+   // Reg bookkeeping
+   UInt reg     = clone->Ist.Put.offset;
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
    H32_PC
 
-   UInt reg     = clone->Ist.Put.offset;
    IRExpr *data = clone->Ist.Put.data;
    UInt c       = extract_IRConst(data->Iex.Const.con);
-
-   tl_assert( reg < RI_MAX );
-   ri[reg]++;
 
    VG_(sprintf)(aTmp, "r%d_%d = 0x%x", reg, ri[reg], c);
    H32_PRINT
@@ -3102,6 +3104,7 @@ void TNT_(h32_unop_t) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_unop_t);
    H32_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
@@ -3171,6 +3174,7 @@ void TNT_(h32_binop_tc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tc);
    H32_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -3361,7 +3365,7 @@ void TNT_(h32_rdtmp) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   //H_SMT2(smt2_rdtmp);
+   H_SMT2(smt2_rdtmp);
    H32_PC
 
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
@@ -3958,6 +3962,10 @@ void TNT_(h64_put_t) (
    IRStmt *clone, 
    ULong value, 
    ULong taint ) {
+   // Reg book-keeping
+   UInt reg     = clone->Ist.Put.offset;
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
@@ -3966,13 +3974,10 @@ void TNT_(h64_put_t) (
    H64_PC
    //H_VAR
 
-   UInt reg     = clone->Ist.Put.offset;
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
-   tl_assert( reg < RI_MAX );
    tl_assert( tmp < TI_MAX );
-   ri[reg]++;
 
    if ( istty && is_tainted(tmp) )
    {
@@ -3999,6 +4004,10 @@ void TNT_(h64_put_c) (
    IRStmt *clone, 
    ULong value, 
    ULong taint ) {
+   // Reg bookkeeping
+   UInt reg     = clone->Ist.Put.offset;
+   tl_assert( reg < RI_MAX );
+   ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
@@ -4006,12 +4015,8 @@ void TNT_(h64_put_c) (
    H64_PC
    //H_VAR
 
-   UInt reg     = clone->Ist.Put.offset;
    IRExpr *data = clone->Ist.Put.data;
    ULong c      = extract_IRConst(data->Iex.Const.con);
-
-   tl_assert( reg < RI_MAX );
-   ri[reg]++;
 
    VG_(sprintf)(aTmp, "r%d_%d = 0x%llx", reg, ri[reg], c);
    H64_PRINT
