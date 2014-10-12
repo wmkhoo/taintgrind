@@ -178,6 +178,20 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
    }
 }
 
+// Can't use b (#b0) or c (var)
+#define smt2_binop_tc_add32(a, d) \
+         c = extract_IRConst( arg2->Iex.Const.con ); \
+         tl_assert(tt[rtmp1] == 32); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #a "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #d " t%d_%d #x%08x) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c ); \
+         tt[ltmp] = a
+
+#define smt2_binop_tc_cmp32(a, d) \
+         c = extract_IRConst( arg2->Iex.Const.con ); \
+         tl_assert(tt[rtmp1] == 32); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #a "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #d " t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c ); \
+         tt[ltmp] = a
 
 // ltmp = <op> rtmp1 rtmp2
 void TNT_(smt2_binop_tc) ( IRStmt *clone )
@@ -191,55 +205,19 @@ void TNT_(smt2_binop_tc) ( IRStmt *clone )
    UInt c;
 
    switch(op) {
-      case Iop_Add32:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 32))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d #x%08x) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 32;
-         break;
-      case Iop_CmpEQ32:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (ite (= t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 1;
-         break;
-      case Iop_CmpLE32S:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (ite (bvsle t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 1;
-         break;
-      case Iop_CmpLE32U:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (ite (bvule t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 1;
-         break;
-      case Iop_CmpLT32S:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (ite (bvslt t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 1;
-         break;
-      case Iop_CmpLT32U:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (ite (bvult t%d_%d #x%08x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 1;
-         break;
-      case Iop_Sub32:
-         c = extract_IRConst( arg2->Iex.Const.con );
-         tl_assert(tt[rtmp1] == 32);
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 32))\n", ltmp, _ti(ltmp));
-         VG_(printf)("(assert (= t%d_%d (bvsub t%d_%d #x%08x) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), c );
-         tt[ltmp] = 32;
-         break;
+      case Iop_Add32:    smt2_binop_tc_add32(32, bvadd);  break;
+      case Iop_And32:    smt2_binop_tc_add32(32, bvand);  break;
+      case Iop_CmpEQ32:  smt2_binop_tc_cmp32(1, =);       break;
+      case Iop_CmpLE32S: smt2_binop_tc_cmp32(1, bvsle);   break;
+      case Iop_CmpLE32U: smt2_binop_tc_cmp32(1, bvule);   break;
+      case Iop_CmpLT32S: smt2_binop_tc_cmp32(1, bvslt);   break;
+      case Iop_CmpLT32U: smt2_binop_tc_cmp32(1, bvult);   break;
+      case Iop_Or32:     smt2_binop_tc_add32(32, bvor);   break;
+      case Iop_Sar32:    smt2_binop_tc_add32(32, bvashr); break;
+      case Iop_Shl32:    smt2_binop_tc_add32(32, bvshl);  break;
+      case Iop_Shr32:    smt2_binop_tc_add32(32, bvshr);  break;
+      case Iop_Sub32:    smt2_binop_tc_add32(32, bvsub);  break;
+      case Iop_Xor32:    smt2_binop_tc_add32(32, bvxor);  break;
       default:
          VG_(printf)("smt2_binop_tc %s\n", IROp_string[op-Iop_INVALID]);
          tl_assert(0);
