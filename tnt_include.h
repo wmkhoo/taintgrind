@@ -392,12 +392,15 @@ extern UInt  ri[RI_MAX];
 extern UInt  tt[TI_MAX];
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
+#define is_tainted(ltmp) (ti[ltmp] >> 31)
+
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
 extern void TNT_(smt2_load_t)   ( IRStmt * );
 extern void TNT_(smt2_store_tt) ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );
+extern void TNT_(smt2_binop_tt) ( IRStmt * );
 extern void TNT_(smt2_rdtmp)    ( IRStmt * );
 extern void TNT_(smt2_get)      ( IRStmt * );
 extern void TNT_(smt2_put_t)    ( IRStmt * );

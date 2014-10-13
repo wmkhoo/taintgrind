@@ -2544,7 +2544,7 @@ int istty = 0;
 // macros
 // Defined in tnt_include.h
 //#define _ti(ltmp) ti[ltmp] & 0x7fffffff
-#define is_tainted(ltmp) (ti[ltmp] >> 31)
+//#define is_tainted(ltmp) (ti[ltmp] >> 31)
 #define KRED "\e[31m"
 #define KMAG "\e[35m"
 #define KNRM "\e[0m"
@@ -3605,6 +3605,7 @@ void TNT_(h64_exit_t) (
    ULong taint ) {
 
    H_EXIT_EARLY
+   H_SMT2(smt2_exit);
    H64_PC
 
    IRExpr *guard = clone->Ist.Exit.guard;
@@ -4158,6 +4159,7 @@ void TNT_(h64_binop_tc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tc);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -4247,6 +4249,7 @@ void TNT_(h64_binop_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
    
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tt);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
