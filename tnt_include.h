@@ -165,6 +165,7 @@ VG_REGPARM(3) void TNT_(h64_ite_ct)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_tt)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_cc)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ccall)    ( IRStmt *, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, ULong, ULong );
 
 /* Strings used by tnt_translate, printed by tnt_main */
@@ -392,15 +393,19 @@ extern UInt  ri[RI_MAX];
 extern UInt  tt[TI_MAX];
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
+#define is_tainted(ltmp) (ti[ltmp] >> 31)
+
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
 extern void TNT_(smt2_load_t)   ( IRStmt * );
 extern void TNT_(smt2_store_tt) ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );
+extern void TNT_(smt2_binop_tt) ( IRStmt * );
 extern void TNT_(smt2_rdtmp)    ( IRStmt * );
 extern void TNT_(smt2_get)      ( IRStmt * );
 extern void TNT_(smt2_put_t)    ( IRStmt * );
+extern void TNT_(smt2_amd64g_calculate_condition)    ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

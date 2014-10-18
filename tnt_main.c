@@ -2544,7 +2544,7 @@ int istty = 0;
 // macros
 // Defined in tnt_include.h
 //#define _ti(ltmp) ti[ltmp] & 0x7fffffff
-#define is_tainted(ltmp) (ti[ltmp] >> 31)
+//#define is_tainted(ltmp) (ti[ltmp] >> 31)
 #define KRED "\e[31m"
 #define KMAG "\e[35m"
 #define KNRM "\e[0m"
@@ -3608,6 +3608,7 @@ void TNT_(h64_exit_t) (
    ULong taint ) {
 
    H_EXIT_EARLY
+   H_SMT2(smt2_exit);
    H64_PC
 
    IRExpr *guard = clone->Ist.Exit.guard;
@@ -3921,6 +3922,7 @@ void TNT_(h64_get) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_get);
    H64_PC
    //H_VAR
 
@@ -4161,6 +4163,7 @@ void TNT_(h64_binop_tc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tc);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -4250,6 +4253,7 @@ void TNT_(h64_binop_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
    
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tt);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -4328,6 +4332,10 @@ void TNT_(h64_triop) (
    ULong taint ) {
 
    H_WRTMP_BOOKKEEPING
+
+   if ( taint ) {
+      VG_(printf)( "triop tainted\n" );
+   }
 }
 
 // ltmp = <op> rtmp1, rtmp2, rtmp3, rtmp4
@@ -4338,6 +4346,10 @@ void TNT_(h64_qop) (
    ULong taint ) {
 
    H_WRTMP_BOOKKEEPING
+
+   if ( taint ) {
+      VG_(printf)( "qop tainted\n" );
+   }
 }
 
 VG_REGPARM(3)
@@ -4563,6 +4575,120 @@ void TNT_(h64_ccall) (
    ULong taint ) {
 
    H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+
+   IRExpr *ccall = clone->Ist.WrTmp.data;
+ 
+  if (TNT_(clo_smt2)) {
+      IRCallee *cee = ccall->Iex.CCall.cee;
+      VG_(printf)("h64_ccall: Unsupported %s\n", cee->name);
+      tl_assert(0);
+   }
+
+   H64_PC
+
+   if ( istty && is_tainted(ltmp) )
+   {
+      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM);
+
+      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+   } else {
+      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(printf)("%s | %s", fnname, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+   }
+
+   // Information flow
+   if ( is_tainted(ltmp) ) {
+      VG_(printf)(" (Not supported)\n");
+   } else
+      VG_(printf)("\n");
+}
+
+// ltmp = amd64g_calculate_condition(
+//           ULong/*AMD64Condcode*/ cond, 
+//           ULong cc_op, 
+//           ULong cc_dep1, ULong cc_dep2, ULong cc_ndep 
+//        );
+VG_REGPARM(3)
+void TNT_(h64_amd64g_calculate_condition) (
+   IRStmt *clone, 
+   ULong value, 
+   ULong taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H_SMT2(smt2_amd64g_calculate_condition);
+   H64_PC
+
+   IRExpr *ccall = clone->Ist.WrTmp.data;
+
+   if ( istty && is_tainted(ltmp) )
+   {
+      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM);
+
+      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+   } else {
+      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(printf)("%s | %s", fnname, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+   }
+
+   // Information flow
+   if ( is_tainted(ltmp) ) {
+      // We have 2 arguments, arg[2] and arg[3], i.e. like binop
+      IRExpr *arg1 = ccall->Iex.CCall.args[2];
+      IRExpr *arg2 = ccall->Iex.CCall.args[3];
+
+      // Case 1: Both args are tmps
+      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
+         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
+
+         if ( is_tainted(rtmp1) && is_tainted(rtmp2) ) {
+            VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
+                                   rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+         } else if ( is_tainted(rtmp1) ) {
+            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                               rtmp1, _ti(rtmp1) );
+         } else {
+            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                               rtmp2, _ti(rtmp2) );
+         }
+      
+      // Case 2: arg1 is a tmp. And it *must* be tainted because ltmp is.
+      } else if ( arg1->tag == Iex_RdTmp ) {
+         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
+      
+         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                            rtmp1, _ti(rtmp1) );
+      // Case 3: arg2 is a tmp
+      } else {
+         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
+      
+         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                            rtmp2, _ti(rtmp2) );
+      }
+   } else
+      VG_(printf)("\n");
 }
 
 // No decoding necessary. Just print the string

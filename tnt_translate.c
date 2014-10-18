@@ -6103,12 +6103,6 @@ IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 }
 
 IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
-   //Int i;
-   //Int num_args=0;
-
-   //if( TNT_(clo_critical_ins_only) &&
-   //   e->tag != Iex_Load )
-   //   return NULL;
 
    switch( e->tag ){
       case Iex_Get:
@@ -6123,53 +6117,31 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
          return create_dirty_RDTMP( mce, clone, tmp, e->Iex.RdTmp.tmp );
 
       case Iex_Qop:
-         //if( e->Iex.Qop.details->arg1->tag == Iex_Const &&
-         //    e->Iex.Qop.details->arg2->tag == Iex_Const &&
-         //    e->Iex.Qop.details->arg3->tag == Iex_Const &&
-         //    e->Iex.Qop.details->arg4->tag == Iex_Const &&
-         //    TNT_(clo_tainted_ins_only) )
-         //   return NULL;
-         //else
-            return create_dirty_QOP(
-                   mce, clone, tmp,
-                   e->Iex.Qop.details->op,
-                   e->Iex.Qop.details->arg1, e->Iex.Qop.details->arg2,
-                   e->Iex.Qop.details->arg3, e->Iex.Qop.details->arg4
-                );
+         return create_dirty_QOP(
+                mce, clone, tmp,
+                e->Iex.Qop.details->op,
+                e->Iex.Qop.details->arg1, e->Iex.Qop.details->arg2,
+                e->Iex.Qop.details->arg3, e->Iex.Qop.details->arg4
+             );
 
      case Iex_Triop:
-         //if( e->Iex.Triop.details->arg1->tag == Iex_Const &&
-         //    e->Iex.Triop.details->arg2->tag == Iex_Const &&
-         //    e->Iex.Triop.details->arg3->tag == Iex_Const &&
-         //    TNT_(clo_tainted_ins_only) )
-         //   return NULL;
-         //else
-            return create_dirty_TRIOP(
-                   mce, clone, tmp,
-                   e->Iex.Triop.details->op,
-                   e->Iex.Triop.details->arg1, e->Iex.Triop.details->arg2,
-                   e->Iex.Triop.details->arg3
-                );
+        return create_dirty_TRIOP(
+               mce, clone, tmp,
+               e->Iex.Triop.details->op,
+               e->Iex.Triop.details->arg1, e->Iex.Triop.details->arg2,
+               e->Iex.Triop.details->arg3
+            );
 
       case Iex_Binop:
-         //if( e->Iex.Binop.arg1->tag == Iex_Const &&
-         //    e->Iex.Binop.arg2->tag == Iex_Const &&
-         //    TNT_(clo_tainted_ins_only) )
-         //   return NULL;
-         //else
-            return create_dirty_BINOP(
-                   mce, clone, tmp,
-                   e->Iex.Binop.op,
-                   e->Iex.Binop.arg1, e->Iex.Binop.arg2
-                );
+         return create_dirty_BINOP(
+                mce, clone, tmp,
+                e->Iex.Binop.op,
+                e->Iex.Binop.arg1, e->Iex.Binop.arg2
+             );
 
       case Iex_Unop:
-         //if( e->Iex.Unop.arg->tag == Iex_Const &&
-         //    TNT_(clo_tainted_ins_only) )
-         //   return NULL;
-         //else
-            return create_dirty_UNOP( mce, clone, tmp,
-                                      e->Iex.Unop.op, e->Iex.Unop.arg );
+         return create_dirty_UNOP( mce, clone, tmp,
+                                   e->Iex.Unop.op, e->Iex.Unop.arg );
 
       case Iex_Load:
          return create_dirty_LOAD( mce, clone, tmp, False /*isLL*/, e->Iex.Load.end,
@@ -6177,22 +6149,9 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
                                    e->Iex.Load.addr );
 
       case Iex_CCall:
-         //for(i=0; e->Iex.CCall.args[i]; i++)
-         //   num_args++;
-
-         //for(i=0; e->Iex.CCall.args[i]; i++){
-         //   if(e->Iex.CCall.args[i]->tag != Iex_Const)
-         //      break;
-         //}
-         //
-         //if( i == num_args &&
-         //    TNT_(clo_tainted_ins_only) )
-         //   // All args are const
-         //   return NULL;
-         //else
-            return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee,
-                                                 e->Iex.CCall.retty,
-                                                 e->Iex.CCall.args );
+         return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee,
+                                              e->Iex.CCall.retty,
+                                              e->Iex.CCall.args );
 
       case Iex_ITE:
          return create_dirty_ITE( mce, clone, tmp,
@@ -6368,31 +6327,35 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
 
    if ( mce->hWordTy == Ity_I32 ){
       if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
-         fn       = &TNT_(h32_binop_tc);
-         nm       = "TNT_(h32_binop_tc)";
+         fn = &TNT_(h32_binop_tc);
+         nm = "TNT_(h32_binop_tc)";
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
-         fn       = &TNT_(h32_binop_ct);
-         nm       = "TNT_(h32_binop_ct)";
+         fn = &TNT_(h32_binop_ct);
+         nm = "TNT_(h32_binop_ct)";
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
-         fn       = &TNT_(h32_binop_cc);
-         nm       = "TNT_(h32_binop_cc)";
+         fn = &TNT_(h32_binop_cc);
+         nm = "TNT_(h32_binop_cc)";
+      } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+         fn = &TNT_(h32_binop_tt);
+         nm = "TNT_(h32_binop_tt)";
       } else {
-         fn    = &TNT_(h32_binop_tt);
-         nm    = "TNT_(h32_binop_tt)";
+         VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
       }
    }else if( mce->hWordTy == Ity_I64 ){
       if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
-         fn       = &TNT_(h64_binop_tc);
-         nm       = "TNT_(h64_binop_tc)";
+         fn = &TNT_(h64_binop_tc);
+         nm = "TNT_(h64_binop_tc)";
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
-         fn       = &TNT_(h64_binop_ct);
-         nm       = "TNT_(h64_binop_ct)";
+         fn = &TNT_(h64_binop_ct);
+         nm = "TNT_(h64_binop_ct)";
       } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
-         fn       = &TNT_(h64_binop_cc);
-         nm       = "TNT_(h64_binop_cc)";
+         fn = &TNT_(h64_binop_cc);
+         nm = "TNT_(h64_binop_cc)";
+      } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+         fn = &TNT_(h64_binop_tt);
+         nm = "TNT_(h64_binop_tt)";
       } else {
-         fn    = &TNT_(h64_binop_tt);
-         nm    = "TNT_(h64_binop_tt)";
+         VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
       }
    }else
       VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP: Unknown platform");
@@ -6481,8 +6444,13 @@ IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp,
       fn    = &TNT_(h32_ccall);
       nm    = "TNT_(h32_ccall)";
    } else {
-      fn    = &TNT_(h64_ccall);
-      nm    = "TNT_(h64_ccall)";
+      if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
+         fn    = &TNT_(h64_amd64g_calculate_condition);
+         nm    = "TNT_(h64_amd64g_calculate_condition)";
+      } else {
+         fn    = &TNT_(h64_ccall);
+         nm    = "TNT_(h64_ccall)";
+      }
    }
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
