@@ -2857,7 +2857,10 @@ void TNT_(h32_load_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d",
+                                  KRED,
+                                  ltmp, _ti(ltmp),
+                                  KNRM,
                                   IRType_string[ty], atmp, _ti(atmp) );
       H32_PRINTC
    } else {
