@@ -3223,6 +3223,7 @@ void TNT_(h32_binop_ct) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_ct);
    H32_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -3267,6 +3268,7 @@ void TNT_(h32_binop_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_tt);
    H32_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
@@ -4209,6 +4211,7 @@ void TNT_(h64_binop_ct) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2(smt2_binop_ct);
    H64_PC
 
    UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
