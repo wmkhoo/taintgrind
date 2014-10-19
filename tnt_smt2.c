@@ -193,45 +193,76 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
    }
 }
 
-#define smt2_binop_tc_ct_add(ty, zeros, op) \
+#define smt2_binop_tc_add(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (" #op " t%d_%d #x%0" #zeros "x) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
+         VG_(printf)("(assert (= t%d_%d (" #op " t%d_%d #x%0" #zeros "llx) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
          tt[ltmp] = ty
 
-#define smt2_binop_tc_ct_cmp(ty, zeros, op) \
+#define smt2_binop_tc_cmp(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "x) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
          tt[ltmp] = ty
 
-#define smt2_binop_tc_ct_cmp64(op) \
-         tl_assert(tt[rtmp] == 64); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%016llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c64 ); \
-         tt[ltmp] = 64
+#define smt2_binop_ct_add(ty, zeros, op) \
+         tl_assert(tt[rtmp] == ty); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #op " #x%0" #zeros "llx t%d_%d) ))\n", ltmp, _ti(ltmp), c, rtmp, _ti(rtmp) ); \
+         tt[ltmp] = ty
 
-static void tnt_smt2_binop_common ( UInt op, UInt ltmp, UInt rtmp, UInt c, ULong c64 ) {
+#define smt2_binop_ct_cmp(ty, zeros, op) \
+         tl_assert(tt[rtmp] == ty); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #op " #x%0" #zeros "llx t%d_%d) #b1 #b0) ))\n", ltmp, _ti(ltmp), c, rtmp, _ti(rtmp) ); \
+         tt[ltmp] = ty
+
+static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) {
 
    switch(op) {
-      case Iop_Add32:    smt2_binop_tc_ct_add(32, 8, bvadd);  break;
-      case Iop_And32:    smt2_binop_tc_ct_add(32, 8, bvand);  break;
-      case Iop_CmpEQ8:   smt2_binop_tc_ct_cmp(8, 2, =);       break;
-      case Iop_CmpEQ16:  smt2_binop_tc_ct_cmp(16, 4, =);      break;
-      case Iop_CmpEQ32:  smt2_binop_tc_ct_cmp(32, 8, =);      break;
-      case Iop_CmpEQ64:  smt2_binop_tc_ct_cmp64( = );         break;
-      case Iop_CmpLE32S: smt2_binop_tc_ct_cmp(32, 8, bvsle);  break;
-      case Iop_CmpLE32U: smt2_binop_tc_ct_cmp(32, 8, bvule);  break;
-      case Iop_CmpLT32S: smt2_binop_tc_ct_cmp(32, 8, bvslt);  break;
-      case Iop_CmpLT32U: smt2_binop_tc_ct_cmp(32, 8, bvult);  break;
-      case Iop_Or32:     smt2_binop_tc_ct_add(32, 8, bvor);   break;
-      case Iop_Sar32:    smt2_binop_tc_ct_add(32, 8, bvashr); break;
-      case Iop_Shl32:    smt2_binop_tc_ct_add(32, 8, bvshl);  break;
-      case Iop_Shr32:    smt2_binop_tc_ct_add(32, 8, bvlshr); break;
-      case Iop_Sub32:    smt2_binop_tc_ct_add(32, 8, bvsub);  break;
-      case Iop_Xor32:    smt2_binop_tc_ct_add(32, 8, bvxor);  break;
+      case Iop_Add32:    smt2_binop_tc_add(32, 8, bvadd);  break;
+      case Iop_And32:    smt2_binop_tc_add(32, 8, bvand);  break;
+      case Iop_CmpEQ8:   smt2_binop_tc_cmp(8, 2, =);       break;
+      case Iop_CmpEQ16:  smt2_binop_tc_cmp(16, 4, =);      break;
+      case Iop_CmpEQ32:  smt2_binop_tc_cmp(32, 8, =);      break;
+      case Iop_CmpEQ64:  smt2_binop_tc_cmp(64, 16, =);     break;
+      case Iop_CmpLE32S: smt2_binop_tc_cmp(32, 8, bvsle);  break;
+      case Iop_CmpLE32U: smt2_binop_tc_cmp(32, 8, bvule);  break;
+      case Iop_CmpLT32S: smt2_binop_tc_cmp(32, 8, bvslt);  break;
+      case Iop_CmpLT32U: smt2_binop_tc_cmp(32, 8, bvult);  break;
+      case Iop_Or32:     smt2_binop_tc_add(32, 8, bvor);   break;
+      case Iop_Sar32:    smt2_binop_tc_add(32, 8, bvashr); break;
+      case Iop_Shl32:    smt2_binop_tc_add(32, 8, bvshl);  break;
+      case Iop_Shr32:    smt2_binop_tc_add(32, 8, bvlshr); break;
+      case Iop_Sub32:    smt2_binop_tc_add(32, 8, bvsub);  break;
+      case Iop_Xor32:    smt2_binop_tc_add(32, 8, bvxor);  break;
       default:
-         VG_(printf)("smt2_binop_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_binop_tc_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         tl_assert(0);
+   }
+}
+
+static void tnt_smt2_binop_ct_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) {
+
+   switch(op) {
+      case Iop_Add32:    smt2_binop_ct_add(32, 8, bvadd);  break;
+      case Iop_And32:    smt2_binop_ct_add(32, 8, bvand);  break;
+      case Iop_CmpEQ8:   smt2_binop_ct_cmp(8, 2, =);       break;
+      case Iop_CmpEQ16:  smt2_binop_ct_cmp(16, 4, =);      break;
+      case Iop_CmpEQ32:  smt2_binop_ct_cmp(32, 8, =);      break;
+      case Iop_CmpEQ64:  smt2_binop_ct_cmp(64, 16, =);     break;
+      case Iop_CmpLE32S: smt2_binop_ct_cmp(32, 8, bvsle);  break;
+      case Iop_CmpLE32U: smt2_binop_ct_cmp(32, 8, bvule);  break;
+      case Iop_CmpLT32S: smt2_binop_ct_cmp(32, 8, bvslt);  break;
+      case Iop_CmpLT32U: smt2_binop_ct_cmp(32, 8, bvult);  break;
+      case Iop_Or32:     smt2_binop_ct_add(32, 8, bvor);   break;
+      case Iop_Sar32:    smt2_binop_ct_add(32, 8, bvashr); break;
+      case Iop_Shl32:    smt2_binop_ct_add(32, 8, bvshl);  break;
+      case Iop_Shr32:    smt2_binop_ct_add(32, 8, bvlshr); break;
+      case Iop_Sub32:    smt2_binop_ct_add(32, 8, bvsub);  break;
+      case Iop_Xor32:    smt2_binop_ct_add(32, 8, bvxor);  break;
+      default:
+         VG_(printf)("smt2_binop_ct_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
          tl_assert(0);
    }
 }
@@ -245,10 +276,9 @@ void TNT_(smt2_binop_tc) ( IRStmt *clone )
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp    = arg1->Iex.RdTmp.tmp;
-   UInt c       = extract_IRConst( arg2->Iex.Const.con );
-   ULong c64    = extract_IRConst64( arg2->Iex.Const.con );
+   ULong c      = extract_IRConst64( arg2->Iex.Const.con );
 
-   tnt_smt2_binop_common ( op, ltmp, rtmp, c, c64 );
+   tnt_smt2_binop_tc_common ( op, ltmp, rtmp, c );
 }
 
 
@@ -261,10 +291,9 @@ void TNT_(smt2_binop_ct) ( IRStmt *clone )
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp    = arg2->Iex.RdTmp.tmp;
-   UInt c       = extract_IRConst( arg1->Iex.Const.con );
-   ULong c64    = extract_IRConst64( arg1->Iex.Const.con );
+   ULong c      = extract_IRConst64( arg1->Iex.Const.con );
 
-   tnt_smt2_binop_common ( op, ltmp, rtmp, c, c64 );
+   tnt_smt2_binop_ct_common ( op, ltmp, rtmp, c );
 }
 
 
@@ -277,10 +306,9 @@ static void tnt_smt2_binop_tt_10 ( IRStmt *clone )
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp    = arg1->Iex.RdTmp.tmp;
    UInt rtmp2   = arg2->Iex.RdTmp.tmp;
-   UInt c       = tv[rtmp2];
-   ULong c64    = tv[rtmp2];
+   ULong c      = tv[rtmp2];
 
-   tnt_smt2_binop_common ( op, ltmp, rtmp, c, c64 );
+   tnt_smt2_binop_tc_common ( op, ltmp, rtmp, c );
 }
 
 
@@ -293,10 +321,9 @@ static void tnt_smt2_binop_tt_01 ( IRStmt *clone )
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1   = arg1->Iex.RdTmp.tmp;
    UInt rtmp    = arg2->Iex.RdTmp.tmp;
-   UInt c       = tv[rtmp1];
-   ULong c64    = tv[rtmp1];
+   ULong c      = tv[rtmp1];
 
-   tnt_smt2_binop_common ( op, ltmp, rtmp, c, c64 );
+   tnt_smt2_binop_ct_common ( op, ltmp, rtmp, c );
 }
 
 
