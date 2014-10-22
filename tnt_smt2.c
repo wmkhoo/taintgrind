@@ -70,6 +70,12 @@ void TNT_(smt2_exit) ( IRStmt *clone )
    VG_(printf)("(check-sat)\n(get-model)\n");
    // Restore assertions
    VG_(printf)("(pop)\n");
+   // Add original branch condition
+   if ( tv[gtmp] ) {
+      VG_(printf)("(assert (= t%d_%d #b1))\n", gtmp, _ti(gtmp));
+   } else {
+      VG_(printf)("(assert (= t%d_%d #b0))\n", gtmp, _ti(gtmp));
+   }
 }
 
 
