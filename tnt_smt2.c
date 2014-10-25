@@ -79,15 +79,33 @@ void TNT_(smt2_exit) ( IRStmt *clone )
 }
 
 
-// ltmp = LOAD <ty> atmp
-void TNT_(smt2_load_t) ( IRStmt *clone )
+static void tnt_load_atmp ( UInt atmp, ULong address )
 {
+   // Save current assertions
+   VG_(printf)("(push)\n");
+   // Invert branch
+   if ( tt[atmp] == 32 )
+      VG_(printf)("(assert (not (= t%d_%d #x%08llx)))\n", atmp, _ti(atmp), address);
+   else if ( tt[atmp] == 64 )
+      VG_(printf)("(assert (not (= t%d_%d #x%016llx)))\n", atmp, _ti(atmp), address);
+   else
+      tl_assert(0);
 
-   UInt ltmp     = clone->Ist.WrTmp.tmp;
-   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
-   UInt atmp     = addr->Iex.RdTmp.tmp;
-   ULong address = tv[atmp];
+   VG_(printf)("(check-sat)\n(get-model)\n");
+   // Restore assertions
+   VG_(printf)("(pop)\n");
+   // Add original branch condition
+   if ( tt[atmp] == 32 )
+      VG_(printf)("(assert (= t%d_%d #x%08llx))\n", atmp, _ti(atmp), address);
+   else if ( tt[atmp] == 64 )
+      VG_(printf)("(assert (= t%d_%d #x%016llx))\n", atmp, _ti(atmp), address);
+   else
+      tl_assert(0);
+}
+
+
+static void tnt_load_ltmp ( UInt ltmp, UInt ty, ULong address )
+{
    char buf[1024];
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
@@ -109,6 +127,24 @@ void TNT_(smt2_load_t) ( IRStmt *clone )
       tl_assert(0);
    }
    tt[ltmp] = SMT2_ty[ty];
+}
+
+
+// ltmp = LOAD <ty> atmp
+void TNT_(smt2_load_t) ( IRStmt *clone )
+{
+
+   UInt ltmp     = clone->Ist.WrTmp.tmp;
+   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
+   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
+   UInt atmp     = addr->Iex.RdTmp.tmp;
+   ULong address = tv[atmp];
+
+   if ( is_tainted(atmp) )
+      tnt_load_atmp ( atmp, address );
+
+   if ( is_tainted(ltmp) )
+      tnt_load_ltmp ( ltmp, ty, address );
 }
 
 // STORE atmp = dtmp
