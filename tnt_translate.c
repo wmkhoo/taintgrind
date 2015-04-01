@@ -6732,6 +6732,8 @@ typedef
       VG_(printf)( "     EIP=0x%08x\n", (Int)ips[0] );
    }
 #endif
+   //VG_(printf)( "%d\n", sb_in->tyenv->types_used );
+
    /* Set up SB */
    sb_out = deepCopyIRSBExceptStmts(sb_in);
 
