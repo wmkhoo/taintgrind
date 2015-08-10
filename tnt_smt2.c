@@ -126,7 +126,6 @@ static void tnt_load_ltmp ( UInt ltmp, UInt ty, ULong address )
       VG_(printf)("smt2_load_t: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
       tl_assert(0);
    }
-   tt[ltmp] = SMT2_ty[ty];
 }
 
 
@@ -145,6 +144,8 @@ void TNT_(smt2_load_t) ( IRStmt *clone )
 
    if ( is_tainted(ltmp) )
       tnt_load_ltmp ( ltmp, ty, address );
+
+   tt[ltmp] = SMT2_ty[ty];
 }
 
 // STORE atmp = dtmp
@@ -263,6 +264,7 @@ static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
 
    switch(op) {
       case Iop_Add32:    smt2_binop_tc_add(32, 8, bvadd);  break;
+      case Iop_Add64:    smt2_binop_tc_add(64, 16, bvadd);  break;
       case Iop_And32:    smt2_binop_tc_add(32, 8, bvand);  break;
       case Iop_CmpEQ8:   smt2_binop_tc_cmp(8, 2, =);       break;
       case Iop_CmpEQ16:  smt2_binop_tc_cmp(16, 4, =);      break;
@@ -275,6 +277,7 @@ static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
       case Iop_Or32:     smt2_binop_tc_add(32, 8, bvor);   break;
       case Iop_Sar32:    smt2_binop_tc_add(32, 8, bvashr); break;
       case Iop_Shl32:    smt2_binop_tc_add(32, 8, bvshl);  break;
+      case Iop_Shl64:    smt2_binop_tc_add(64, 16, bvshl);  break;
       case Iop_Shr32:    smt2_binop_tc_add(32, 8, bvlshr); break;
       case Iop_Sub32:    smt2_binop_tc_add(32, 8, bvsub);  break;
       case Iop_Xor32:    smt2_binop_tc_add(32, 8, bvxor);  break;
@@ -302,6 +305,7 @@ static void tnt_smt2_binop_ct_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
       case Iop_Shl32:    smt2_binop_ct_add(32, 8, bvshl);  break;
       case Iop_Shr32:    smt2_binop_ct_add(32, 8, bvlshr); break;
       case Iop_Sub32:    smt2_binop_ct_add(32, 8, bvsub);  break;
+      case Iop_Xor8:     smt2_binop_ct_add(8, 2, bvxor);  break;
       case Iop_Xor32:    smt2_binop_ct_add(32, 8, bvxor);  break;
       default:
          VG_(printf)("smt2_binop_ct_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
@@ -488,4 +492,8 @@ void TNT_(smt2_put_t) ( IRStmt *clone )
 
 void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
 {
+   UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
+   tt[ltmp] = SMT2_ty[ty];
 }
