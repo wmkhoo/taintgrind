@@ -490,10 +490,169 @@ void TNT_(smt2_put_t) ( IRStmt *clone )
    VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
 }
 
+// VEX/priv/guest_amd64_defs.h
+// extern ULong amd64g_calculate_condition ( 
+//                 ULong/*AMD64Condcode*/ cond, 
+//                 ULong cc_op, 
+//                 ULong cc_dep1, ULong cc_dep2, ULong cc_ndep 
+//              );
+typedef
+   enum {
+      AMD64CondO      = 0,  /* overflow           */
+      AMD64CondNO     = 1,  /* no overflow        */
+      AMD64CondB      = 2,  /* below              */
+      AMD64CondNB     = 3,  /* not below          */
+      AMD64CondZ      = 4,  /* zero               */
+      AMD64CondNZ     = 5,  /* not zero           */
+      AMD64CondBE     = 6,  /* below or equal     */
+      AMD64CondNBE    = 7,  /* not below or equal */
+      AMD64CondS      = 8,  /* negative           */
+      AMD64CondNS     = 9,  /* not negative       */
+      AMD64CondP      = 10, /* parity even        */
+      AMD64CondNP     = 11, /* not parity even    */
+      AMD64CondL      = 12, /* jump less          */
+      AMD64CondNL     = 13, /* not less           */
+      AMD64CondLE     = 14, /* less or equal      */
+      AMD64CondNLE    = 15, /* not less or equal  */
+      AMD64CondAlways = 16  /* HACK */
+   }
+   AMD64Condcode;
+
+enum {
+    AMD64G_CC_OP_COPY=0,  /* DEP1 = current flags, DEP2 = 0, NDEP = unused */
+                          /* just copy DEP1 to output */
+    AMD64G_CC_OP_ADDB,    /* 1 */
+    AMD64G_CC_OP_ADDW,    /* 2 DEP1 = argL, DEP2 = argR, NDEP = unused */
+    AMD64G_CC_OP_ADDL,    /* 3 */
+    AMD64G_CC_OP_ADDQ,    /* 4 */
+    AMD64G_CC_OP_SUBB,    /* 5 */
+    AMD64G_CC_OP_SUBW,    /* 6 DEP1 = argL, DEP2 = argR, NDEP = unused */
+    AMD64G_CC_OP_SUBL,    /* 7 */
+    AMD64G_CC_OP_SUBQ,    /* 8 */
+    AMD64G_CC_OP_ADCB,    /* 9 */
+    AMD64G_CC_OP_ADCW,    /* 10 DEP1 = argL, DEP2 = argR ^ oldCarry, NDEP = oldCarry */
+    AMD64G_CC_OP_ADCL,    /* 11 */
+    AMD64G_CC_OP_ADCQ,    /* 12 */
+    AMD64G_CC_OP_SBBB,    /* 13 */
+    AMD64G_CC_OP_SBBW,    /* 14 DEP1 = argL, DEP2 = argR ^ oldCarry, NDEP = oldCarry */
+    AMD64G_CC_OP_SBBL,    /* 15 */
+    AMD64G_CC_OP_SBBQ,    /* 16 */
+    AMD64G_CC_OP_LOGICB,  /* 17 */
+    AMD64G_CC_OP_LOGICW,  /* 18 DEP1 = result, DEP2 = 0, NDEP = unused */
+    AMD64G_CC_OP_LOGICL,  /* 19 */
+    AMD64G_CC_OP_LOGICQ,  /* 20 */
+    AMD64G_CC_OP_INCB,    /* 21 */
+    AMD64G_CC_OP_INCW,    /* 22 DEP1 = result, DEP2 = 0, NDEP = oldCarry (0 or 1) */
+    AMD64G_CC_OP_INCL,    /* 23 */
+    AMD64G_CC_OP_INCQ,    /* 24 */
+    AMD64G_CC_OP_DECB,    /* 25 */
+    AMD64G_CC_OP_DECW,    /* 26 DEP1 = result, DEP2 = 0, NDEP = oldCarry (0 or 1) */
+    AMD64G_CC_OP_DECL,    /* 27 */
+    AMD64G_CC_OP_DECQ,    /* 28 */
+    AMD64G_CC_OP_SHLB,    /* 29 DEP1 = res, DEP2 = res', NDEP = unused */
+    AMD64G_CC_OP_SHLW,    /* 30 where res' is like res but shifted one bit less */
+    AMD64G_CC_OP_SHLL,    /* 31 */
+    AMD64G_CC_OP_SHLQ,    /* 32 */
+    AMD64G_CC_OP_SHRB,    /* 33 DEP1 = res, DEP2 = res', NDEP = unused */
+    AMD64G_CC_OP_SHRW,    /* 34 where res' is like res but shifted one bit less */
+    AMD64G_CC_OP_SHRL,    /* 35 */
+    AMD64G_CC_OP_SHRQ,    /* 36 */
+    AMD64G_CC_OP_ROLB,    /* 37 */
+    AMD64G_CC_OP_ROLW,    /* 38 DEP1 = res, DEP2 = 0, NDEP = old flags */
+    AMD64G_CC_OP_ROLL,    /* 39 */
+    AMD64G_CC_OP_ROLQ,    /* 40 */
+    AMD64G_CC_OP_RORB,    /* 41 */
+    AMD64G_CC_OP_RORW,    /* 42 DEP1 = res, DEP2 = 0, NDEP = old flags */
+    AMD64G_CC_OP_RORL,    /* 43 */
+    AMD64G_CC_OP_RORQ,    /* 44 */
+    AMD64G_CC_OP_UMULB,   /* 45 */
+    AMD64G_CC_OP_UMULW,   /* 46 DEP1 = argL, DEP2 = argR, NDEP = unused */
+    AMD64G_CC_OP_UMULL,   /* 47 */
+    AMD64G_CC_OP_UMULQ,   /* 48 */
+    AMD64G_CC_OP_SMULB,   /* 49 */
+    AMD64G_CC_OP_SMULW,   /* 50 DEP1 = argL, DEP2 = argR, NDEP = unused */
+    AMD64G_CC_OP_SMULL,   /* 51 */
+    AMD64G_CC_OP_SMULQ,   /* 52 */
+    AMD64G_CC_OP_NUMBER
+};
+
+static char *tnt_smt2_amd64g_calculate_condition_tc_op( IRStmt *clone, char *buf )
+{
+   //UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   //UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+   //ULong cond   = extract_IRConst64( data->Iex.CCall.args[0]->Iex.Const.con );
+   ULong cc_op  = extract_IRConst64( data->Iex.CCall.args[1]->Iex.Const.con );
+   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+   ULong dep2c  = extract_IRConst64( dep2->Iex.Const.con );
+
+   char tmp[1024];
+
+   switch ( cc_op )
+   {
+      case AMD64G_CC_OP_SUBQ:
+         VG_(sprintf)(tmp, "bvsub t%d_%d #x%016llx",
+            dep1tmp, _ti(dep1tmp),
+            dep2c );
+         break;
+      default:
+         VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
+         tl_assert(0);
+   }
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_tc( IRStmt *clone, char *buf )
+{
+   //UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   //UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
+   //IRExpr *dep1 = data->Iex.CCall.args[2];
+   //IRExpr *dep2 = data->Iex.CCall.args[3];
+   ULong cond   = extract_IRConst64( data->Iex.CCall.args[0]->Iex.Const.con );
+   //ULong cc_op  = extract_IRConst64( data->Iex.CCall.args[1]->Iex.Const.con );
+
+   char tmp[1024];
+
+   switch ( cond )
+   {
+      case AMD64CondS:
+         VG_(sprintf)(tmp, "ite (bvslt (%s) #x%016llx) #x%016llx #x%016llx",
+            tnt_smt2_amd64g_calculate_condition_tc_op(clone, buf),
+            0LL, 1LL, 0LL );
+         break;
+      default:
+         VG_(printf)("smt2_amd64g_calculate_condition: cond = %llx not yet supported\n", cond);
+         tl_assert(0);
+   }
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
 void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
 {
    UInt ltmp    = clone->Ist.WrTmp.tmp;
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   char buf[1024];
+
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+
+   if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_Const )
+   {
+      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+            tnt_smt2_amd64g_calculate_condition_tc( clone, buf ) );
+   } else
+   {
+      VG_(printf)("smt2_amd64g_calculate_condition: tc/tt not yet supported\n");
+      tl_assert(0);
+   }
+
    tt[ltmp] = SMT2_ty[ty];
 }
