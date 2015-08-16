@@ -2800,7 +2800,7 @@ void TNT_(h32_store_tc) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
-   H_SMT2_not_implemented("h32_store_tc");
+   H_SMT2(smt2_store_tc);
    H32_PC
 
    UInt address = tv[atmp];

@@ -190,6 +190,20 @@ void TNT_(smt2_store_ct) ( IRStmt *clone )
       tnt_smt2_store_dtmp ( dtmp, address );
 }
 
+// STORE atmp = const
+void TNT_(smt2_store_tc) ( IRStmt *clone )
+{
+
+   IRExpr *addr = clone->Ist.Store.addr;
+   //IRExpr *data = clone->Ist.Store.data;
+   UInt atmp    = addr->Iex.RdTmp.tmp;
+   //UInt dtmp    = data->Iex.RdTmp.tmp;
+   ULong address = tv[atmp];
+
+   if ( is_tainted(atmp) )
+      tnt_smt2_loadstore_atmp ( atmp, address );
+}
+
 // STORE atmp = dtmp
 void TNT_(smt2_store_tt) ( IRStmt *clone )
 {

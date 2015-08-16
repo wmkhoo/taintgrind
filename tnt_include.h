@@ -401,6 +401,7 @@ extern void TNT_(smt2_exit)     ( IRStmt * );
 extern void TNT_(smt2_load_c)   ( IRStmt * );
 extern void TNT_(smt2_load_t)   ( IRStmt * );
 extern void TNT_(smt2_store_ct) ( IRStmt * );
+extern void TNT_(smt2_store_tc) ( IRStmt * );
 extern void TNT_(smt2_store_tt) ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );
