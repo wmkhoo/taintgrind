@@ -1452,9 +1452,9 @@ void TNT_(make_mem_noaccess) ( Addr a, SizeT len )
 //      ocache_sarp_Clear_Origins ( a, len );
 }
 
-void TNT_(make_mem_tainted) ( Addr a, SizeT len )//1608
+void TNT_(make_mem_tainted) ( Addr a, SizeT len )
 {
-   PROF_EVENT(42, "TNT_(make_mem_undefined)");
+   PROF_EVENT(42, "TNT_(make_mem_tainted)");
 //   DEBUG("TNT_(make_mem_undefined)(%p, %lu)\n", a, len);
    set_address_range_perms ( a, len, VA_BITS16_TAINTED, SM_DIST_TAINTED );
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
@@ -1469,6 +1469,27 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )//1608
          VG_(printf)("(declare-fun byte%d () (_ BitVec 8))\n", i);
          VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
          VG_(printf)("(assert (= byte%d a%lx))\n", i, a+i);
+      }
+   }
+}
+
+void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *varname )
+{
+   PROF_EVENT(42, "TNT_(make_mem_tainted)");
+//   DEBUG("TNT_(make_mem_undefined)(%p, %lu)\n", a, len);
+   set_address_range_perms ( a, len, VA_BITS16_TAINTED, SM_DIST_TAINTED );
+//   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
+//      ocache_sarp_Clear_Origins ( a, len );
+
+   // SMT2
+   if ( TNT_(clo_smt2) )
+   {
+      UInt i = 0;
+      for ( ; i<len; i++ )
+      {
+         VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", varname, i);
+         VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
+         VG_(printf)("(assert (= %s%d a%lx))\n", varname, i, a+i);
       }
    }
 }
@@ -2609,8 +2630,16 @@ int istty = 0;
 #define H_SMT2( fn ) \
    if ( TNT_(clo_smt2) ) \
    { \
+      VG_(printf)("; " #fn " \n"); \
       TNT_(fn)(clone); \
       return; \
+   }
+
+#define H_SMT2_not_implemented(fn) \
+   if ( TNT_(clo_smt2) ) \
+   { \
+      VG_(printf)("smt2: %s not implemented yet", fn); \
+      tl_assert(0); \
    }
 
 
@@ -2669,6 +2698,7 @@ void TNT_(h32_next_t) (
    UInt taint ) {
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_next_t");
    H32_PC
 
    UInt next = clone->Iex.RdTmp.tmp;
@@ -2770,6 +2800,7 @@ void TNT_(h32_store_tc) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2_not_implemented("h32_store_tc");
    H32_PC
 
    UInt address = tv[atmp];
@@ -2799,6 +2830,7 @@ void TNT_(h32_store_ct) (
    UInt taint ) {
 
    H_EXIT_EARLY
+   H_SMT2(smt2_store_ct);
    H32_PC
 
    IRExpr *addr = clone->Ist.Store.addr;
@@ -2896,6 +2928,7 @@ void TNT_(h32_load_c) (
    H_WRTMP_BOOKKEEPING
 
    H_EXIT_EARLY
+   H_SMT2(smt2_load_c);
    H32_PC
 
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
@@ -3058,6 +3091,7 @@ void TNT_(h32_puti) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_puti");
    H32_PC
 
    UInt elemTy = (tt1 >> 16) & 0xff;
@@ -3411,6 +3445,7 @@ void TNT_(h32_ite_tc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_ite_tc");
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -3454,6 +3489,7 @@ void TNT_(h32_ite_ct) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_ite_ct");
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -3497,6 +3533,7 @@ void TNT_(h32_ite_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_ite_tt");
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -3580,6 +3617,43 @@ void TNT_(h32_ccall) (
    UInt taint ) {
 
    H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+
+   IRExpr *ccall = clone->Ist.WrTmp.data;
+ 
+  if (TNT_(clo_smt2)) {
+      IRCallee *cee = ccall->Iex.CCall.cee;
+      VG_(printf)("h32_ccall: Unsupported %s\n", cee->name);
+      tl_assert(0);
+   }
+
+   H32_PC
+
+   if ( istty && is_tainted(ltmp) )
+   {
+      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM);
+
+      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
+   } else {
+      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(printf)("%s | %s", fnname, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
+   }
+
+   // Information flow
+   if ( is_tainted(ltmp) ) {
+      VG_(printf)(" (Not supported)\n");
+   } else
+      VG_(printf)("\n");
 }
 
 // No decoding necessary. Just print the string
@@ -3592,6 +3666,7 @@ void TNT_(h32_none) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_none");
    H32_PC
 
    VG_(sprintf)( aTmp, "%s", str);
@@ -5102,7 +5177,11 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_MAKE_MEM_TAINTED: {
-			TNT_(make_mem_tainted)(arg[1], arg[2]);
+                        TNT_(make_mem_tainted)(arg[1], arg[2]);
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_MAKE_MEM_TAINTED_NAMED: {
+                        TNT_(make_mem_tainted_named)(arg[1], arg[2], (const HChar *)arg[3]);
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_MAKE_MEM_UNTAINTED: {

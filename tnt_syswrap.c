@@ -180,7 +180,10 @@ void read_common ( UInt taint_offset, Int taint_len,
       return;
    }
 
-   TNT_(make_mem_tainted)( addr, len );
+   if ( TNT_(clo_smt2) )
+      TNT_(make_mem_tainted_named)( addr, len, "read" );
+   else
+      TNT_(make_mem_tainted)( addr, len );
 
    //for( i=0; i<len; i++) 
    //   VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));

@@ -102,6 +102,7 @@ HChar* TNT_(event_ctr_name)[N_PROF_EVENTS];
 UChar get_vabits2( Addr a ); // Taintgrind: needed by TNT_(instrument)
 void TNT_(make_mem_noaccess)( Addr a, SizeT len );
 void TNT_(make_mem_tainted)( Addr a, SizeT len );
+void TNT_(make_mem_tainted_named)( Addr a, SizeT len, const HChar *varname );
 void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
@@ -397,7 +398,9 @@ extern UInt  tt[TI_MAX];
 
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
+extern void TNT_(smt2_load_c)   ( IRStmt * );
 extern void TNT_(smt2_load_t)   ( IRStmt * );
+extern void TNT_(smt2_store_ct) ( IRStmt * );
 extern void TNT_(smt2_store_tt) ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );

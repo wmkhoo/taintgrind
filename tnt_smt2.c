@@ -79,7 +79,7 @@ void TNT_(smt2_exit) ( IRStmt *clone )
 }
 
 
-static void tnt_load_atmp ( UInt atmp, ULong address )
+static void tnt_smt2_loadstore_atmp ( UInt atmp, ULong address )
 {
    // Save current assertions
    VG_(printf)("(push)\n");
@@ -104,7 +104,7 @@ static void tnt_load_atmp ( UInt atmp, ULong address )
 }
 
 
-static void tnt_load_ltmp ( UInt ltmp, UInt ty, ULong address )
+static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 {
    char buf[1024];
 
@@ -129,6 +129,22 @@ static void tnt_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 }
 
 
+// ltmp = LOAD <ty> const 
+void TNT_(smt2_load_c) ( IRStmt *clone )
+{
+
+   UInt ltmp     = clone->Ist.WrTmp.tmp;
+   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
+   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
+   ULong address = extract_IRConst(addr->Iex.Const.con);
+
+   if ( is_tainted(ltmp) )
+      tnt_smt2_load_ltmp ( ltmp, ty, address );
+
+   tt[ltmp] = SMT2_ty[ty];
+}
+
+
 // ltmp = LOAD <ty> atmp
 void TNT_(smt2_load_t) ( IRStmt *clone )
 {
@@ -140,12 +156,38 @@ void TNT_(smt2_load_t) ( IRStmt *clone )
    ULong address = tv[atmp];
 
    if ( is_tainted(atmp) )
-      tnt_load_atmp ( atmp, address );
+      tnt_smt2_loadstore_atmp ( atmp, address );
 
    if ( is_tainted(ltmp) )
-      tnt_load_ltmp ( ltmp, ty, address );
+      tnt_smt2_load_ltmp ( ltmp, ty, address );
 
    tt[ltmp] = SMT2_ty[ty];
+}
+
+static void tnt_smt2_store_dtmp( UInt dtmp, ULong address )
+{
+   tl_assert( tt[dtmp] );
+
+   int numbytes = tt[dtmp]/8, i;
+
+   for ( i=0; i<numbytes; i++ )
+   {
+      VG_(printf)("(declare-fun a%llx () (_ BitVec 8))\n", address+i);
+      VG_(printf)("(assert (= a%llx ((_ extract %d %d) t%d_%d)))\n", address+i, ((i+1)*8)-1, i*8, dtmp, _ti(dtmp) );
+   }
+}
+
+// STORE const = dtmp
+void TNT_(smt2_store_ct) ( IRStmt *clone )
+{
+
+   IRExpr *addr = clone->Ist.Store.addr;
+   IRExpr *data = clone->Ist.Store.data;
+   UInt dtmp    = data->Iex.RdTmp.tmp;
+   ULong address = extract_IRConst(addr->Iex.Const.con);
+
+   if ( is_tainted(dtmp) )
+      tnt_smt2_store_dtmp ( dtmp, address );
 }
 
 // STORE atmp = dtmp
@@ -157,20 +199,12 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
    UInt atmp    = addr->Iex.RdTmp.tmp;
    UInt dtmp    = data->Iex.RdTmp.tmp;
    ULong address = tv[atmp];
-   int i;
 
-   if ( !tt[dtmp] ) {
-      VG_(printf)("dtmp %d\n", dtmp);
-      tl_assert(tt[dtmp]);
-   }
+   if ( is_tainted(atmp) )
+      tnt_smt2_loadstore_atmp ( atmp, address );
 
-   int numbytes = tt[dtmp]/8;
-
-   for ( i=0; i<numbytes; i++ )
-   {
-      VG_(printf)("(declare-fun a%llx () (_ BitVec 8))\n", address+i);
-      VG_(printf)("(assert (= a%llx ((_ extract %d %d) t%d_%d)))\n", address+i, ((i+1)*8)-1, i*8, dtmp, _ti(dtmp) );
-   }
+   if ( is_tainted(dtmp) )
+      tnt_smt2_store_dtmp ( dtmp, address );
 }
 
 #define smt2_sign_extend(a, b) \
