@@ -3729,6 +3729,7 @@ void TNT_(h64_next_t) (
    ULong taint ) {
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_next_t");
    H64_PC
 
    UInt next = clone->Iex.RdTmp.tmp;
@@ -3836,6 +3837,7 @@ void TNT_(h64_store_tc) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
+   H_SMT2_not_implemented("h64_store_tc");
    H64_PC
 
    ULong address = c;
@@ -3865,6 +3867,7 @@ void TNT_(h64_store_ct) (
    ULong taint ) {
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_store_ct");
    H64_PC
 
    IRExpr *addr = clone->Ist.Store.addr;
@@ -4118,6 +4121,7 @@ void TNT_(h64_puti) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_puti");
    H64_PC
    //H_VAR
 
@@ -4487,6 +4491,7 @@ void TNT_(h64_ite_tc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_ite_tc");
    H64_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -4530,6 +4535,7 @@ void TNT_(h64_ite_ct) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_ite_ct");
    H32_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -4573,6 +4579,7 @@ void TNT_(h64_ite_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_ite_tt");
    H64_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -4779,6 +4786,7 @@ void TNT_(h64_none) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_none");
    H64_PC
 
    VG_(sprintf)( aTmp, "%s", str);
