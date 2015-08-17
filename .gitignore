@@ -11,5 +11,5 @@ config.log
 config.status
 configure
 stamp-h1
-taintgrind-x86-linux
-vgpreload_taintgrind-x86-linux.so
+taintgrind-*
+vgpreload_taintgrind-*.so
