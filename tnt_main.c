@@ -3837,7 +3837,7 @@ void TNT_(h64_store_tc) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
-   H_SMT2_not_implemented("h64_store_tc");
+   H_SMT2(smt2_store_tc);
    H64_PC
 
    ULong address = c;
@@ -3867,7 +3867,7 @@ void TNT_(h64_store_ct) (
    ULong taint ) {
 
    H_EXIT_EARLY
-   H_SMT2_not_implemented("h64_store_ct");
+   H_SMT2(smt2_store_ct);
    H64_PC
 
    IRExpr *addr = clone->Ist.Store.addr;
@@ -3961,6 +3961,7 @@ void TNT_(h64_load_c) (
    H_WRTMP_BOOKKEEPING
 
    H_EXIT_EARLY
+   H_SMT2(smt2_load_c)
    H64_PC
 
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
