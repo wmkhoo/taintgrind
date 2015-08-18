@@ -236,6 +236,11 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
          VG_(printf)("(assert (= t%d_%d ((_ extract " #b " " #a ") t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
          tt[ltmp] = c
 
+#define smt2_unop(a, b) \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #a " t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
+         tt[ltmp] = b
+
 // ltmp = <op> rtmp
 void TNT_(smt2_unop_t) ( IRStmt *clone )
 {
@@ -278,6 +283,11 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       case Iop_64HIto32:  smt2_extract(32, 63, 32);  break;
       case Iop_128to64:   smt2_extract(0, 63, 64);   break;
       case Iop_128HIto64: smt2_extract(64, 127, 64); break;
+      case Iop_Not1:      smt2_unop(bvnot, 1);       break;
+      case Iop_Not8:      smt2_unop(bvnot, 8);       break;
+      case Iop_Not16:     smt2_unop(bvnot, 16);      break;
+      case Iop_Not32:     smt2_unop(bvnot, 32);      break;
+      case Iop_Not64:     smt2_unop(bvnot, 64);      break;
       default:
          VG_(printf)("smt2_unop_t: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
          tl_assert(0);
