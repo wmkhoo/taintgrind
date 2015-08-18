@@ -65,6 +65,38 @@ void resolve_filename(UWord fd, HChar *path, Int max)
 static Bool tainted_fds[VG_N_THREADS][FD_MAX];
 static UInt read_offset = 0;
 
+void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
+                                  SysRes res) {
+// off_t lseek(int fd, off_t offset, int whence);
+   Int   fd      = args[0];
+   ULong offset  = args[1];
+   UInt  whence  = args[2];
+   Bool  verbose = False;
+
+   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+      return;
+
+   Int   retval       = sr_Res(res);
+
+   if ( verbose )
+   {
+      VG_(printf)("syscall _lseek %d %d ", tid, fd);
+      VG_(printf)("offset: 0x%x whence: 0x%x ", (UInt)offset, whence);
+      VG_(printf)("retval: 0x%x read_offset: 0x%x\n", retval, read_offset);
+   }
+
+   if( whence == 0/*SEEK_SET*/ )
+      read_offset = 0 + (UInt)offset;
+   else if( whence == 1/*SEEK_CUR*/ )
+      read_offset += (UInt)offset;
+   else if( whence == 2/*SEEK_END*/ )
+      read_offset = retval;
+   else {
+      VG_(printf)("whence %x\n", whence);
+      tl_assert(0);
+   }
+}
+
 void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // int  _llseek(int fildes, ulong offset_high, ulong offset_low, loff_t *result,, uint whence);
@@ -79,10 +111,13 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
    if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
       return;
 
+   Int   retval       = sr_Res(res);
+
    if ( verbose )
    {
       VG_(printf)("syscall _llseek %d %d ", tid, fd);
       VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", (UInt)offset_high, (UInt)offset_low, result, whence);
+      VG_(printf)("0x%x\n", retval);
    }
 
    offset = (offset_high<<32) | offset_low;
@@ -91,8 +126,10 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
       read_offset = 0 + (UInt)offset;
    else if( whence == 1/*SEEK_CUR*/ )
       read_offset += (UInt)offset;
-   else //if( whence == 2/*SEEK_END*/ )
+   else {//if( whence == 2/*SEEK_END*/ )
+      VG_(printf)("whence %x\n", whence);
       tl_assert(0);
+   }
 }
 
 Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {

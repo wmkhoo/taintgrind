@@ -315,6 +315,7 @@ extern void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs, SysRes res
 extern void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);

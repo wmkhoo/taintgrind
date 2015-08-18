@@ -5107,11 +5107,13 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_close)(tid, args, nArgs, res);
       break;
     case __NR_lseek:
+      TNT_(syscall_lseek)(tid, args, nArgs, res);
+      break;
 #ifdef __NR_llseek
     case __NR_llseek:
-#endif
       TNT_(syscall_llseek)(tid, args, nArgs, res);
       break;
+#endif
     case __NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
@@ -5295,6 +5297,9 @@ static int tnt_isatty(void)
    HChar buf[256], dev2[11];
    const HChar dev[] = "/dev/pts/";
    int i;
+
+   // Check if writing to log file
+   //if ( VG_(clo_log_fname_expanded) ) return 0
 
    // 2: stderr
    VG_(readlink)("/proc/self/fd/2", buf, 255);
