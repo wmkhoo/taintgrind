@@ -324,6 +324,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
          VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
          tt[ltmp] = ty
 
+// PCMPEQB http://x86.renejeschke.de/html/file_module_x86_id_234.html
 #define smt2_binop_tc_cmpMxN(m, n, ty, zeros, op) \
       { \
          int i; char buf[512]; \
