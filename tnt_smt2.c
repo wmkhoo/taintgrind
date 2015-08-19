@@ -8,7 +8,7 @@
 
 #include "tnt_include.h"
 
-char *TNT_(smt2_concat)( char *buf, ULong addr, UInt c );
+//char *TNT_(smt2_concat)( char *buf, ULong addr, UInt c );
 //void TNT_(smt2_binop_tt_10) ( IRStmt *clone );
 //void TNT_(smt2_binop_tt_01) ( IRStmt *clone );
 //void TNT_(smt2_binop_tt_11) ( IRStmt *clone );
@@ -39,7 +39,7 @@ void TNT_(smt2_preamble)()
     VG_(printf)("(set-logic QF_BV)\n");
 }
 
-char *TNT_(smt2_concat)( char *buf, ULong addr, UInt c )
+static char *tnt_smt2_concat( char *buf, ULong addr, UInt c )
 {
    char tmp[1024];
 
@@ -48,11 +48,24 @@ char *TNT_(smt2_concat)( char *buf, ULong addr, UInt c )
       VG_(sprintf)(buf, "(concat a%llx a%llx)", addr, addr+1);
       return buf;
    }
-   VG_(sprintf)(tmp, "(concat a%llx %s)", addr, TNT_(smt2_concat)(buf, addr+1, c-1) );
+   VG_(sprintf)(tmp, "(concat a%llx %s)", addr, tnt_smt2_concat(buf, addr+1, c-1) );
    VG_(strcpy)(buf, tmp);
    return buf;
 }
 
+static char *tnt_smt2_concat_indexed( char *buf, UInt t, UInt c, UInt max )
+{
+   char tmp[1024];
+
+   if ( c == 0 )
+   {
+      VG_(sprintf)(buf, "(concat t%d_%d_%d t%d_%d_%d)", t, _ti(t), max-c, t, _ti(t), max-c+1);
+      return buf;
+   }
+   VG_(sprintf)(tmp, "(concat t%d_%d_%d %s)", t, _ti(t), max-c, tnt_smt2_concat_indexed(buf, t, c-1, max) );
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
 
 // if tmp GOTO ...
 void TNT_(smt2_exit) ( IRStmt *clone )
@@ -112,16 +125,16 @@ static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 
    if ( SMT2_ty[ty] == 128 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 14) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 14) );
    } else if ( SMT2_ty[ty] == 64 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 6) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 6) );
    } else if ( SMT2_ty[ty] == 32 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 2) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 2) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 0) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 0) );
    } else if ( SMT2_ty[ty] == 8 )
    {
       VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
@@ -311,6 +324,19 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
          VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
          tt[ltmp] = ty
 
+#define smt2_binop_tc_cmpMxN(m, n, ty, zeros, op) \
+      { \
+         int i; char buf[512]; \
+         tl_assert(tt[rtmp] == ty); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         for ( i=0; i<n; i++ ) { \
+            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec " #m "))\n", ltmp, _ti(ltmp), i); \
+            VG_(printf)("(assert (= t%d_%d_%d (ite (" #op " ((_ extract %d %d) t%d_%d) #x%0" #zeros "llx) #xff #x00) ))\n", ltmp, _ti(ltmp), i, (i+1)*m-1, i*m, rtmp, _ti(rtmp), c ); \
+         } \
+         VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_indexed(buf, ltmp, n-2, n-2) ); \
+         tt[ltmp] = ty; \
+      }
+
 #define smt2_binop_ct_add(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
@@ -335,6 +361,7 @@ static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
       case Iop_And32:    smt2_binop_tc_add(32,  8, bvand);  break;
       case Iop_And64:    smt2_binop_tc_add(64, 16, bvand);  break;
       case Iop_CmpEQ8:   smt2_binop_tc_cmp( 8,  2, =);      break;
+      case Iop_CmpEQ8x16:smt2_binop_tc_cmpMxN(8,16,128,2,=) break;
       case Iop_CmpEQ16:  smt2_binop_tc_cmp(16,  4, =);      break;
       case Iop_CmpEQ32:  smt2_binop_tc_cmp(32,  8, =);      break;
       case Iop_CmpEQ64:  smt2_binop_tc_cmp(64, 16, =);      break;
