@@ -110,7 +110,10 @@ static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
 
-   if ( SMT2_ty[ty] == 64 )
+   if ( SMT2_ty[ty] == 128 )
+   {
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 14) );
+   } else if ( SMT2_ty[ty] == 64 )
    {
       VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), TNT_(smt2_concat)(buf, address, 6) );
    } else if ( SMT2_ty[ty] == 32 )
