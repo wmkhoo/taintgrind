@@ -2577,10 +2577,24 @@ int istty = 0;
    infer_client_binary_name(pc); \
    VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
 
+#define H32_PC_OP \
+   UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
+   HChar fnname[FNNAME_MAX]; \
+   HChar aTmp1[128], aTmp2[128]; \
+   infer_client_binary_name(pc); \
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+
 #define H64_PC \
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
    HChar fnname[FNNAME_MAX]; \
    HChar aTmp[128]; \
+   infer_client_binary_name(pc); \
+   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+
+#define H64_PC_OP \
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
+   HChar fnname[FNNAME_MAX]; \
+   HChar aTmp1[128], aTmp2[128]; \
    infer_client_binary_name(pc); \
    VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
 
@@ -2618,14 +2632,34 @@ int istty = 0;
 #define H32_PRINT \
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint);
 
+#define H32_PRINT_OP \
+   VG_(printf)("%s | %s", fnname, aTmp1); \
+   ppIROp(op); \
+   VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, value, taint);
+
 #define H32_PRINTC \
    VG_(printf)("%s%s%s | %s | 0x%x | 0x%x | ", KMAG, fnname, KNRM, aTmp, value, taint);
+
+#define H32_PRINTC_OP \
+   VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp1); \
+   ppIROp(op); \
+   VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, value, taint);
 
 #define H64_PRINT \
    VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint);
 
+#define H64_PRINT_OP \
+   VG_(printf)("%s | %s", fnname, aTmp1); \
+   ppIROp(op); \
+   VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, value, taint);
+
 #define H64_PRINTC \
    VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, value, taint);
+
+#define H64_PRINTC_OP \
+   VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp1); \
+   ppIROp(op); \
+   VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, value, taint);
 
 #define H_SMT2( fn ) \
    if ( TNT_(clo_smt2) ) \
@@ -3143,9 +3177,9 @@ void TNT_(h32_unop_t) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_unop_t);
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt rtmp = arg->Iex.RdTmp.tmp;
 
@@ -3153,18 +3187,19 @@ void TNT_(h32_unop_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op],
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d",
                     rtmp, _ti(rtmp) );
-      H32_PRINTC
+      H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                    ltmp, _ti(ltmp), IROp_string[op],
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d",
                     rtmp, _ti(rtmp) );
-      H32_PRINT
+      H32_PRINT_OP
    }
 
    // Information flow
@@ -3186,15 +3221,16 @@ void TNT_(h32_unop_c) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt c = extract_IRConst( arg->Iex.Const.con );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x",
-                 ltmp, _ti(ltmp), IROp_string[op], c );
-   H32_PRINT
+   VG_(sprintf)( aTmp1, "t%d_%d = ",
+                 ltmp, _ti(ltmp) );
+   VG_(sprintf)( aTmp2, " 0x%x", c );
+   H32_PRINT_OP
 
    // No information flow
    VG_(printf)("\n");
@@ -3213,9 +3249,9 @@ void TNT_(h32_binop_tc) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_binop_tc);
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
@@ -3225,17 +3261,19 @@ void TNT_(h32_binop_tc) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%x",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op], rtmp1, _ti(rtmp1), c );
-      H32_PRINTC
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d 0x%x",
+                    rtmp1, _ti(rtmp1), c );
+      H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%x",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op], rtmp1, _ti(rtmp1), c );
-      H32_PRINT
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d 0x%x",
+                    rtmp1, _ti(rtmp1), c );
+      H32_PRINT_OP
    }
 
    // Information flow
@@ -3258,9 +3296,9 @@ void TNT_(h32_binop_ct) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_binop_ct);
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt c = extract_IRConst( arg1->Iex.Const.con );
@@ -3270,17 +3308,19 @@ void TNT_(h32_binop_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%x t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
-      H32_PRINTC
+                    KNRM );
+      VG_(sprintf)( aTmp2, " 0x%x t%d_%d",
+                    c, rtmp2, _ti(rtmp2) );
+      H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x t%d_%d",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
-      H32_PRINT
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " 0x%x t%d_%d",
+                    c, rtmp2, _ti(rtmp2) );
+      H32_PRINT_OP
    }
 
    // Information flow
@@ -3303,9 +3343,9 @@ void TNT_(h32_binop_tt) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_binop_tt);
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
@@ -3316,21 +3356,21 @@ void TNT_(h32_binop_tt) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op],
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-      H32_PRINTC
+      H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op],
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-      H32_PRINT
+      H32_PRINT_OP
    }
 
    // Information flow
@@ -3356,18 +3396,19 @@ void TNT_(h32_binop_cc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H32_PC
+   H32_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt c1 = extract_IRConst( arg1->Iex.Const.con );
    UInt c2 = extract_IRConst( arg2->Iex.Const.con );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%x 0x%x",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], c1, c2 );
-   H32_PRINT
+   VG_(sprintf)( aTmp1, "t%d_%d = ",
+                 ltmp, _ti(ltmp) );
+   VG_(sprintf)( aTmp2, " 0x%x 0x%x",
+                 c1, c2 );
+   H32_PRINT_OP
 
    // No information flow
    VG_(printf)("\n");
@@ -4176,9 +4217,9 @@ void TNT_(h64_unop_t) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_unop_t);
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt rtmp = arg->Iex.RdTmp.tmp;
 
@@ -4186,18 +4227,19 @@ void TNT_(h64_unop_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op],
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d",
                     rtmp, _ti(rtmp) );
-      H64_PRINTC
+      H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d",
-                    ltmp, _ti(ltmp), IROp_string[op],
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d",
                     rtmp, _ti(rtmp) );
-      H64_PRINT
+      H64_PRINT_OP
    }
 
    // Information flow
@@ -4219,15 +4261,16 @@ void TNT_(h64_unop_c) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Unop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    ULong c = extract_IRConst( arg->Iex.Const.con );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx",
-                 ltmp, _ti(ltmp), IROp_string[op], c );
-   H64_PRINT
+   VG_(sprintf)( aTmp1, "t%d_%d = ",
+                 ltmp, _ti(ltmp) );
+   VG_(sprintf)( aTmp2, " 0x%llx", c );
+   H64_PRINT_OP
 
    // No information flow
    VG_(printf)("\n");
@@ -4246,9 +4289,9 @@ void TNT_(h64_binop_tc) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_binop_tc);
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
@@ -4259,17 +4302,19 @@ void TNT_(h64_binop_tc) (
    
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d 0x%llx",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op], rtmp1, _ti(rtmp1), c );
-      H64_PRINTC
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d 0x%llx",
+                    rtmp1, _ti(rtmp1), c );
+      H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d 0x%llx",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op], rtmp1, _ti(rtmp1), c );
-      H64_PRINT
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d 0x%llx",
+                    rtmp1, _ti(rtmp1), c );
+      H64_PRINT_OP
    }
 
    // Information flow
@@ -4292,9 +4337,9 @@ void TNT_(h64_binop_ct) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_binop_ct);
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    ULong c = extract_IRConst64(arg1->Iex.Const.con);
@@ -4304,17 +4349,19 @@ void TNT_(h64_binop_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s 0x%llx t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
-      H64_PRINTC
+                    KNRM );
+      VG_(sprintf)( aTmp2, " 0x%llx t%d_%d",
+                    c, rtmp2, _ti(rtmp2) );
+      H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx t%d_%d",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op], c, rtmp2, _ti(rtmp2) );
-      H64_PRINT
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " 0x%llx t%d_%d",
+                    c, rtmp2, _ti(rtmp2) );
+      H64_PRINT_OP
    }
 
    // Information flow
@@ -4337,9 +4384,9 @@ void TNT_(h64_binop_tt) (
    
    H_EXIT_EARLY
    H_SMT2(smt2_binop_tt);
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    UInt rtmp1 = arg1->Iex.RdTmp.tmp;
@@ -4350,21 +4397,21 @@ void TNT_(h64_binop_tt) (
 
    if ( istty && is_tainted(ltmp) ) 
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = %s t%d_%d t%d_%d",
+      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
-                    KNRM,
-                    IROp_string[op],
+                    KNRM );
+      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-      H64_PRINTC
+      H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = %s t%d_%d t%d_%d",
-                    ltmp, _ti(ltmp),
-                    IROp_string[op],
+      VG_(sprintf)( aTmp1, "t%d_%d = ",
+                    ltmp, _ti(ltmp) );
+      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
-      H64_PRINT
+      H64_PRINT_OP
    }
 
    // Information flow
@@ -4390,18 +4437,19 @@ void TNT_(h64_binop_cc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H64_PC
+   H64_PC_OP
 
-   UInt op = clone->Ist.WrTmp.data->Iex.Binop.op - Iop_INVALID;
+   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
    IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
    IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
    ULong c1 = extract_IRConst( arg1->Iex.Const.con );
    ULong c2 = extract_IRConst( arg2->Iex.Const.con );
 
-   VG_(sprintf)( aTmp, "t%d_%d = %s 0x%llx 0x%llx",
-                 ltmp, _ti(ltmp),
-                 IROp_string[op], c1, c2 );
-   H64_PRINT
+   VG_(sprintf)( aTmp1, "t%d_%d = ",
+                 ltmp, _ti(ltmp) );
+   VG_(sprintf)( aTmp2, " 0x%llx 0x%llx",
+                 c1, c2 );
+   H64_PRINT_OP
 
    // No information flow
    VG_(printf)("\n");

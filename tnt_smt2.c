@@ -292,7 +292,9 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       case Iop_Not32:     smt2_unop(bvnot, 32);      break;
       case Iop_Not64:     smt2_unop(bvnot, 64);      break;
       default:
-         VG_(printf)("smt2_unop_t: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_unop_t: ");
+         ppIROp(op);
+         VG_(printf)(" not yet supported\n");
          tl_assert(0);
    }
 }
@@ -369,7 +371,9 @@ static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
       case Iop_Xor32:    smt2_binop_tc_add(32,  8, bvxor);  break;
       case Iop_Xor64:    smt2_binop_tc_add(64, 16, bvxor);  break;
       default:
-         VG_(printf)("smt2_binop_tc_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_binop_tc_common: ");
+         ppIROp(op);
+         VG_(printf)(" not yet supported\n");
          tl_assert(0);
    }
 }
@@ -422,7 +426,9 @@ static void tnt_smt2_binop_ct_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) 
       case Iop_Xor32:    smt2_binop_ct_add(32, 8, bvxor);  break;
       case Iop_Xor64:    smt2_binop_ct_add(64,16, bvxor);  break;
       default:
-         VG_(printf)("smt2_binop_ct_common: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_binop_ct_common: ");
+         ppIROp(op);
+         VG_(printf)(" not yet supported\n");
          tl_assert(0);
    }
 }
@@ -526,7 +532,9 @@ static void tnt_smt2_binop_tt_11 ( IRStmt *clone )
       case Iop_Sub32:    smt2_binop_tt_11_add(32, bvsub);  break;
       case Iop_Xor32:    smt2_binop_tt_11_add(32, bvxor);  break;
       default:
-         VG_(printf)("smt2_binop_tt_11: %s not yet supported\n", IROp_string[op-Iop_INVALID]);
+         VG_(printf)("smt2_binop_tt_11: ");
+         ppIROp(op);
+         VG_(printf)(" not yet supported\n");
          tl_assert(0);
    }
 }

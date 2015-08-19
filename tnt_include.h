@@ -173,7 +173,6 @@ VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, ULong, ULong );
 extern const char *IRType_string[];
 extern const char *IREndness_string[];
 extern const char *IRConst_string[];
-extern const char *IROp_string[];
 extern const char *IRExpr_string[];
 extern const char *IRStmt_string[];
 extern const char *IRJumpKind_string[];
