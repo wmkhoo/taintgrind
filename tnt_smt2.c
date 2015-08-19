@@ -687,17 +687,20 @@ enum {
     AMD64G_CC_OP_NUMBER
 };
 
-static char *tnt_smt2_amd64g_calculate_condition_tc_op( IRStmt *clone, char *buf )
+static char *tnt_smt2_amd64g_calculate_condition_op_tc_common( IRStmt *clone, char *buf, UInt dep1tmp, ULong dep2c )
 {
-   //UInt ltmp    = clone->Ist.WrTmp.tmp;
    IRExpr *data = clone->Ist.WrTmp.data;
-   //UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
-   IRExpr *dep1 = data->Iex.CCall.args[2];
-   IRExpr *dep2 = data->Iex.CCall.args[3];
-   //ULong cond   = extract_IRConst64( data->Iex.CCall.args[0]->Iex.Const.con );
-   ULong cc_op  = extract_IRConst64( data->Iex.CCall.args[1]->Iex.Const.con );
-   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
-   ULong dep2c  = extract_IRConst64( dep2->Iex.Const.con );
+   IRExpr *op   = data->Iex.CCall.args[1];
+   ULong cc_op;
+
+   if ( op->tag == Iex_Const )
+      cc_op = extract_IRConst64( op->Iex.Const.con );
+   else if ( op->tag == Iex_RdTmp ) {
+      cc_op = tv[op->Iex.RdTmp.tmp];
+   } else {
+      VG_(printf)("cc_op->tag: %x\n", op->tag);
+      tl_assert(0);
+   }
 
    char tmp[1024];
 
@@ -731,23 +734,195 @@ static char *tnt_smt2_amd64g_calculate_condition_tc_op( IRStmt *clone, char *buf
    return buf;
 }
 
-static char *tnt_smt2_amd64g_calculate_condition_tc( IRStmt *clone, char *buf )
+static char *tnt_smt2_amd64g_calculate_condition_op_tc( IRStmt *clone, char *buf )
 {
-   //UInt ltmp    = clone->Ist.WrTmp.tmp;
    IRExpr *data = clone->Ist.WrTmp.data;
-   //UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
-   //IRExpr *dep1 = data->Iex.CCall.args[2];
-   //IRExpr *dep2 = data->Iex.CCall.args[3];
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+   ULong dep2c  = extract_IRConst64( dep2->Iex.Const.con );
+
+   return tnt_smt2_amd64g_calculate_condition_op_tc_common( clone, buf, dep1tmp, dep2c );
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op_ct_common( IRStmt *clone, char *buf, ULong dep1c, UInt dep2tmp )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *op   = data->Iex.CCall.args[1];
+   ULong cc_op;
+
+   if ( op->tag == Iex_Const )
+      cc_op = extract_IRConst64( op->Iex.Const.con );
+   else if ( op->tag == Iex_RdTmp ) {
+      cc_op = tv[op->Iex.RdTmp.tmp];
+   } else {
+      VG_(printf)("cc_op->tag: %x\n", op->tag);
+      tl_assert(0);
+   }
+
+   char tmp[1024];
+
+   switch ( cc_op )
+   {
+      case AMD64G_CC_OP_SUBB:
+         VG_(sprintf)(tmp, "bvsub #x%02x ((_ extract 7 0) t%d_%d)",
+            (char)dep1c,
+            dep2tmp, _ti(dep2tmp) );
+         break;
+      case AMD64G_CC_OP_SUBW:
+         VG_(sprintf)(tmp, "bvsub #x%04x ((_ extract 15 0) t%d_%d)",
+            (short)dep1c,
+            dep2tmp, _ti(dep2tmp) );
+         break;
+      case AMD64G_CC_OP_SUBL:
+         VG_(sprintf)(tmp, "bvsub #x%08x ((_ extract 31 0) t%d_%d)",
+            (int)dep1c,
+            dep2tmp, _ti(dep2tmp) );
+         break;
+      case AMD64G_CC_OP_SUBQ:
+         VG_(sprintf)(tmp, "bvsub #x%016llx t%d_%d",
+            dep1c,
+            dep2tmp, _ti(dep2tmp) );
+         break;
+      default:
+         VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
+         tl_assert(0);
+   }
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op_ct( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   ULong dep1c  = extract_IRConst64( dep1->Iex.Const.con );
+   UInt dep2tmp = dep2->Iex.RdTmp.tmp;
+
+   return tnt_smt2_amd64g_calculate_condition_op_ct_common( clone, buf, dep1c, dep2tmp );
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op_tt_01( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+   ULong dep1c  = tv[dep1tmp];
+   UInt dep2tmp = dep2->Iex.RdTmp.tmp;
+
+   return tnt_smt2_amd64g_calculate_condition_op_ct_common( clone, buf, dep1c, dep2tmp );
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op_tt_10( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+   UInt dep2tmp = dep2->Iex.RdTmp.tmp;
+   ULong dep2c  = tv[dep2tmp];
+
+   return tnt_smt2_amd64g_calculate_condition_op_tc_common( clone, buf, dep1tmp, dep2c );
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op_tt_11( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+   UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+   UInt dep2tmp = dep2->Iex.RdTmp.tmp;
+   IRExpr *op   = data->Iex.CCall.args[1];
+   ULong cc_op;
+
+   if ( op->tag == Iex_Const )
+      cc_op = extract_IRConst64( op->Iex.Const.con );
+   else if ( op->tag == Iex_RdTmp ) {
+      cc_op = tv[op->Iex.RdTmp.tmp];
+   } else {
+      VG_(printf)("cc_op->tag: %x\n", op->tag);
+      tl_assert(0);
+   }
+
+   char tmp[1024];
+
+   switch ( cc_op )
+   {
+      case AMD64G_CC_OP_SUBB:
+      case AMD64G_CC_OP_SUBW:
+      case AMD64G_CC_OP_SUBL:
+      case AMD64G_CC_OP_SUBQ:
+         VG_(sprintf)(tmp, "bvsub t%d_%d t%d_%d",
+            dep1tmp, _ti(dep1tmp),
+            dep2tmp, _ti(dep2tmp) );
+         break;
+      default:
+         VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
+         tl_assert(0);
+   }
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_op( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   IRExpr *dep1 = data->Iex.CCall.args[2];
+   IRExpr *dep2 = data->Iex.CCall.args[3];
+
+   if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_Const )
+      return tnt_smt2_amd64g_calculate_condition_op_tc(clone, buf);
+   else if ( dep1->tag == Iex_Const && dep2->tag == Iex_RdTmp )
+      return tnt_smt2_amd64g_calculate_condition_op_ct(clone, buf);
+   else if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_RdTmp ) {
+      UInt dep1tmp = dep1->Iex.RdTmp.tmp;
+      UInt dep2tmp = dep2->Iex.RdTmp.tmp;
+      if ( !is_tainted(dep1tmp) && is_tainted(dep2tmp) )
+         return tnt_smt2_amd64g_calculate_condition_op_tt_01(clone, buf);
+      else if ( is_tainted(dep1tmp) && !is_tainted(dep2tmp) )
+         return tnt_smt2_amd64g_calculate_condition_op_tt_10(clone, buf);
+      else if ( is_tainted(dep1tmp) && is_tainted(dep2tmp) )
+         return tnt_smt2_amd64g_calculate_condition_op_tt_11(clone, buf);
+      else
+         tl_assert(0);
+   } else
+      tl_assert(0);
+}
+
+static char *tnt_smt2_amd64g_calculate_condition_cond( IRStmt *clone, char *buf )
+{
+   IRExpr *data = clone->Ist.WrTmp.data;
+   tl_assert( data->Iex.CCall.args[0]->tag == Iex_Const );
    ULong cond   = extract_IRConst64( data->Iex.CCall.args[0]->Iex.Const.con );
-   //ULong cc_op  = extract_IRConst64( data->Iex.CCall.args[1]->Iex.Const.con );
 
    char tmp[1024];
 
    switch ( cond )
    {
+      case AMD64CondZ:
+         VG_(sprintf)(tmp, "ite (not (%s)) #x%016llx #x%016llx",
+            tnt_smt2_amd64g_calculate_condition_op(clone, buf),
+            1LL, 0LL );
+         break;
+      case AMD64CondNZ:
+         VG_(sprintf)(tmp, "ite (%s) #x%016llx #x%016llx",
+            tnt_smt2_amd64g_calculate_condition_op(clone, buf),
+            1LL, 0LL );
+         break;
       case AMD64CondS:
          VG_(sprintf)(tmp, "ite (bvslt (%s) #x%016llx) #x%016llx #x%016llx",
-            tnt_smt2_amd64g_calculate_condition_tc_op(clone, buf),
+            tnt_smt2_amd64g_calculate_condition_op(clone, buf),
+            0LL, 1LL, 0LL );
+         break;
+      case AMD64CondNS:
+         VG_(sprintf)(tmp, "ite (bvsge (%s) #x%016llx) #x%016llx #x%016llx",
+            tnt_smt2_amd64g_calculate_condition_op(clone, buf),
             0LL, 1LL, 0LL );
          break;
       default:
@@ -773,11 +948,21 @@ void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
    if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_Const )
    {
       VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
-            tnt_smt2_amd64g_calculate_condition_tc( clone, buf ) );
-   } else
+            tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
+   } else if ( dep1->tag == Iex_Const && dep2->tag == Iex_RdTmp )
    {
-      VG_(printf)("smt2_amd64g_calculate_condition: tc/tt not yet supported\n");
-      tl_assert(0);
+      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+            tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
+      //VG_(printf)("smt2_amd64g_calculate_condition: ct not yet supported\n");
+      //ppIRStmt(clone);
+      //tl_assert(0);
+   } else if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_RdTmp )
+   {
+      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+            tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
+      //VG_(printf)("smt2_amd64g_calculate_condition: tt not yet supported\n");
+      //ppIRStmt(clone);
+      //tl_assert(0);
    }
 
    tt[ltmp] = SMT2_ty[ty];
