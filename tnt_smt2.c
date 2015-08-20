@@ -271,6 +271,58 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
          tt[ltmp] = ty; \
       }
 
+// ctz32 https://github.com/agocke/qemu/blob/master/host-utils.h
+#define smt2_ctz64(ty) \
+      { \
+         tl_assert(tt[rtmp] == ty); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         /* cnt = 0; */ \
+         VG_(printf)("(assert (= t%d_%d #x%016x)\n", ltmp, _ti(ltmp), 0); \
+         VG_(printf)("(declare-fun t%d_%d_sh () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp)); \
+         VG_(printf)("(assert (= t%d_%d_sh t%d_%d))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp)); \
+         VG_(printf)("(declare-fun t%d_%d_0 () (_ BitVec 1))\n", rtmp, _ti(rtmp)); \
+         /* if (!(val & 0xFFFFFFFF)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0xFFFFFFFF); \
+         /*    cnt += 32; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 32, 0); \
+         /*    val >>= 32; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 32, 0); \
+         /* if (!(val & 0xFFFF)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0xFFFF); \
+         /*    cnt += 16; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 16, 0); \
+         /*    val >>= 16; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 16, 0); \
+         /* if (!(val & 0xFF)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0xFF); \
+         /*    cnt += 8; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 8, 0); \
+         /*    val >>= 8; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 8, 0); \
+         /* if (!(val & 0xF)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0xF); \
+         /*    cnt += 4; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 4, 0); \
+         /*    val >>= 4; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 4, 0); \
+         /* if (!(val & 0x3)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x3); \
+         /*    cnt += 2; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 2, 0); \
+         /*    val >>= 2; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 2, 0); \
+         /* if (!(val & 0x1)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
+         /*    cnt += 1; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
+         /*    val >>= 1; */ \
+         VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), 1, 0); \
+         /* if (!(val & 0x1)) */ \
+         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
+         /*    cnt += 1; */ \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
+      }
+
 // ltmp = <op> rtmp
 void TNT_(smt2_unop_t) ( IRStmt *clone )
 {
@@ -313,6 +365,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       case Iop_64HIto32:  smt2_extract(32, 63, 32);  break;
       case Iop_128to64:   smt2_extract(0, 63, 64);   break;
       case Iop_128HIto64: smt2_extract(64, 127, 64); break;
+      case Iop_Ctz64:     smt2_ctz64(64);            break;
       case Iop_GetMSBs8x8:  smt2_getmsbsMxN(8)       break;
       case Iop_GetMSBs8x16: smt2_getmsbsMxN(16)      break;
       case Iop_Not1:      smt2_unop(bvnot, 1);       break;
