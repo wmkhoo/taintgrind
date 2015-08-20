@@ -1046,32 +1046,13 @@ void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
    UInt ltmp    = clone->Ist.WrTmp.tmp;
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
-   IRExpr *dep1 = data->Iex.CCall.args[2];
-   IRExpr *dep2 = data->Iex.CCall.args[3];
 
    char buf[1024];
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
 
-   if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_Const )
-   {
-      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+   VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
             tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
-   } else if ( dep1->tag == Iex_Const && dep2->tag == Iex_RdTmp )
-   {
-      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
-            tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
-      //VG_(printf)("smt2_amd64g_calculate_condition: ct not yet supported\n");
-      //ppIRStmt(clone);
-      //tl_assert(0);
-   } else if ( dep1->tag == Iex_RdTmp && dep2->tag == Iex_RdTmp )
-   {
-      VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
-            tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
-      //VG_(printf)("smt2_amd64g_calculate_condition: tt not yet supported\n");
-      //ppIRStmt(clone);
-      //tl_assert(0);
-   }
 
    tt[ltmp] = SMT2_ty[ty];
 }
