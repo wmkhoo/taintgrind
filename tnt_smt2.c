@@ -590,19 +590,43 @@ static void tnt_smt2_binop_tt_11 ( IRStmt *clone )
    UInt rtmp2   = arg2->Iex.RdTmp.tmp;
 
    switch(op) {
+      case Iop_Add8:     smt2_binop_tt_11_add( 8, bvadd);  break;
+      case Iop_Add16:    smt2_binop_tt_11_add(16, bvadd);  break;
       case Iop_Add32:    smt2_binop_tt_11_add(32, bvadd);  break;
+      case Iop_Add64:    smt2_binop_tt_11_add(64, bvadd);  break;
+      case Iop_And8:     smt2_binop_tt_11_add( 8, bvand);  break;
+      case Iop_And16:    smt2_binop_tt_11_add(16, bvand);  break;
       case Iop_And32:    smt2_binop_tt_11_add(32, bvand);  break;
+      case Iop_And64:    smt2_binop_tt_11_add(64, bvand);  break;
       case Iop_CmpEQ32:  smt2_binop_tt_11_cmp(32, =);      break;
       case Iop_CmpLE32S: smt2_binop_tt_11_cmp(32, bvsle);  break;
       case Iop_CmpLE32U: smt2_binop_tt_11_cmp(32, bvule);  break;
       case Iop_CmpLT32S: smt2_binop_tt_11_cmp(32, bvslt);  break;
       case Iop_CmpLT32U: smt2_binop_tt_11_cmp(32, bvult);  break;
+      case Iop_Or8:      smt2_binop_tt_11_add( 8, bvor);   break;
+      case Iop_Or16:     smt2_binop_tt_11_add(16, bvor);   break;
       case Iop_Or32:     smt2_binop_tt_11_add(32, bvor);   break;
+      case Iop_Or64:     smt2_binop_tt_11_add(64, bvor);   break;
+      case Iop_Sar8:     smt2_binop_tt_11_add( 8, bvashr); break;
+      case Iop_Sar16:    smt2_binop_tt_11_add(16, bvashr); break;
       case Iop_Sar32:    smt2_binop_tt_11_add(32, bvashr); break;
+      case Iop_Sar64:    smt2_binop_tt_11_add(64, bvashr); break;
+      case Iop_Shl8:     smt2_binop_tt_11_add( 8, bvshl);  break;
+      case Iop_Shl16:    smt2_binop_tt_11_add(16, bvshl);  break;
       case Iop_Shl32:    smt2_binop_tt_11_add(32, bvshl);  break;
+      case Iop_Shl64:    smt2_binop_tt_11_add(64, bvshl);  break;
+      case Iop_Shr8:     smt2_binop_tt_11_add( 8, bvlshr); break;
+      case Iop_Shr16:    smt2_binop_tt_11_add(16, bvlshr); break;
       case Iop_Shr32:    smt2_binop_tt_11_add(32, bvlshr); break;
+      case Iop_Shr64:    smt2_binop_tt_11_add(64, bvlshr); break;
+      case Iop_Sub8:     smt2_binop_tt_11_add( 8, bvsub);  break;
+      case Iop_Sub16:    smt2_binop_tt_11_add(16, bvsub);  break;
       case Iop_Sub32:    smt2_binop_tt_11_add(32, bvsub);  break;
+      case Iop_Sub64:    smt2_binop_tt_11_add(64, bvsub);  break;
+      case Iop_Xor8:     smt2_binop_tt_11_add( 8, bvxor);  break;
+      case Iop_Xor16:    smt2_binop_tt_11_add(16, bvxor);  break;
       case Iop_Xor32:    smt2_binop_tt_11_add(32, bvxor);  break;
+      case Iop_Xor64:    smt2_binop_tt_11_add(64, bvxor);  break;
       default:
          VG_(printf)("smt2_binop_tt_11: ");
          ppIROp(op);
