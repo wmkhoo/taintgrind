@@ -274,7 +274,7 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
 // ctz32 https://github.com/agocke/qemu/blob/master/host-utils.h
 #define smt2_ctz64(ty) \
       { \
-         int mask = 0xFFFFFFFF, shift = 32, i;
+         int mask = 0xFFFFFFFF, shift = 32, i; \
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
          /* cnt = 0; */ \
@@ -296,6 +296,7 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
          VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
          /*    cnt += 1; */ \
          VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
+         tt[ltmp] = ty; \
       }
 
 // ltmp = <op> rtmp
@@ -366,7 +367,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
          VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
-         tt[ltmp] = ty
+         tt[ltmp] = 1
 
 // PCMPEQB http://x86.renejeschke.de/html/file_module_x86_id_234.html
 #define smt2_binop_tc_cmpMxN(m, n, ty, zeros, op) \
@@ -392,7 +393,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
          VG_(printf)("(assert (= t%d_%d (ite (" #op " #x%0" #zeros "llx t%d_%d) #b1 #b0) ))\n", ltmp, _ti(ltmp), c, rtmp, _ti(rtmp) ); \
-         tt[ltmp] = ty
+         tt[ltmp] = 1
 
 static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) {
 
@@ -577,7 +578,7 @@ static void tnt_smt2_binop_tt_01 ( IRStmt *clone )
          tl_assert(tt[rtmp2] == a); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
          VG_(printf)("(assert (= t%d_%d (ite (" #d " t%d_%d t%d_%d) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) ); \
-         tt[ltmp] = a
+         tt[ltmp] = 1
 
 // ltmp = <op> rtmp1 rtmp2, both tainted
 static void tnt_smt2_binop_tt_11 ( IRStmt *clone )
@@ -598,7 +599,10 @@ static void tnt_smt2_binop_tt_11 ( IRStmt *clone )
       case Iop_And16:    smt2_binop_tt_11_add(16, bvand);  break;
       case Iop_And32:    smt2_binop_tt_11_add(32, bvand);  break;
       case Iop_And64:    smt2_binop_tt_11_add(64, bvand);  break;
+      case Iop_CmpEQ8:   smt2_binop_tt_11_cmp( 8, =);      break;
+      case Iop_CmpEQ16:  smt2_binop_tt_11_cmp(16, =);      break;
       case Iop_CmpEQ32:  smt2_binop_tt_11_cmp(32, =);      break;
+      case Iop_CmpEQ64:  smt2_binop_tt_11_cmp(64, =);      break;
       case Iop_CmpLE32S: smt2_binop_tt_11_cmp(32, bvsle);  break;
       case Iop_CmpLE32U: smt2_binop_tt_11_cmp(32, bvule);  break;
       case Iop_CmpLT32S: smt2_binop_tt_11_cmp(32, bvslt);  break;
@@ -1066,19 +1070,37 @@ void TNT_(smt2_ite_tt) ( IRStmt *clone )
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[ttmp]);
 
-   if ( !is_tainted(ttmp) && is_tainted(ftmp) ) {
+   if ( !is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite #b%d %016llx t%d_%d)))\n",
+            ltmp, _ti(ltmp),
+            (char)tv[ctmp],
+            tv[ttmp],
+            ftmp, _ti(ftmp) );
+   } else if ( is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d %016llx t%d_%d)))\n",
             ltmp, _ti(ltmp),
             ctmp, _ti(ctmp),
             tv[ttmp],
             ftmp, _ti(ftmp) );
-   } else if ( !is_tainted(ttmp) && is_tainted(ftmp) ) {
+   } else if ( !is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite #b%d t%d_%d %016llx)))\n",
+            ltmp, _ti(ltmp),
+            (char)tv[ctmp],
+            ttmp, _ti(ttmp),
+            tv[ftmp] );
+   } else if ( is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d %016llx)))\n",
             ltmp, _ti(ltmp),
             ctmp, _ti(ctmp),
             ttmp, _ti(ttmp),
             tv[ftmp] );
-   } else if ( is_tainted(ttmp) && is_tainted(ftmp) ) {
+   } else if ( !is_tainted(ctmp) && is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite #b%d t%d_%d t%d_%d)))\n",
+            ltmp, _ti(ltmp),
+            (char)tv[ctmp],
+            ttmp, _ti(ttmp),
+            ftmp, _ti(ftmp) );
+   } else if ( is_tainted(ctmp) && is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d t%d_%d)))\n",
             ltmp, _ti(ltmp),
             ctmp, _ti(ctmp),
