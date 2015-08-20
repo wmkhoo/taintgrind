@@ -4628,7 +4628,7 @@ void TNT_(h64_ite_tt) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2_not_implemented("h64_ite_tt");
+   H_SMT2(smt2_ite_tt);
    H64_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
@@ -4679,6 +4679,7 @@ void TNT_(h64_ite_cc) (
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
+   H_SMT2_not_implemented("h64_ite_cc");
    H64_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;

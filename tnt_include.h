@@ -411,6 +411,7 @@ extern void TNT_(smt2_rdtmp)    ( IRStmt * );
 extern void TNT_(smt2_get)      ( IRStmt * );
 extern void TNT_(smt2_put_t)    ( IRStmt * );
 extern void TNT_(smt2_amd64g_calculate_condition)    ( IRStmt * );
+extern void TNT_(smt2_ite_tt)   ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

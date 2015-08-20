@@ -1056,3 +1056,36 @@ void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
 
    tt[ltmp] = SMT2_ty[ty];
 }
+
+void TNT_(smt2_ite_tt) ( IRStmt *clone )
+{
+   UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
+   UInt ttmp    = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
+   UInt ftmp    = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
+
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[ttmp]);
+
+   if ( !is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite t%d_%d %016llx t%d_%d)))\n",
+            ltmp, _ti(ltmp),
+            ctmp, _ti(ctmp),
+            tv[ttmp],
+            ftmp, _ti(ftmp) );
+   } else if ( !is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d %016llx)))\n",
+            ltmp, _ti(ltmp),
+            ctmp, _ti(ctmp),
+            ttmp, _ti(ttmp),
+            tv[ftmp] );
+   } else if ( is_tainted(ttmp) && is_tainted(ftmp) ) {
+      VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d t%d_%d)))\n",
+            ltmp, _ti(ltmp),
+            ctmp, _ti(ctmp),
+            ttmp, _ti(ttmp),
+            ftmp, _ti(ftmp) );
+   }
+
+   tt[ltmp] = tt[ttmp];
+}
