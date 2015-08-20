@@ -278,7 +278,7 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
          /* cnt = 0; */ \
-         VG_(printf)("(assert (= t%d_%d #x%016x)\n", ltmp, _ti(ltmp), 0); \
+         VG_(printf)("(assert (= t%d_%d #x%016x))\n", ltmp, _ti(ltmp), 0); \
          VG_(printf)("(declare-fun t%d_%d_sh () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp)); \
          VG_(printf)("(assert (= t%d_%d_sh t%d_%d))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp)); \
          VG_(printf)("(declare-fun t%d_%d_0 () (_ BitVec 1))\n", rtmp, _ti(rtmp)); \
@@ -1017,14 +1017,14 @@ static char *tnt_smt2_amd64g_calculate_condition_cond( IRStmt *clone, char *buf 
    switch ( cond )
    {
       case AMD64CondZ:
-         VG_(sprintf)(tmp, "ite (not (%s)) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (= (%s) #x%016llx) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            0LL, 1LL, 0LL );
          break;
       case AMD64CondNZ:
-         VG_(sprintf)(tmp, "ite (%s) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (not (= (%s) #x%016llx)) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            0LL, 1LL, 0LL );
          break;
       case AMD64CondS:
          VG_(sprintf)(tmp, "ite (bvslt (%s) #x%016llx) #x%016llx #x%016llx",
