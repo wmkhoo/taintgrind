@@ -278,24 +278,28 @@ void TNT_(smt2_store_tt) ( IRStmt *clone )
          tl_assert(tt[rtmp] == ty); \
          VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
          /* cnt = 0; */ \
-         VG_(printf)("(assert (= t%d_%d #x%016x))\n", ltmp, _ti(ltmp), 0); \
-         VG_(printf)("(declare-fun t%d_%d_sh () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp)); \
-         VG_(printf)("(assert (= t%d_%d_sh t%d_%d))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp)); \
-         VG_(printf)("(declare-fun t%d_%d_0 () (_ BitVec 1))\n", rtmp, _ti(rtmp)); \
+         VG_(printf)("(declare-fun t%d_%d_cnt0 () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d_cnt0 #x%016x))\n", ltmp, _ti(ltmp), 0); \
+         VG_(printf)("(declare-fun t%d_%d_sh0 () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp)); \
+         VG_(printf)("(assert (= t%d_%d_sh0 t%d_%d))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp)); \
          for ( i=0; i<6; i++ ) { \
             /* if (!(val & 0xFFFFFFFF)) */ \
-            VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), mask); \
+            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec 1))\n", rtmp, _ti(rtmp), i); \
+            VG_(printf)("(assert (= t%d_%d_%d (bvnot (bvand t%d_%d_sh%d #x%016x))))\n", rtmp, _ti(rtmp), i, rtmp, _ti(rtmp), i, mask); \
             /*    cnt += 32; */ \
-            VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), shift, 0); \
+            VG_(printf)("(declare-fun t%d_%d_cnt%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp), i+1); \
+            VG_(printf)("(assert (= t%d_%d_cnt%d (bvadd t%d_%d_cnt%d (ite t%d_%d_%d #x%016x #x%016x))))\n", ltmp, _ti(ltmp), i+1, ltmp, _ti(ltmp), i, rtmp, _ti(rtmp), i, shift, 0); \
             /*    val >>= 32; */ \
-            VG_(printf)("(assert (= t%d_%d_sh (bvshr t%d_%d_sh (ite t%d_%d_0 #x%016x #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), rtmp, _ti(rtmp), shift, 0); \
+            VG_(printf)("(declare-fun t%d_%d_sh%d () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp), i+1); \
+            VG_(printf)("(assert (= t%d_%d_sh%d (bvshr t%d_%d_sh%d (ite t%d_%d_%d #x%016x #x%016x))))\n", rtmp, _ti(rtmp), i+1, rtmp, _ti(rtmp), i, rtmp, _ti(rtmp), i, shift, 0); \
             shift /= 2; \
             mask >>= shift; \
          } \
          /* if (!(val & 0x1)) */ \
-         VG_(printf)("(assert (= t%d_%d_0 (bvnot (bvand t%d_%d_sh #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
+         VG_(printf)("(declare-fun t%d_%d_6 () (_ BitVec 1))\n", rtmp, _ti(rtmp)); \
+         VG_(printf)("(assert (= t%d_%d_6 (bvnot (bvand t%d_%d_sh6 #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
          /*    cnt += 1; */ \
-         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d (ite t%d_%d_0 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d_cnt6 (ite t%d_%d_6 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
          tt[ltmp] = ty; \
       }
 
