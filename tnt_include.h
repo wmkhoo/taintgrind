@@ -135,6 +135,7 @@ VG_REGPARM(3) void TNT_(h32_ite_ct)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tt)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_cc)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ccall)    ( IRStmt *, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_none)     ( HChar *, UInt, UInt );
 
 VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, ULong, ULong );
@@ -410,7 +411,8 @@ extern void TNT_(smt2_binop_tt) ( IRStmt * );
 extern void TNT_(smt2_rdtmp)    ( IRStmt * );
 extern void TNT_(smt2_get)      ( IRStmt * );
 extern void TNT_(smt2_put_t)    ( IRStmt * );
-extern void TNT_(smt2_amd64g_calculate_condition)    ( IRStmt * );
+extern void TNT_(smt2_x86g_calculate_condition)    ( IRStmt * );
+extern void TNT_(smt2_amd64g_calculate_condition)  ( IRStmt * );
 extern void TNT_(smt2_ite_tt)   ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */

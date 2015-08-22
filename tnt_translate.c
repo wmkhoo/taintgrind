@@ -6441,8 +6441,13 @@ IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp,
               convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
    if ( mce->hWordTy == Ity_I32 ) {
-      fn    = &TNT_(h32_ccall);
-      nm    = "TNT_(h32_ccall)";
+      if ( VG_(strcmp)(cee->name, "x86g_calculate_condition") == 0 ) {
+         fn    = &TNT_(h32_x86g_calculate_condition);
+         nm    = "TNT_(h32_x86g_calculate_condition)";
+      } else {
+         fn    = &TNT_(h32_ccall);
+         nm    = "TNT_(h32_ccall)";
+      }
    } else {
       if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
          fn    = &TNT_(h64_amd64g_calculate_condition);

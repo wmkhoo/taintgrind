@@ -3697,6 +3697,83 @@ void TNT_(h32_ccall) (
       VG_(printf)("\n");
 }
 
+// ltmp = x86g_calculate_condition(
+//           UInt/*X86Condcode*/ cond, 
+//           UInt cc_op, 
+//           UInt cc_dep1, UInt cc_dep2, UInt cc_ndep 
+//        );
+VG_REGPARM(3)
+void TNT_(h32_x86g_calculate_condition) (
+   IRStmt *clone, 
+   UInt value, 
+   UInt taint ) {
+
+   H_WRTMP_BOOKKEEPING
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H_SMT2(smt2_x86g_calculate_condition);
+   H32_PC
+
+   IRExpr *ccall = clone->Ist.WrTmp.data;
+
+   if ( istty && is_tainted(ltmp) )
+   {
+      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+                    KRED,
+                    ltmp, _ti(ltmp),
+                    KNRM);
+
+      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
+   } else {
+      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(printf)("%s | %s", fnname, aTmp);
+      ppIRExpr( ccall );
+      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
+   }
+
+   // Information flow
+   if ( is_tainted(ltmp) ) {
+      // We have 2 arguments, arg[2] and arg[3], i.e. like binop
+      IRExpr *arg1 = ccall->Iex.CCall.args[2];
+      IRExpr *arg2 = ccall->Iex.CCall.args[3];
+
+      // Case 1: Both args are tmps
+      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
+         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
+
+         if ( is_tainted(rtmp1) && is_tainted(rtmp2) ) {
+            VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
+                                   rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
+         } else if ( is_tainted(rtmp1) ) {
+            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                               rtmp1, _ti(rtmp1) );
+         } else {
+            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                               rtmp2, _ti(rtmp2) );
+         }
+      
+      // Case 2: arg1 is a tmp. And it *must* be tainted because ltmp is.
+      } else if ( arg1->tag == Iex_RdTmp ) {
+         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
+      
+         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                            rtmp1, _ti(rtmp1) );
+      // Case 3: arg2 is a tmp
+      } else {
+         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
+      
+         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
+                                            rtmp2, _ti(rtmp2) );
+      }
+   } else
+      VG_(printf)("\n");
+}
+
 // No decoding necessary. Just print the string
 VG_REGPARM(3)
 void TNT_(h32_none) ( 

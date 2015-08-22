@@ -716,6 +716,22 @@ void TNT_(smt2_put_t) ( IRStmt *clone )
    VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
 }
 
+void TNT_(smt2_x86g_calculate_condition) ( IRStmt *clone )
+{
+   UInt ltmp    = clone->Ist.WrTmp.tmp;
+   IRExpr *data = clone->Ist.WrTmp.data;
+   UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
+
+   char buf[1024];
+
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+
+   //VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+   //         tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
+
+   tt[ltmp] = SMT2_ty[ty];
+}
+
 // VEX/priv/guest_amd64_defs.h
 // extern ULong amd64g_calculate_condition ( 
 //                 ULong/*AMD64Condcode*/ cond, 
