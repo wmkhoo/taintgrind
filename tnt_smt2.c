@@ -818,24 +818,24 @@ static char *tnt_smt2_amd64g_calculate_condition_op_tc_common( IRStmt *clone, ch
    switch ( cc_op )
    {
       case AMD64G_CC_OP_SUBB:
-         VG_(sprintf)(tmp, "bvsub ((_ extract 7 0) t%d_%d) #x%02x",
+         VG_(sprintf)(tmp, "(bvsub ((_ extract 7 0) t%d_%d) #x%02x) #x%02x",
             dep1tmp, _ti(dep1tmp),
-            (char)dep2c );
+            (char)dep2c, 0 );
          break;
       case AMD64G_CC_OP_SUBW:
-         VG_(sprintf)(tmp, "bvsub ((_ extract 15 0) t%d_%d) #x%04x",
+         VG_(sprintf)(tmp, "(bvsub ((_ extract 15 0) t%d_%d) #x%04x) #x%04x",
             dep1tmp, _ti(dep1tmp),
-            (short)dep2c );
+            (short)dep2c, 0 );
          break;
       case AMD64G_CC_OP_SUBL:
-         VG_(sprintf)(tmp, "bvsub ((_ extract 31 0) t%d_%d) #x%08x",
+         VG_(sprintf)(tmp, "(bvsub ((_ extract 31 0) t%d_%d) #x%08x) #x%08x",
             dep1tmp, _ti(dep1tmp),
-            (int)dep2c );
+            (int)dep2c, 0 );
          break;
       case AMD64G_CC_OP_SUBQ:
-         VG_(sprintf)(tmp, "bvsub t%d_%d #x%016llx",
+         VG_(sprintf)(tmp, "(bvsub t%d_%d #x%016llx) #x%016llx",
             dep1tmp, _ti(dep1tmp),
-            dep2c );
+            dep2c, 0LL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -877,24 +877,24 @@ static char *tnt_smt2_amd64g_calculate_condition_op_ct_common( IRStmt *clone, ch
    switch ( cc_op )
    {
       case AMD64G_CC_OP_SUBB:
-         VG_(sprintf)(tmp, "bvsub #x%02x ((_ extract 7 0) t%d_%d)",
+         VG_(sprintf)(tmp, "(bvsub #x%02x ((_ extract 7 0) t%d_%d)) #x%02x",
             (char)dep1c,
-            dep2tmp, _ti(dep2tmp) );
+            dep2tmp, _ti(dep2tmp), 0 );
          break;
       case AMD64G_CC_OP_SUBW:
-         VG_(sprintf)(tmp, "bvsub #x%04x ((_ extract 15 0) t%d_%d)",
+         VG_(sprintf)(tmp, "(bvsub #x%04x ((_ extract 15 0) t%d_%d)) #x%04x",
             (short)dep1c,
-            dep2tmp, _ti(dep2tmp) );
+            dep2tmp, _ti(dep2tmp), 0 );
          break;
       case AMD64G_CC_OP_SUBL:
-         VG_(sprintf)(tmp, "bvsub #x%08x ((_ extract 31 0) t%d_%d)",
+         VG_(sprintf)(tmp, "(bvsub #x%08x ((_ extract 31 0) t%d_%d)) #x%08x",
             (int)dep1c,
-            dep2tmp, _ti(dep2tmp) );
+            dep2tmp, _ti(dep2tmp), 0 );
          break;
       case AMD64G_CC_OP_SUBQ:
-         VG_(sprintf)(tmp, "bvsub #x%016llx t%d_%d",
+         VG_(sprintf)(tmp, "(bvsub #x%016llx t%d_%d) #x%016llx",
             dep1c,
-            dep2tmp, _ti(dep2tmp) );
+            dep2tmp, _ti(dep2tmp), 0LL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -966,12 +966,24 @@ static char *tnt_smt2_amd64g_calculate_condition_op_tt_11( IRStmt *clone, char *
    switch ( cc_op )
    {
       case AMD64G_CC_OP_SUBB:
-      case AMD64G_CC_OP_SUBW:
-      case AMD64G_CC_OP_SUBL:
-      case AMD64G_CC_OP_SUBQ:
-         VG_(sprintf)(tmp, "bvsub t%d_%d t%d_%d",
+         VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%02x",
             dep1tmp, _ti(dep1tmp),
-            dep2tmp, _ti(dep2tmp) );
+            dep2tmp, _ti(dep2tmp), 0 );
+         break;
+      case AMD64G_CC_OP_SUBW:
+         VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%04x",
+            dep1tmp, _ti(dep1tmp),
+            dep2tmp, _ti(dep2tmp), 0 );
+         break;
+      case AMD64G_CC_OP_SUBL:
+         VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%08x",
+            dep1tmp, _ti(dep1tmp),
+            dep2tmp, _ti(dep2tmp), 0 );
+         break;
+      case AMD64G_CC_OP_SUBQ:
+         VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%016llx",
+            dep1tmp, _ti(dep1tmp),
+            dep2tmp, _ti(dep2tmp), 0LL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -1017,24 +1029,24 @@ static char *tnt_smt2_amd64g_calculate_condition_cond( IRStmt *clone, char *buf 
    switch ( cond )
    {
       case AMD64CondZ:
-         VG_(sprintf)(tmp, "ite (= (%s) #x%016llx) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (= %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            0LL, 1LL, 0LL );
+            1LL, 0LL );
          break;
       case AMD64CondNZ:
-         VG_(sprintf)(tmp, "ite (not (= (%s) #x%016llx)) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (not (= %s)) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            0LL, 1LL, 0LL );
+            1LL, 0LL );
          break;
       case AMD64CondS:
-         VG_(sprintf)(tmp, "ite (bvslt (%s) #x%016llx) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (bvslt %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            0LL, 1LL, 0LL );
+            1LL, 0LL );
          break;
       case AMD64CondNS:
-         VG_(sprintf)(tmp, "ite (bvsge (%s) #x%016llx) #x%016llx #x%016llx",
+         VG_(sprintf)(tmp, "ite (bvsge %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            0LL, 1LL, 0LL );
+            1LL, 0LL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cond = %llx not yet supported\n", cond);
