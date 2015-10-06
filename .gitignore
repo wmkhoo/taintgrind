@@ -1,0 +1,15 @@
+*.o
+.deps/
+.in_place/
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.h
+config.h.in
+config.log
+config.status
+configure
+stamp-h1
+taintgrind-*
+vgpreload_taintgrind-*.so

@@ -102,6 +102,7 @@ HChar* TNT_(event_ctr_name)[N_PROF_EVENTS];
 UChar get_vabits2( Addr a ); // Taintgrind: needed by TNT_(instrument)
 void TNT_(make_mem_noaccess)( Addr a, SizeT len );
 void TNT_(make_mem_tainted)( Addr a, SizeT len );
+void TNT_(make_mem_tainted_named)( Addr a, SizeT len, const HChar *varname );
 void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
@@ -134,6 +135,7 @@ VG_REGPARM(3) void TNT_(h32_ite_ct)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_tt)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ite_cc)   ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_ccall)    ( IRStmt *, UInt, UInt );
+VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h32_none)     ( HChar *, UInt, UInt );
 
 VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, ULong, ULong );
@@ -165,13 +167,13 @@ VG_REGPARM(3) void TNT_(h64_ite_ct)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_tt)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ite_cc)   ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_ccall)    ( IRStmt *, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, ULong, ULong );
 VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, ULong, ULong );
 
 /* Strings used by tnt_translate, printed by tnt_main */
 extern const char *IRType_string[];
 extern const char *IREndness_string[];
 extern const char *IRConst_string[];
-extern const char *IROp_string[];
 extern const char *IRExpr_string[];
 extern const char *IRStmt_string[];
 extern const char *IRJumpKind_string[];
@@ -215,6 +217,7 @@ extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
 extern Int    TNT_(do_print);
+extern Bool   TNT_(clo_smt2);
 //extern Char* TNT_(clo_allowed_syscalls);
 //extern Bool  TNT_(read_syscalls_file);
 
@@ -312,6 +315,7 @@ extern void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs, SysRes res
 extern void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
@@ -377,6 +381,39 @@ extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum
 extern void TNT_(get_fnname)(ThreadId tid, HChar* buf, UInt buf_size);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
+
+/* SMT2 functions */
+#define TI_MAX 2100 
+#define RI_MAX 740 
+// Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
+extern UInt  ti[TI_MAX];
+// Tmp variable values
+extern ULong tv[TI_MAX];
+// Reg variable indices
+extern UInt  ri[RI_MAX];
+// Tmp variable Types/Widths
+extern UInt  tt[TI_MAX];
+
+#define _ti(ltmp) ti[ltmp] & 0x7fffffff
+#define is_tainted(ltmp) (ti[ltmp] >> 31)
+
+extern void TNT_(smt2_preamble) (void);
+extern void TNT_(smt2_exit)     ( IRStmt * );
+extern void TNT_(smt2_load_c)   ( IRStmt * );
+extern void TNT_(smt2_load_t)   ( IRStmt * );
+extern void TNT_(smt2_store_ct) ( IRStmt * );
+extern void TNT_(smt2_store_tc) ( IRStmt * );
+extern void TNT_(smt2_store_tt) ( IRStmt * );
+extern void TNT_(smt2_unop_t)   ( IRStmt * );
+extern void TNT_(smt2_binop_tc) ( IRStmt * );
+extern void TNT_(smt2_binop_ct) ( IRStmt * );
+extern void TNT_(smt2_binop_tt) ( IRStmt * );
+extern void TNT_(smt2_rdtmp)    ( IRStmt * );
+extern void TNT_(smt2_get)      ( IRStmt * );
+extern void TNT_(smt2_put_t)    ( IRStmt * );
+extern void TNT_(smt2_x86g_calculate_condition)    ( IRStmt * );
+extern void TNT_(smt2_amd64g_calculate_condition)  ( IRStmt * );
+extern void TNT_(smt2_ite_tt)   ( IRStmt * );
 
 #endif /* ndef __TNT_INCLUDE_H */
 

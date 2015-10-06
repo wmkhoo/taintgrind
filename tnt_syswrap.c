@@ -65,6 +65,38 @@ void resolve_filename(UWord fd, HChar *path, Int max)
 static Bool tainted_fds[VG_N_THREADS][FD_MAX];
 static UInt read_offset = 0;
 
+void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
+                                  SysRes res) {
+// off_t lseek(int fd, off_t offset, int whence);
+   Int   fd      = args[0];
+   ULong offset  = args[1];
+   UInt  whence  = args[2];
+   Bool  verbose = False;
+
+   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+      return;
+
+   Int   retval       = sr_Res(res);
+
+   if ( verbose )
+   {
+      VG_(printf)("syscall _lseek %d %d ", tid, fd);
+      VG_(printf)("offset: 0x%x whence: 0x%x ", (UInt)offset, whence);
+      VG_(printf)("retval: 0x%x read_offset: 0x%x\n", retval, read_offset);
+   }
+
+   if( whence == 0/*SEEK_SET*/ )
+      read_offset = 0 + (UInt)offset;
+   else if( whence == 1/*SEEK_CUR*/ )
+      read_offset += (UInt)offset;
+   else if( whence == 2/*SEEK_END*/ )
+      read_offset = retval;
+   else {
+      VG_(printf)("whence %x\n", whence);
+      tl_assert(0);
+   }
+}
+
 void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // int  _llseek(int fildes, ulong offset_high, ulong offset_low, loff_t *result,, uint whence);
@@ -79,10 +111,13 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
    if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
       return;
 
+   Int   retval       = sr_Res(res);
+
    if ( verbose )
    {
       VG_(printf)("syscall _llseek %d %d ", tid, fd);
       VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", (UInt)offset_high, (UInt)offset_low, result, whence);
+      VG_(printf)("0x%x\n", retval);
    }
 
    offset = (offset_high<<32) | offset_low;
@@ -91,8 +126,10 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
       read_offset = 0 + (UInt)offset;
    else if( whence == 1/*SEEK_CUR*/ )
       read_offset += (UInt)offset;
-   else //if( whence == 2/*SEEK_END*/ )
+   else {//if( whence == 2/*SEEK_END*/ )
+      VG_(printf)("whence %x\n", whence);
       tl_assert(0);
+   }
 }
 
 Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
@@ -180,7 +217,10 @@ void read_common ( UInt taint_offset, Int taint_len,
       return;
    }
 
-   TNT_(make_mem_tainted)( addr, len );
+   if ( TNT_(clo_smt2) )
+      TNT_(make_mem_tainted_named)( addr, len, "read" );
+   else
+      TNT_(make_mem_tainted)( addr, len );
 
    //for( i=0; i<len; i++) 
    //   VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));
@@ -391,9 +431,9 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 
 void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 // ssize_t recv(int sockfd, void *buf, size_t len, int flags)
-   Int msglen  = sr_Res(res);
-   HChar *data = (HChar *)args[1];
-   VG_(printf)("syscall recv %d 0x%x 0x%02x\n", tid, msglen, data[0]);
+   //Int msglen  = sr_Res(res);
+   //HChar *data = (HChar *)args[1];
+   //VG_(printf)("syscall recv %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
 }
 
@@ -401,9 +441,9 @@ void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
 //                 struct sockaddr *src_addr, socklen_t *addrlen)
 // TODO: #include <arpa/inet.h> inet_ntop to pretty print IP address
-   Int msglen  = sr_Res(res);
-   HChar *data = (HChar *)args[1];
-   VG_(printf)("syscall recvfrom %d 0x%x 0x%02x\n", tid, msglen, data[0]);
+   //Int msglen  = sr_Res(res);
+   //HChar *data = (HChar *)args[1];
+   //VG_(printf)("syscall recvfrom %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
 }
 

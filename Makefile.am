@@ -26,7 +26,8 @@ TAINTGRIND_SOURCES_COMMON = \
 	tnt_malloc_wrappers.c \
 	tnt_main.c \
 	tnt_translate.c \
-        copy.c
+        copy.c \
+        tnt_smt2.c
 
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_SOURCES      = $(TAINTGRIND_SOURCES_COMMON)
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CPPFLAGS     = \
