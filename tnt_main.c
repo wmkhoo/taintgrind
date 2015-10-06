@@ -2488,13 +2488,10 @@ Int atoi( HChar *s ){
 // tmp variables go from t0, t1, t2,..., t255
 // reg variables go from r0, r4, r8,..., r320
 // see libvex_guest_amd64.h
-<<<<<<< HEAD
 //#define TI_MAX 440
 //#define RI_MAX 740 
-=======
-#define TI_MAX 700
-#define RI_MAX 740 
->>>>>>> master
+//#define TI_MAX 700
+//#define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
 UInt  ti[TI_MAX];
