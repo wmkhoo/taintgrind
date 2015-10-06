@@ -722,7 +722,7 @@ void TNT_(smt2_x86g_calculate_condition) ( IRStmt *clone )
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ty      = data->Iex.CCall.retty - Ity_INVALID;
 
-   char buf[1024];
+   //char buf[1024];
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
 

@@ -124,7 +124,7 @@ typedef
 
       /* READONLY: the guest layout.  This indicates which parts of
          the guest state should be regarded as 'always defined'. */
-      VexGuestLayout* layout;
+      const VexGuestLayout* layout;
 
       /* READONLY: the host word type.  Needed for constructing
          arguments of type 'HWord' to be passed to helper functions.
@@ -6584,9 +6584,9 @@ IRDirty* create_dirty_from_dirty( IRDirty* di_old ){
 
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,
                         IRSB* sb_in,
-                        VexGuestLayout* layout, 
-                        VexGuestExtents* vge,
-                        VexArchInfo* archinfo_host,
+                        const VexGuestLayout* layout, 
+                        const VexGuestExtents* vge,
+                        const VexArchInfo* archinfo_host,
                         IRType gWordTy, IRType hWordTy )
 {
    Bool    verboze = 0||False;

@@ -44,13 +44,13 @@
 
 #include "tnt_include.h"
 
-VgHashTable TNT_(malloc_list)  = NULL;   // HP_Chunks
+VgHashTable *TNT_(malloc_list)  = NULL;   // HP_Chunks
 
 static
 void* record_block( ThreadId tid, void* p, SizeT req_szB, SizeT slop_szB )
 {
    // Make new HP_Chunk node, add to malloc_list
-   HP_Chunk* hc = VG_(malloc)("ms.main.rb.1", sizeof(HP_Chunk));
+   HP_Chunk* hc = VG_(malloc)("tnt.malloc_wrapper.rb.1", sizeof(HP_Chunk));
    hc->req_szB  = req_szB;
    hc->slop_szB = slop_szB;
    hc->data     = (Addr)p;
@@ -77,7 +77,7 @@ void* alloc_and_record_block ( ThreadId tid, SizeT req_szB, SizeT req_alignB,
       return NULL;
    }
    if (is_zeroed) VG_(memset)(p, 0, req_szB);
-   actual_szB = VG_(malloc_usable_size)(p);
+   actual_szB = VG_(cli_malloc_usable_size)(p);
    tl_assert(actual_szB >= req_szB);
    slop_szB = actual_szB - req_szB;
 
@@ -136,7 +136,7 @@ void* realloc_block ( ThreadId tid, void* p_old, SizeT new_req_szB )
       VG_(memcpy)(p_new, p_old, old_req_szB);
 
       VG_(cli_free)(p_old);
-      new_actual_szB = VG_(malloc_usable_size)(p_new);
+      new_actual_szB = VG_(cli_malloc_usable_size)(p_new);
       tl_assert(new_actual_szB >= new_req_szB);
       new_slop_szB = new_actual_szB - new_req_szB;
 

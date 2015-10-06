@@ -720,19 +720,29 @@ static ULong sec_vbits_updates   = 0;
 // row), but often not.  So we choose something intermediate.
 #define BYTES_PER_SEC_VBIT_NODE     16
 
-// We make the table bigger if more than this many nodes survive a GC.
-#define MAX_SURVIVOR_PROPORTION  0.5
+// We make the table bigger by a factor of STEPUP_GROWTH_FACTOR if
+// more than this many nodes survive a GC.
+#define STEPUP_SURVIVOR_PROPORTION  0.5
+#define STEPUP_GROWTH_FACTOR        1.414213562
 
-// Each time we make the table bigger, we increase it by this much.
-#define TABLE_GROWTH_FACTOR      2
-
-// This defines "sufficiently stale" -- any node that hasn't been touched in
-// this many GCs will be removed.
-#define MAX_STALE_AGE            2
+// If the above heuristic doesn't apply, then we may make the table
+// slightly bigger, by a factor of DRIFTUP_GROWTH_FACTOR, if more than
+// this many nodes survive a GC, _and_ the total table size does
+// not exceed a fixed limit.  The numbers are somewhat arbitrary, but
+// work tolerably well on long Firefox runs.  The scaleup ratio of 1.5%
+// effectively although gradually reduces residency and increases time
+// between GCs for programs with small numbers of PDBs.  The 80000 limit
+// effectively limits the table size to around 2MB for programs with
+// small numbers of PDBs, whilst giving a reasonably long lifetime to
+// entries, to try and reduce the costs resulting from deleting and
+// re-adding of entries.
+#define DRIFTUP_SURVIVOR_PROPORTION 0.15
+#define DRIFTUP_GROWTH_FACTOR       1.015
+#define DRIFTUP_MAX_SIZE            80000
 
 // We GC the table when it gets this many nodes in it, ie. it's effectively
 // the table size.  It can change.
-static Int  secVBitLimit = 1024;
+static Int  secVBitLimit = 1000;
 
 // The number of GCs done, used to age sec-V-bit nodes for eviction.
 // Because it's unsigned, wrapping doesn't matter -- the right answer will
@@ -743,16 +753,20 @@ typedef
    struct {
       Addr  a;
       UChar vbits8[BYTES_PER_SEC_VBIT_NODE];
-      UInt  last_touched;
    }
    SecVBitNode;
 
 static OSet* createSecVBitTable(void)
 {
-   return VG_(OSetGen_Create)( offsetof(SecVBitNode, a),
-                               NULL, // use fast comparisons
-                               VG_(malloc), "mc.cSVT.1 (sec VBit table)",
-                               VG_(free) );
+   OSet* newSecVBitTable;
+   newSecVBitTable = VG_(OSetGen_Create_With_Pool)
+      ( offsetof(SecVBitNode, a),
+        NULL, // use fast comparisons
+        VG_(malloc), "mc.cSVT.1 (sec VBit table)",
+        VG_(free),
+        1000,
+        sizeof(SecVBitNode));
+   return newSecVBitTable;
 }
 
 static void gcSecVBitTable(void)
@@ -769,29 +783,19 @@ static void gcSecVBitTable(void)
    // Traverse the table, moving fresh nodes into the new table.
    VG_(OSetGen_ResetIter)(secVBitTable);
    while ( (n = VG_(OSetGen_Next)(secVBitTable)) ) {
-      Bool keep = False;
-      if ( (GCs_done - n->last_touched) <= MAX_STALE_AGE ) {
-         // Keep node if it's been touched recently enough (regardless of
-         // freshness/staleness).
-         keep = True;
-      } else {
-         // Keep node if any of its bytes are non-stale.  Using
-         // get_vabits2() for the lookup is not very efficient, but I don't
-         // think it matters.
-         for (i = 0; i < BYTES_PER_SEC_VBIT_NODE; i++) {
-            if (VA_BITS2_PARTUNTAINTED == get_vabits2(n->a + i)) {
-               keep = True;      // Found a non-stale byte, so keep
-               break;
-            }
+      // Keep node if any of its bytes are non-stale.  Using
+      // get_vabits2() for the lookup is not very efficient, but I don't
+      // think it matters.
+      for (i = 0; i < BYTES_PER_SEC_VBIT_NODE; i++) {
+         if (VA_BITS2_PARTUNTAINTED == get_vabits2(n->a + i)) {
+            // Found a non-stale byte, so keep =>
+            // Insert a copy of the node into the new table.
+            SecVBitNode* n2 =
+               VG_(OSetGen_AllocNode)(secVBitTable2, sizeof(SecVBitNode));
+            *n2 = *n;
+            VG_(OSetGen_Insert)(secVBitTable2, n2);
+            break;
          }
-      }
-
-      if ( keep ) {
-         // Insert a copy of the node into the new table.
-         SecVBitNode* n2 =
-            VG_(OSetGen_AllocNode)(secVBitTable2, sizeof(SecVBitNode));
-         *n2 = *n;
-         VG_(OSetGen_Insert)(secVBitTable2, n2);
       }
    }
 
@@ -803,18 +807,28 @@ static void gcSecVBitTable(void)
    VG_(OSetGen_Destroy)(secVBitTable);
    secVBitTable = secVBitTable2;
 
-   if (VG_(clo_verbosity) > 1) {
-      HChar percbuf[6];
-      VG_(percentify)(n_survivors, n_nodes, 1, 6, percbuf);
-      VG_(message)(Vg_DebugMsg, "tnt_main.c: GC: %d nodes, %d survivors (%s)\n",
-                   n_nodes, n_survivors, percbuf);
+   if (VG_(clo_verbosity) > 1 && n_nodes != 0) {
+      VG_(message)(Vg_DebugMsg, "tnt_main.c: GC: %d nodes, %d survivors (%.1f%%)\n",
+                   n_nodes, n_survivors, n_survivors * 100.0 / n_nodes);
    }
 
    // Increase table size if necessary.
-   if (n_survivors > (secVBitLimit * MAX_SURVIVOR_PROPORTION)) {
-      secVBitLimit *= TABLE_GROWTH_FACTOR;
+   if ((Double)n_survivors
+       > ((Double)secVBitLimit * STEPUP_SURVIVOR_PROPORTION)) {
+      secVBitLimit = (Int)((Double)secVBitLimit * (Double)STEPUP_GROWTH_FACTOR);
       if (VG_(clo_verbosity) > 1)
-         VG_(message)(Vg_DebugMsg, "tnt_main.c: GC: increase table size to %d\n",
+         VG_(message)(Vg_DebugMsg,
+                      "tnt_main.c: GC: %d new table size (stepup)\n",
+                      secVBitLimit);
+   }
+   else
+   if (secVBitLimit < DRIFTUP_MAX_SIZE
+       && (Double)n_survivors
+          > ((Double)secVBitLimit * DRIFTUP_SURVIVOR_PROPORTION)) {
+      secVBitLimit = (Int)((Double)secVBitLimit * (Double)DRIFTUP_GROWTH_FACTOR);
+      if (VG_(clo_verbosity) > 1)
+         VG_(message)(Vg_DebugMsg,
+                      "tnt_main.c GC: %d new table size (driftup)\n",
                       secVBitLimit);
    }
 }
@@ -843,9 +857,14 @@ static void set_sec_vbits8(Addr a, UWord vbits8)
    tl_assert(V_BITS8_UNTAINTED != vbits8 && V_BITS8_TAINTED != vbits8);
    if (n) {
       n->vbits8[amod] = vbits8;     // update
-      n->last_touched = GCs_done;
       sec_vbits_updates++;
    } else {
+      // Do a table GC if necessary.  Nb: do this before creating and
+      // inserting the new node, to avoid erroneously GC'ing the new node.
+      if (secVBitLimit == VG_(OSetGen_Size)(secVBitTable)) {
+         gcSecVBitTable();
+      }
+
       // New node:  assign the specific byte, make the rest invalid (they
       // should never be read as-is, but be cautious).
       n = VG_(OSetGen_AllocNode)(secVBitTable, sizeof(SecVBitNode));
@@ -854,13 +873,6 @@ static void set_sec_vbits8(Addr a, UWord vbits8)
          n->vbits8[i] = V_BITS8_TAINTED;
       }
       n->vbits8[amod] = vbits8;
-      n->last_touched = GCs_done;
-
-      // Do a table GC if necessary.  Nb: do this before inserting the new
-      // node, to avoid erroneously GC'ing the new node.
-      if (secVBitLimit == VG_(OSetGen_Size)(secVBitTable)) {
-         gcSecVBitTable();
-      }
 
       // Insert the new node.
       VG_(OSetGen_Insert)(secVBitTable, n);
@@ -2574,39 +2586,34 @@ int istty = 0;
 
 #define H32_PC \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar fnname[FNNAME_MAX]; \
    HChar aTmp[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H32_PC_OP \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar fnname[FNNAME_MAX]; \
    HChar aTmp1[128], aTmp2[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H64_PC \
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar fnname[FNNAME_MAX]; \
    HChar aTmp[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H64_PC_OP \
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar fnname[FNNAME_MAX]; \
    HChar aTmp1[128], aTmp2[128]; \
    infer_client_binary_name(pc); \
-   VG_(describe_IP) ( pc, fnname, FNNAME_MAX, NULL );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H_VAR \
-   HChar varname[256]; \
+   HChar varname[1024]; \
    ThreadId tid = VG_(get_running_tid()); \
-   VG_(memset)( varname, 0, 255 ); \
    enum VariableType type = 0; \
    enum VariableLocation var_loc; \
-   TNT_(describe_data)(address, varname, 255, &type, &var_loc); \
+   TNT_(describe_data)(address, varname, 1024, &type, &var_loc); \
    TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
 
 #define H_EXIT_EARLY \
@@ -4935,13 +4942,19 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
 
 	// first try to see if it is a global var
+        const HChar *cvarname;
 	PtrdiffT pdt;
-	VG_(get_datasym_and_offset)( addr, varnamebuf, bufsize, &pdt );
+	if ( VG_(get_datasym_and_offset)( addr, &cvarname, &pdt ) )
+        {
+           VG_(strncpy)(varnamebuf, cvarname, bufsize);
+           return;
+        }
 
 	// Seems to get exe name?
-	if ( VG_(get_objname)(addr, varnamebuf, bufsize) )
+	if ( VG_(get_objname)(addr, &cvarname) )
 	{
 	   //VG_(printf)("varname %s\n", varnamebuf);
+           VG_(strncpy)(varnamebuf, cvarname, bufsize);
 	   return;
 	}
 
@@ -4958,7 +4971,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
         {
            //VG_(printf)("descr1 %s\n", VG_(indexXA)(ai.Addr.Variable.descr1,0) );
            //VG_(printf)("descr2 %s\n", VG_(indexXA)(ai.Addr.Variable.descr2,0) );
-           //VG_(strncpy)(varnamebuf, VG_(indexXA)(ai.Addr.Variable.descr1,0), bufsize );
+           VG_(strncpy)(varnamebuf, VG_(indexXA)(ai.Addr.Variable.descr1,0), bufsize );
            return;
         }
 
@@ -5098,8 +5111,8 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
       //VG_(printf)("var: %s, di: %d\n", varnamebuf, di);
       
 			UInt pc = VG_(get_IP)(VG_(get_running_tid)());
-			HChar binarynamebuf[1024];
-			VG_(get_objname)(pc, binarynamebuf, 1024);
+			const HChar *binarynamebuf;
+			VG_(get_objname)(pc, &binarynamebuf);
       //VG_(printf)("var: %s, declaring binary: %s, client binary: %s\n", varnamebuf, binarynamebuf, client_binary_name);
 			*loc = (VG_(strcmp)(binarynamebuf, client_binary_name) == 0 && VG_(strstr)(varnamebuf, "@@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
       //*loc = GlobalFromElsewhere;
@@ -5561,10 +5574,10 @@ static void tnt_pre_clo_init(void)
 
 VG_DETERMINE_INTERFACE_VERSION(tnt_pre_clo_init)
 
-void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc) {
+void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc) {
 	if (type == Global && var_loc == GlobalFromApplication) {
-		HChar fnname[FNNAME_MAX];
-		TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+		const HChar *fnname;
+		TNT_(get_fnname)(tid, &fnname);
 		Int var_idx = myStringArray_getIndex(&shared_vars, varname);
 		// first check if this access is allowed
 		Bool allowed = var_idx != -1 && (shared_vars_perms[var_idx] & var_request);

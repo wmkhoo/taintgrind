@@ -283,7 +283,7 @@ TNT_Chunk* TNT_(get_freed_list_head)( void );
    VgHashTable, because VgHashTable allows duplicate keys without complaint.
    This can occur if a user marks a malloc() block as also a custom block with
    MALLOCLIKE_BLOCK. */
-extern VgHashTable TNT_(malloc_list);
+extern VgHashTable *TNT_(malloc_list);
 
 /* For tracking memory pools. */
 //extern VgHashTable TNT_(mempool_list);
@@ -325,9 +325,9 @@ extern void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes
 /* Functions defined in tnt_translate.c */
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,
                         IRSB* bb_in,
-                        VexGuestLayout* layout,
-                        VexGuestExtents* vge,
-                        VexArchInfo* vai,
+                        const VexGuestLayout* layout,
+                        const VexGuestExtents* vge,
+                        const VexArchInfo* vai,
                         IRType gWordTy, IRType hWordTy );
 
 
@@ -378,9 +378,9 @@ extern const char* syscallnames[];
 
 /* Utility functions */
 extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc);
-extern void TNT_(get_fnname)(ThreadId tid, HChar* buf, UInt buf_size);
+extern void TNT_(get_fnname)(ThreadId tid, const HChar** buf);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
-extern void TNT_(check_var_access)(ThreadId tid, HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
+extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
 
 /* SMT2 functions */
 #define TI_MAX 2100 

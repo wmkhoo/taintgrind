@@ -62,7 +62,8 @@ void resolve_filename(UWord fd, HChar *path, Int max)
 }
 
 /* enforce an arbitrary maximum */
-static Bool tainted_fds[VG_N_THREADS][FD_MAX];
+#define TG_N_THREADS 500 
+static Bool tainted_fds[TG_N_THREADS][FD_MAX];
 static UInt read_offset = 0;
 
 void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
@@ -134,8 +135,8 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
 
 Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
 	if (IN_SANDBOX && IS_SYSCALL_ALLOWED(syscallno)) {
-		HChar fnname[FNNAME_MAX];
-		TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+		const HChar *fnname;
+		TNT_(get_fnname)(tid, &fnname);
 		VG_(printf)("*** Sandbox performed system call %s (%d) in method %s, but it is not allowed to. ***\n", syscallnames[syscallno], syscallno, fnname);
 		VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 		VG_(printf)("\n");
@@ -318,8 +319,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 #else
 #error OS unknown
 #endif
-	   HChar fnname[FNNAME_MAX];
-	   TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+	   const HChar *fnname;
+	   TNT_(get_fnname)(tid, &fnname);
 	   VG_(printf)("*** The file %s (fd: %d) was opened in method %s after a sandbox was created, hence it will not be accessible to the sandbox. It will need to be passed to the sandbox using sendmsg. ***\n", fdpath, fd, fnname);
 	   VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 	   VG_(printf)("\n");
@@ -387,9 +388,9 @@ void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 	TNT_(check_fd_access)(tid, fd, FD_WRITE);
 }
 
-void TNT_(get_fnname)(ThreadId tid, HChar* buf, UInt buf_size) {
+void TNT_(get_fnname)(ThreadId tid, const HChar** buf) {
 	   UInt pc = VG_(get_IP)(tid);
-	   VG_(get_fnname)(pc, buf, buf_size);
+	   VG_(get_fnname)(pc, buf);
 }
 
 void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
@@ -420,8 +421,8 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 #else
 #error OS unknown
 #endif
-			HChar fnname[FNNAME_MAX];
-			TNT_(get_fnname)(tid, fnname, FNNAME_MAX);
+			const HChar *fnname;
+			TNT_(get_fnname)(tid, &fnname);
 			VG_(printf)("*** Sandbox %s %s (fd: %d) in method %s, but it is not allowed to. ***\n", access_str, fdpath, fd, fnname);
 			VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 			VG_(printf)("\n");
