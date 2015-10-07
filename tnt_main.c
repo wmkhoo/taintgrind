@@ -4938,17 +4938,71 @@ void TNT_(h64_none) (
 /*--- name from data address, using debug symbol tables.   ---*/
 /*------------------------------------------------------------*/
 
+static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
+{
+   //VG_(printf)("descr1: %s descr2: %s\n", (HChar*)VG_(indexXA)(descr1,0), (HChar*)VG_(indexXA)(descr2,0));
+
+   // descr1 will either be of the form:
+   // (1) Location 0xbef29644 is 0 bytes inside local var "n"
+   // or
+   // (2) Location 0xbed42644 is 0 bytes inside n[1],
+   // or
+   // (3) Location 0xbebb842c is 0 bytes inside args.str,
+   // or
+   // (4) Location 0xbebb842c is 0 bytes inside args[1].str,
+   // or
+   // (5) Location 0xbebb842c is 0 bytes inside args.str[0],
+   //
+   // So, the terminator for a variable name is either '"' or ','
+
+   HChar* descr1str =  (HChar*)VG_(indexXA)(descr1, 0);
+   const char* commonVarPrefix = "bytes inside ";
+   char* varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix);
+
+   tl_assert(varPrefixPtr != NULL);
+
+   // fast forward to start of var name
+   varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
+
+   // disambiguate between local var or others
+   const char* localVarPrefix = "local var ";
+   char* varStart = VG_(strstr)(varPrefixPtr, localVarPrefix);
+   HChar* varEnd;
+   int varNameLen = 0;
+
+   if (varStart == NULL) {
+      // case 2, 3, 4 or 5
+      varStart = varPrefixPtr;
+      varEnd = VG_(strchr)(varStart, ',');
+      //VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
+      tl_assert(varEnd != NULL);
+   }
+   else {
+      // case 1: local variable
+      varStart += ((VG_(strlen)(localVarPrefix)+1)*sizeof(HChar)); // +1 to skip first "
+      varEnd = VG_(strchr)(varStart, '"');
+   }
+
+   tl_assert(varStart != NULL);
+   tl_assert(varEnd != NULL);
+
+   //VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
+   //VG_(printf)("varStart: %s, varEnd: %s\n", varStart, varEnd);
+
+   varNameLen = VG_(strlen)(varStart) - VG_(strlen)(varEnd);
+   if (varNameLen >= bufsize) {
+      varNameLen = bufsize-1;
+   }
+   //VG_(printf)("first: %s, second: %s, varnamelen: %d\n", first, second, varnamelen);
+   VG_(strncpy)(varnamebuf, varStart, varNameLen);
+   varnamebuf[varNameLen] = '\0';
+
+   //VG_(printf)("Addr: %x, Var: %s\n", addr, varnamebuf);
+}
+
 void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
 
-
-	// first try to see if it is a global var
         const HChar *cvarname;
-	PtrdiffT pdt;
-	if ( VG_(get_datasym_and_offset)( addr, &cvarname, &pdt ) )
-        {
-           VG_(strncpy)(varnamebuf, cvarname, bufsize);
-           return;
-        }
 
 	// Seems to get exe name?
 	if ( VG_(get_objname)(addr, &cvarname) )
@@ -4957,6 +5011,14 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
            VG_(strncpy)(varnamebuf, cvarname, bufsize);
 	   return;
 	}
+
+	// first try to see if it is a global var
+	PtrdiffT pdt;
+	if ( VG_(get_datasym_and_offset)( addr, &cvarname, &pdt ) )
+        {
+           VG_(strncpy)(varnamebuf, cvarname, bufsize);
+           return;
+        }
 
         AddrInfo ai; ai.tag = Addr_Undescribed;
         VG_(describe_addr)(addr, &ai);
@@ -4971,126 +5033,68 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
         {
            //VG_(printf)("descr1 %s\n", VG_(indexXA)(ai.Addr.Variable.descr1,0) );
            //VG_(printf)("descr2 %s\n", VG_(indexXA)(ai.Addr.Variable.descr2,0) );
-           VG_(strncpy)(varnamebuf, VG_(indexXA)(ai.Addr.Variable.descr1,0), bufsize );
+           processDescr1(ai.Addr.Variable.descr1, varnamebuf, bufsize);
            return;
         }
 
 	if( varnamebuf[0] == '\0' ){
-		// now let's try for local var
-		XArray* descr1
-		      = VG_(newXA)( VG_(malloc), "tnt.da.descr1",
-		                    VG_(free), sizeof(HChar) );
-		XArray* descr2
-		      = VG_(newXA)( VG_(malloc), "tnt.da.descr2",
-		                    VG_(free), sizeof(HChar) );
+	   // now let's try for local var
+	   XArray* descr1
+	         = VG_(newXA)( VG_(malloc), "tnt.da.descr1",
+	                       VG_(free), sizeof(HChar) );
+	   XArray* descr2
+	         = VG_(newXA)( VG_(malloc), "tnt.da.descr2",
+	                       VG_(free), sizeof(HChar) );
 
-		   (void) VG_(get_data_description)( descr1, descr2, addr );
-		   /* If there's nothing in descr1/2, free them.  Why is it safe to to
-		      VG_(indexXA) at zero here?  Because VG_(get_data_description)
-		      guarantees to zero terminate descr1/2 regardless of the outcome
-		      of the call.  So there's always at least one element in each XA
-		      after the call.
-		   */
-		   if (0 == VG_(strlen)( VG_(indexXA)( descr1, 0 ))) {
-		      VG_(deleteXA)( descr1 );
-		      descr1 = NULL;
-		   }
+	   (void) VG_(get_data_description)( descr1, descr2, addr );
+	   /* If there's nothing in descr1/2, free them.  Why is it safe to to
+	      VG_(indexXA) at zero here?  Because VG_(get_data_description)
+	      guarantees to zero terminate descr1/2 regardless of the outcome
+	      of the call.  So there's always at least one element in each XA
+	      after the call.
+	   */
+	   if (0 == VG_(strlen)( VG_(indexXA)( descr1, 0 ))) {
+	      VG_(deleteXA)( descr1 );
+	      descr1 = NULL;
+	   }
 
-		   if (0 == VG_(strlen)( VG_(indexXA)( descr2, 0 ))) {
-		      VG_(deleteXA)( descr2 );
-		      descr2 = NULL;
-		   }
+	   if (0 == VG_(strlen)( VG_(indexXA)( descr2, 0 ))) {
+	      VG_(deleteXA)( descr2 );
+	      descr2 = NULL;
+	   }
 
-		   /* Assume (assert) that VG_(get_data_description) fills in descr1
-		      before it fills in descr2 */
-		   if (descr1 == NULL)
-		      tl_assert(descr2 == NULL);
+	   /* Assume (assert) that VG_(get_data_description) fills in descr1
+	      before it fills in descr2 */
+	   if (descr1 == NULL)
+	      tl_assert(descr2 == NULL);
 
-		   /* If we could not obtain the variable name, then just use "unknownobj" */
-		   if (descr1 == NULL) {
-			   VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
-		   }
-		   else {
+	   /* If we could not obtain the variable name, then just use "unknownobj" */
+	   if (descr1 == NULL) {
+	      VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
+	   }
+	   else {
+              processDescr1(descr1, varnamebuf, bufsize);
+	   }
 
-//			   VG_(printf)("descr1: %s descr2: %s\n", (HChar*)VG_(indexXA)(descr1,0), (HChar*)VG_(indexXA)(descr2,0));
+	   if (descr1 != NULL) {
+	      VG_(deleteXA)( descr1 );
+	   }
 
-			   // descr1 will either be of the form:
-			   // (1) Location 0xbef29644 is 0 bytes inside local var "n"
-			   // or
-			   // (2) Location 0xbed42644 is 0 bytes inside n[1],
-			   // or
-			   // (3) Location 0xbebb842c is 0 bytes inside args.str,
-			   // or
-			   // (4) Location 0xbebb842c is 0 bytes inside args[1].str,
-			   // or
-			   // (5) Location 0xbebb842c is 0 bytes inside args.str[0],
-			   //
-			   // So, the terminator for a variable name is either '"' or ','
+	   if (descr2 != NULL) {
+	      VG_(deleteXA)( descr2 );
+	   }
 
-			   HChar* descr1str =  (HChar*)VG_(indexXA)(descr1, 0);
-			   const char* commonVarPrefix = "bytes inside ";
-			   char* varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix);
-
-			   tl_assert(varPrefixPtr != NULL);
-
-			   // fast forward to start of var name
-			   varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
-
-			   // disambiguate between local var or others
-			   const char* localVarPrefix = "local var ";
-			   char* varStart = VG_(strstr)(varPrefixPtr, localVarPrefix);
-			   HChar* varEnd;
-			   int varNameLen = 0;
-
-			   if (varStart == NULL) {
-				   // case 2, 3, 4 or 5
-				   varStart = varPrefixPtr;
-				   varEnd = VG_(strchr)(varStart, ',');
-//				   VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
-				   tl_assert(varEnd != NULL);
-			   }
-			   else {
-				   // case 1: local variable
-				   varStart += ((VG_(strlen)(localVarPrefix)+1)*sizeof(HChar)); // +1 to skip first "
-				   varEnd = VG_(strchr)(varStart, '"');
-			   }
-
-			   tl_assert(varStart != NULL);
-			   tl_assert(varEnd != NULL);
-
-//			   VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
-//			   VG_(printf)("varStart: %s, varEnd: %s\n", varStart, varEnd);
-
-			   varNameLen = VG_(strlen)(varStart) - VG_(strlen)(varEnd);
-			   if (varNameLen >= bufsize) {
-				   varNameLen = bufsize-1;
-			   }
-//						   VG_(printf)("first: %s, second: %s, varnamelen: %d\n", first, second, varnamelen);
-			   VG_(strncpy)(varnamebuf, varStart, varNameLen);
-			   varnamebuf[varNameLen] = '\0';
-
-////			   VG_(printf)("Addr: %x, Var: %s\n", addr, varnamebuf);
-		   }
-
-		   if (descr1 != NULL) {
-			   VG_(deleteXA)( descr1 );
-		   }
-
-		   if (descr2 != NULL) {
-			   VG_(deleteXA)( descr2 );
-		   }
-
-		   *type = Local;
+	   *type = Local;
 	}
 	else {
-		// it's a global variable
-		*type = Global;
+	   // it's a global variable
+	   *type = Global;
 
-		if (have_created_sandbox || IN_SANDBOX) {
-			tl_assert(client_binary_name != NULL);
+	   if (have_created_sandbox || IN_SANDBOX) {
+	      tl_assert(client_binary_name != NULL);
 
-			// let's determine it's location:
-			// It is external from this application if the soname 
+	// let's determine it's location:
+	// It is external from this application if the soname 
       // field in its DebugInfo is non-empty
       /*VG_(printf)("var: %s\n", varnamebuf);
       DebugInfo* di = NULL;
@@ -5110,13 +5114,13 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
       //DebugInfo* di = VG_(find_DebugInfo)(addr);
       //VG_(printf)("var: %s, di: %d\n", varnamebuf, di);
       
-			UInt pc = VG_(get_IP)(VG_(get_running_tid)());
-			const HChar *binarynamebuf;
-			VG_(get_objname)(pc, &binarynamebuf);
+	      UInt pc = VG_(get_IP)(VG_(get_running_tid)());
+	      const HChar *binarynamebuf;
+	      VG_(get_objname)(pc, &binarynamebuf);
       //VG_(printf)("var: %s, declaring binary: %s, client binary: %s\n", varnamebuf, binarynamebuf, client_binary_name);
-			*loc = (VG_(strcmp)(binarynamebuf, client_binary_name) == 0 && VG_(strstr)(varnamebuf, "@@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
+	      *loc = (VG_(strcmp)(binarynamebuf, client_binary_name) == 0 && VG_(strstr)(varnamebuf, "@@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
       //*loc = GlobalFromElsewhere;
-		}
+	   }
 	}
 }
 
@@ -5538,6 +5542,8 @@ static void tnt_pre_clo_init(void)
    // TODO: will this conflict?
    VG_(needs_syscall_wrapper)     ( tnt_pre_syscall,
                                     tnt_post_syscall );
+
+   VG_(needs_var_info)          ();
 
    init_shadow_memory();
 
