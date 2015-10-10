@@ -96,14 +96,14 @@ Taintgrind may be further controlled via client requests:
 
 On a 32-bit OS,
 
-	TNT_MAKE_MEM_TAINTED ( UInt *buffer, Size_t len )
+	TNT_MAKE_MEM_TAINTED_NAMED ( UInt *buffer, Size_t len, const HChar *name )
 	TNT_MAKE_MEM_UNTAINTED ( UInt *buffer, Size_t len )
 	TNT_START_PRINT()
 	TNT_STOP_PRINT()
 
 For example,
 
-	> cat -n sign.c
+	> cat -n sign32.c
 	1  #include "taintgrind.h"
 
 The header file taintgrind.h includes all available client requests.
@@ -125,7 +125,7 @@ The request TNT\_START\_PRINT() turns on printing and turns off the variables --
 
 	11     int a = 1000;
 	12     // Defines int a as tainted
-	13     TNT_MAKE_MEM_TAINTED(&a,4);
+	13     TNT_MAKE_MEM_TAINTED_NAMED(&a,4,"myint");
 
 The request TNT\_MAKE\_MEM\_TAINTED allows any buffer to be tainted, not just through file I/O or system calls.
 
@@ -140,35 +140,80 @@ TNT\_STOP\_PRINT() stops further output.
 
 Compile with
 
-	> gcc -Ivalgrind-x.x.x/taintgrind/ -Ivalgrind-x.xx.x/include/ -g sign.c -o sign-cl
+	> gcc -Ivalgrind-x.x.x/taintgrind/ -Ivalgrind-x.xx.x/include/ -g sign32.c -o sign32
 
 Run with
 
-	[valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind ~/sign-cl
+	[valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind ~/sign32
 
 Should give the first instruction
 
-	0x4007C0: main (sign.c:10) | t11_10756 = r32_0 I64 | 0xdeadbeefdeadbeef | 0x0 | 
+	0x8048507: main (sign32.c:10) | t12_9863 = r28_1696 I32 | 0xbeede088 | 0x0 |
 
 And the last instruction
 
-	0x400878: main (sign.c:16) | JMP 0x40089e | 0x40089e | 0x0 | 
+	0x804858B: main (sign32.c:16) | r16_8213 = 0x0 | 0x0 | 0x0 |
 
 The first tainted instruction should be
 
-	0x40083D: main (sign.c:14) | t22_6841 = LOAD I32 t19_5868 | 0x3e8 | 0xffffffff | t22_6841 <- ffefffda8_unknownobj_0
+	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | 0xffffffff | t19_9142 <- a_1
 
 The 2 tainted if-gotos should come up as
 
-	0x400730: get_sign (sign.c:3) | IF t40_1543 GOTO 0x400732 | 0x0 | 0x1 | t40_1543
-	0x40073D: get_sign (sign.c:4) | IF t8_9848 GOTO 0x40073f | 0x0 | 0x1 | t8_9848
+	0x80484A4: get_sign (sign32.c:3) | IF t28_3680 GOTO 0x80484a6 | 0x0 | 0x1 | t28_3680
+	0x80484B1: get_sign (sign32.c:4) | IF t6_14297 GOTO 0x80484b3 | 0x0 | 0x1 | t6_14297
 
 As expected, the conditions are both false, and are thus 0.
 Finally the return value of get\_sign should be
 
-	0x400746: get_sign (sign.c:5) | r16_3 = 0x1 | 0x1 | 0x0 | 
+	0x80484BA: get_sign (sign32.c:5) | r8_13565 = 0x1 | 0x1 | 0x0 | 
 
 
+
+SMT-Libv2 output
+----------------
+
+Taintgrind can be made to generate SMT-Libv2 formulae to solve for alternative input values whenever tainted conditional branches and load/store addresses are encountered via the --smt2=yes option.
+
+Using the sign32.c example, run with
+
+        [valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind --smt2=yes ~/sign32
+
+Save to sign32.smt2 with
+
+        [valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind --smt2=yes ~/sign32 2>&1 | grep -v "==" | tee sign32.smt2
+
+Use z3 (https://github.com/Z3Prover/z3) to solve for alternative input values with
+
+	> z3 sign32.smt2 | grep -A 1 myint
+
+Which should give
+
+	  (define-fun myint0 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint1 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint3 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint2 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint1 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint0 () (_ BitVec 8)
+	    #x00)
+	--
+	  (define-fun myint3 () (_ BitVec 8)
+	    #x80)
+	--
+	  (define-fun myint2 () (_ BitVec 8)
+	    #x00)
+
+The two alternative values for myint are 0x00000000 and 0x80000000 (-2^32 + 1).
 
 License
 -------
