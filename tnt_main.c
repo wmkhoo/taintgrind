@@ -5004,14 +5004,6 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
         const HChar *cvarname;
 
-	// Seems to get exe name?
-	if ( VG_(get_objname)(addr, &cvarname) )
-	{
-	   //VG_(printf)("varname %s\n", varnamebuf);
-           VG_(strncpy)(varnamebuf, cvarname, bufsize);
-	   return;
-	}
-
 	// first try to see if it is a global var
 	PtrdiffT pdt;
 	if ( VG_(get_datasym_and_offset)( addr, &cvarname, &pdt ) )
@@ -5035,9 +5027,8 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
            //VG_(printf)("descr2 %s\n", VG_(indexXA)(ai.Addr.Variable.descr2,0) );
            processDescr1(ai.Addr.Variable.descr1, varnamebuf, bufsize);
            return;
-        }
-
-	if( varnamebuf[0] == '\0' ){
+        } else //if ( ai.tag == Addr_Stack )
+        {
 	   // now let's try for local var
 	   XArray* descr1
 	         = VG_(newXA)( VG_(malloc), "tnt.da.descr1",
@@ -5086,42 +5077,45 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
 	   *type = Local;
 	}
-	else {
-	   // it's a global variable
-	   *type = Global;
-
-	   if (have_created_sandbox || IN_SANDBOX) {
-	      tl_assert(client_binary_name != NULL);
-
-	// let's determine it's location:
-	// It is external from this application if the soname 
-      // field in its DebugInfo is non-empty
-      /*VG_(printf)("var: %s\n", varnamebuf);
-      DebugInfo* di = NULL;
-      while (di = VG_(next_DebugInfo)(di)) {
-        VG_(printf)("  soname: %s, filename: %s, handle: %d\n", VG_(DebugInfo_get_soname)(di), VG_(DebugInfo_get_filename)(di), VG_(DebugInfo_get_handle)(di));
-        XArray* gbs = VG_(di_get_global_blocks_from_dihandle)(VG_(DebugInfo_get_handle)(di), True);
-        //tl_assert(gbs);
-        int i, n = VG_(sizeXA)( gbs );
-        VG_(printf)("  n: %d\n", n);
-        for (i = 0; i < n; i++) {
-          GlobalBlock* gbp;
-          GlobalBlock* gb = VG_(indexXA)( gbs, i );
-          if (0) VG_(printf)("   new Global size %2lu at %#lx:  %s %s\n",
-                             gb->szB, gb->addr, gb->soname, gb->name );
-        }
-      }*/
-      //DebugInfo* di = VG_(find_DebugInfo)(addr);
-      //VG_(printf)("var: %s, di: %d\n", varnamebuf, di);
-      
-	      UInt pc = VG_(get_IP)(VG_(get_running_tid)());
-	      const HChar *binarynamebuf;
-	      VG_(get_objname)(pc, &binarynamebuf);
-      //VG_(printf)("var: %s, declaring binary: %s, client binary: %s\n", varnamebuf, binarynamebuf, client_binary_name);
-	      *loc = (VG_(strcmp)(binarynamebuf, client_binary_name) == 0 && VG_(strstr)(varnamebuf, "@@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
-      //*loc = GlobalFromElsewhere;
-	   }
-	}
+//	else {
+//           VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
+//           return;
+//        }
+//	   // it's a global variable
+//	   *type = Global;
+//
+//	   if (have_created_sandbox || IN_SANDBOX) {
+//	      tl_assert(client_binary_name != NULL);
+//
+//	// let's determine it's location:
+//	// It is external from this application if the soname 
+//      // field in its DebugInfo is non-empty
+//      /*VG_(printf)("var: %s\n", varnamebuf);
+//      DebugInfo* di = NULL;
+//      while (di = VG_(next_DebugInfo)(di)) {
+//        VG_(printf)("  soname: %s, filename: %s, handle: %d\n", VG_(DebugInfo_get_soname)(di), VG_(DebugInfo_get_filename)(di), VG_(DebugInfo_get_handle)(di));
+//        XArray* gbs = VG_(di_get_global_blocks_from_dihandle)(VG_(DebugInfo_get_handle)(di), True);
+//        //tl_assert(gbs);
+//        int i, n = VG_(sizeXA)( gbs );
+//        VG_(printf)("  n: %d\n", n);
+//        for (i = 0; i < n; i++) {
+//          GlobalBlock* gbp;
+//          GlobalBlock* gb = VG_(indexXA)( gbs, i );
+//          if (0) VG_(printf)("   new Global size %2lu at %#lx:  %s %s\n",
+//                             gb->szB, gb->addr, gb->soname, gb->name );
+//        }
+//      }*/
+//      //DebugInfo* di = VG_(find_DebugInfo)(addr);
+//      //VG_(printf)("var: %s, di: %d\n", varnamebuf, di);
+//      
+//	      UInt pc = VG_(get_IP)(VG_(get_running_tid)());
+//	      const HChar *binarynamebuf;
+//	      VG_(get_objname)(pc, &binarynamebuf);
+//      //VG_(printf)("var: %s, declaring binary: %s, client binary: %s\n", varnamebuf, binarynamebuf, client_binary_name);
+//	      *loc = (VG_(strcmp)(binarynamebuf, client_binary_name) == 0 && VG_(strstr)(varnamebuf, "@@") == NULL) ? GlobalFromApplication : GlobalFromElsewhere;
+//      //*loc = GlobalFromElsewhere;
+//	   }
+//	}
 }
 
 
