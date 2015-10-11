@@ -8,7 +8,7 @@
 ##------------------------------------------------------------##
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([Valgrind],[3.10.1],[valgrind-users@lists.sourceforge.net])
+AC_INIT([Valgrind],[3.11.0],[valgrind-users@lists.sourceforge.net])
 AC_CONFIG_SRCDIR(tnt_main.c)
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -16,10 +16,15 @@ AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_MAINTAINER_MODE
 
 #----------------------------------------------------------------------------
+# Do NOT modify these flags here. Except in feature tests in which case
+# the original values must be properly restored.
+#----------------------------------------------------------------------------
+CFLAGS="$CFLAGS"
+CXXFLAGS="$CXXFLAGS"
+
+#----------------------------------------------------------------------------
 # Checks for various programs.
 #----------------------------------------------------------------------------
-CFLAGS="-Wno-long-long $CFLAGS"
-CXXFLAGS="-Wno-long-long $CXXFLAGS"
 
 AC_PROG_LN_S
 AC_PROG_CC
@@ -115,12 +120,19 @@ AC_MSG_CHECKING([for a supported version of gcc])
 # FreeBSD clang: FreeBSD clang version 3.1 (branches/release_31 156863) 20120523
 #
 [
-if test "x`${CC} --version | $SED -n -e 's/.*\(clang\) version.*/\1/p'`" = "xclang" ; then
+if test "x`${CC} --version | $SED -n -e 's/.*\Apple \(LLVM\) version.*clang.*/\1/p'`" = "xLLVM" ;
+then
+    is_clang="applellvm"
+    gcc_version=`${CC} --version | $SED -n -e 's/.*LLVM version \([0-9.]*\).*$/\1/p'`
+elif test "x`${CC} --version | $SED -n -e 's/.*\(clang\) version.*/\1/p'`" = "xclang" ; 
+then
     is_clang="clang"
     # Don't use -dumpversion with clang: it will always produce "4.2.1".
     gcc_version=`${CC} --version | $SED -n -e 's/.*clang version \([0-9.]*\).*$/\1/p'`
-    CFLAGS="$CFLAGS -Wno-tautological-compare -Wno-cast-align -Wno-self-assign"
-    CXXFLAGS="$CXXFLAGS -Wno-tautological-compare -Wno-cast-align -Wno-self-assign"
+elif test "x`${CC} --version | $SED -n -e 's/icc.*\(ICC\).*/\1/p'`" = "xICC" ;
+then
+    is_clang="icc"
+    gcc_version=`${CC} -dumpversion 2>/dev/null`
 else
     is_clang="notclang"
     gcc_version=`${CC} -dumpversion 2>/dev/null`
@@ -129,24 +141,27 @@ else
     fi
 fi
 ]
-AM_CONDITIONAL(COMPILER_IS_CLANG, test $is_clang = clang)
+AM_CONDITIONAL(COMPILER_IS_CLANG, test $is_clang = clang -o $is_clang = applellvm)
+AM_CONDITIONAL(COMPILER_IS_ICC, test $is_clang = icc)
 
+# Note: m4 arguments are quoted with [ and ] so square brackets in shell
+# statements have to be quoted.
 case "${is_clang}-${gcc_version}" in
-     notclang-3.*)
-	AC_MSG_RESULT([ok (${gcc_version})])
-	;;
-     notclang-4.*)
-	AC_MSG_RESULT([ok (${gcc_version})])
-	;;
-     notclang-5.*)
-	AC_MSG_RESULT([ok (${gcc_version})])
-	;;
-     clang-2.9|clang-3.*|clang-4.*)
-	AC_MSG_RESULT([ok (clang-${gcc_version})])
-	;;
+     applellvm-5.1|applellvm-6.*|applellvm-7.*)
+        AC_MSG_RESULT([ok (Apple LLVM version ${gcc_version})])
+        ;;
+     icc-1[[3-9]].*)
+        AC_MSG_RESULT([ok (ICC version ${gcc_version})])
+        ;;
+     notclang-[[3-9]].*|notclang-[[1-9][0-9]]*)
+        AC_MSG_RESULT([ok (${gcc_version})])
+        ;;
+     clang-2.9|clang-[[3-9]].*|clang-[[1-9][0-9]]*)
+        AC_MSG_RESULT([ok (clang-${gcc_version})])
+        ;;
      *)
 	AC_MSG_RESULT([no (${gcc_version})])
-	AC_MSG_ERROR([please use gcc >= 3.0 or clang >= 2.9])
+	AC_MSG_ERROR([please use gcc >= 3.0 or clang >= 2.9 or icc >= 13.0])
 	;;
 esac
 
@@ -246,6 +261,12 @@ case "${host_cpu}" in
         AC_MSG_RESULT([ok (${host_cpu})])
         ARCH_MAX="mips64"
         ;;
+
+     tilegx)
+        AC_MSG_RESULT([ok (${host_cpu})])
+        ARCH_MAX="tilegx"
+        ;;
+
      *) 
 	AC_MSG_RESULT([no (${host_cpu})])
 	AC_MSG_ERROR([Unsupported host architecture. Sorry])
@@ -303,15 +324,11 @@ case "${host_os}" in
         kernel=`uname -r`
 
         case "${kernel}" in
-             2.6.*|3.*) 
-        	    AC_MSG_RESULT([2.6.x/3.x family (${kernel})])
-        	    AC_DEFINE([KERNEL_2_6], 1, [Define to 1 if you're using Linux 2.6.x or Linux 3.x])
-        	    ;;
+             0.*|1.*|2.0.*|2.1.*|2.2.*|2.3.*|2.4.*|2.5.*)
+                    AC_MSG_RESULT([unsupported (${kernel})])
+                    AC_MSG_ERROR([Valgrind needs a Linux kernel >= 2.6])
+                    ;;
 
-             2.4.*) 
-        	    AC_MSG_RESULT([2.4 family (${kernel})])
-        	    AC_DEFINE([KERNEL_2_4], 1, [Define to 1 if you're using Linux 2.4.x])
-        	    ;;
 
              *) 
         	    AC_MSG_RESULT([unsupported (${kernel})])
@@ -329,6 +346,8 @@ case "${host_os}" in
         AC_DEFINE([DARWIN_10_7], 100700, [DARWIN_VERS value for Mac OS X 10.7])
         AC_DEFINE([DARWIN_10_8], 100800, [DARWIN_VERS value for Mac OS X 10.8])
         AC_DEFINE([DARWIN_10_9], 100900, [DARWIN_VERS value for Mac OS X 10.9])
+        AC_DEFINE([DARWIN_10_10], 101000, [DARWIN_VERS value for Mac OS X 10.10])
+        AC_DEFINE([DARWIN_10_11], 101100, [DARWIN_VERS value for Mac OS X 10.11])
 
 	AC_MSG_CHECKING([for the kernel version])
 	kernel=`uname -r`
@@ -380,11 +399,35 @@ case "${host_os}" in
 		  DEFAULT_SUPP="darwin13.supp ${DEFAULT_SUPP}"
 		  DEFAULT_SUPP="darwin10-drd.supp ${DEFAULT_SUPP}"
 		  ;;
+             14.*)
+                  AC_MSG_RESULT([Darwin 14.x (${kernel}) / Mac OS X 10.10 Yosemite])
+                  AC_DEFINE([DARWIN_VERS], DARWIN_10_10, [Darwin / Mac OS X version])
+                  DEFAULT_SUPP="darwin14.supp ${DEFAULT_SUPP}"
+                  DEFAULT_SUPP="darwin10-drd.supp ${DEFAULT_SUPP}"
+                  ;;
+             15.*)
+                  AC_MSG_RESULT([Darwin 15.x (${kernel}) / Mac OS X 10.11 El Capitan])
+                  AC_DEFINE([DARWIN_VERS], DARWIN_10_11, [Darwin / Mac OS X version])
+                  DEFAULT_SUPP="darwin15.supp ${DEFAULT_SUPP}"
+                  DEFAULT_SUPP="darwin10-drd.supp ${DEFAULT_SUPP}"
+                  ;;
              *) 
 		  AC_MSG_RESULT([unsupported (${kernel})])
-		  AC_MSG_ERROR([Valgrind works on Darwin 10.x, 11.x, 12.x and 13.x (Mac OS X 10.6/7/8/9)])
+		  AC_MSG_ERROR([Valgrind works on Darwin 10.x, 11.x, 12.x, 13.x, 14.x and 15.x (Mac OS X 10.6/7/8/9/10/11)])
 		  ;;
 	esac
+        ;;
+
+     solaris2.11*)
+        AC_MSG_RESULT([ok (${host_os})])
+        VGCONF_OS="solaris"
+        DEFAULT_SUPP="solaris11.supp ${DEFAULT_SUPP}"
+        ;;
+
+     solaris2.12*)
+        AC_MSG_RESULT([ok (${host_os})])
+        VGCONF_OS="solaris"
+        DEFAULT_SUPP="solaris12.supp ${DEFAULT_SUPP}"
         ;;
 
      *) 
@@ -400,7 +443,7 @@ esac
 # does not support building 32 bit programs
 
 case "$ARCH_MAX-$VGCONF_OS" in
-     amd64-linux|ppc64be-linux|arm64-linux)
+     amd64-linux|ppc64be-linux|arm64-linux|amd64-solaris)
         AC_MSG_CHECKING([for 32 bit build support])
         safe_CFLAGS=$CFLAGS
         CFLAGS="-m32"
@@ -667,6 +710,57 @@ case "$ARCH_MAX-$VGCONF_OS" in
         valt_load_address_sec_inner="0xUNSET"
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
         ;;
+     tilegx-linux)
+        VGCONF_ARCH_PRI="tilegx"
+        VGCONF_ARCH_SEC=""
+        VGCONF_PLATFORM_PRI_CAPS="TILEGX_LINUX"
+        VGCONF_PLATFORM_SEC_CAPS=""
+        valt_load_address_pri_norml="0x38000000"
+        valt_load_address_pri_inner="0x28000000"
+        valt_load_address_sec_norml="0xUNSET"
+        valt_load_address_sec_inner="0xUNSET"
+        AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
+        ;;
+     x86-solaris)
+        VGCONF_ARCH_PRI="x86"
+        VGCONF_ARCH_SEC=""
+        VGCONF_PLATFORM_PRI_CAPS="X86_SOLARIS"
+        VGCONF_PLATFORM_SEC_CAPS=""
+        valt_load_address_pri_norml="0x38000000"
+        valt_load_address_pri_inner="0x28000000"
+        valt_load_address_sec_norml="0xUNSET"
+        valt_load_address_sec_inner="0xUNSET"
+        AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
+        ;;
+     amd64-solaris)
+        valt_load_address_sec_norml="0xUNSET"
+        valt_load_address_sec_inner="0xUNSET"
+        if test x$vg_cv_only64bit = xyes; then
+           VGCONF_ARCH_PRI="amd64"
+           VGCONF_ARCH_SEC=""
+           VGCONF_PLATFORM_PRI_CAPS="AMD64_SOLARIS"
+           VGCONF_PLATFORM_SEC_CAPS=""
+           valt_load_address_pri_norml="0x38000000"
+           valt_load_address_pri_inner="0x28000000"
+        elif test x$vg_cv_only32bit = xyes; then
+           VGCONF_ARCH_PRI="x86"
+           VGCONF_ARCH_SEC=""
+           VGCONF_PLATFORM_PRI_CAPS="X86_SOLARIS"
+           VGCONF_PLATFORM_SEC_CAPS=""
+           valt_load_address_pri_norml="0x38000000"
+           valt_load_address_pri_inner="0x28000000"
+        else
+           VGCONF_ARCH_PRI="amd64"
+           VGCONF_ARCH_SEC="x86"
+           VGCONF_PLATFORM_PRI_CAPS="AMD64_SOLARIS"
+           VGCONF_PLATFORM_SEC_CAPS="X86_SOLARIS"
+           valt_load_address_pri_norml="0x38000000"
+           valt_load_address_pri_inner="0x28000000"
+           valt_load_address_sec_norml="0x38000000"
+           valt_load_address_sec_inner="0x28000000"
+        fi
+        AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
+        ;;
     *)
         VGCONF_ARCH_PRI="unknown"
         VGCONF_ARCH_SEC="unknown"
@@ -689,10 +783,13 @@ AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_X86,
                test x$VGCONF_PLATFORM_PRI_CAPS = xX86_LINUX \
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_LINUX \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN \
-                 -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_DARWIN )
+                 -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_DARWIN \
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS \
+                 -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_SOLARIS )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_AMD64, 
                test x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_LINUX \
-                 -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_DARWIN )
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_DARWIN \
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_SOLARIS )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_PPC32, 
                test x$VGCONF_PLATFORM_PRI_CAPS = xPPC32_LINUX \ 
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xPPC32_LINUX )
@@ -710,6 +807,8 @@ AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS32,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS64,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX ) 
+AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_TILEGX,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xTILEGX_LINUX )
 
 # Set up VGCONF_PLATFORMS_INCLUDE_<platform>.  Either one or two of these
 # become defined.
@@ -737,12 +836,18 @@ AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS32_LINUX,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS64_LINUX,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX)
+AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_TILEGX_LINUX,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xTILEGX_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_X86_DARWIN,   
                test x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN \
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_DARWIN)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_AMD64_DARWIN, 
                test x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_DARWIN)
-
+AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_X86_SOLARIS,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS \
+                 -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_SOLARIS)
+AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_AMD64_SOLARIS,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_SOLARIS)
 
 # Similarly, set up VGCONF_OS_IS_<os>.  Exactly one of these becomes defined.
 # Relies on the assumption that the primary and secondary targets are 
@@ -757,10 +862,14 @@ AM_CONDITIONAL(VGCONF_OS_IS_LINUX,
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xARM64_LINUX \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xS390X_LINUX \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
-                 -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX)
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX) \
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xTILEGX_LINUX
 AM_CONDITIONAL(VGCONF_OS_IS_DARWIN,
                test x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_DARWIN)
+AM_CONDITIONAL(VGCONF_OS_IS_SOLARIS,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS \
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_SOLARIS)
 
 
 # Sometimes, in the Makefile.am files, it's useful to know whether or not
@@ -804,6 +913,16 @@ else
     VALT_LOAD_ADDRESS_SEC=$valt_load_address_sec_norml
 fi
 
+#----------------------------------------------------------------------------
+# Undefined behaviour sanitiser
+#----------------------------------------------------------------------------
+# Check whether we should build with the undefined beahviour sanitiser.
+
+AC_CACHE_CHECK([for using the undefined behaviour sanitiser], vg_cv_ubsan,
+   [AC_ARG_ENABLE(ubsan,
+      [  --enable-ubsan          enables the undefined behaviour sanitiser],
+      [vg_cv_ubsan=$enableval],
+      [vg_cv_ubsan=no])])
 
 #----------------------------------------------------------------------------
 # Define MIPS_PAGE_SHIFT (--with-pagesize)
@@ -878,146 +997,52 @@ AC_EGREP_CPP([BIONIC_LIBC], [
 ],
 GLIBC_VERSION="bionic")
 
+# there is only one version of libc on Solaris
+if test x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS \
+     -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_SOLARIS; then
+    GLIBC_VERSION="solaris"
+fi
 
-AC_MSG_CHECKING([the GLIBC_VERSION version])
+
+AC_MSG_CHECKING([the glibc version])
 
 case "${GLIBC_VERSION}" in
      2.2)
-	AC_MSG_RESULT(2.2 family)
-	AC_DEFINE([GLIBC_2_2], 1, [Define to 1 if you're using glibc 2.2.x])
+	AC_MSG_RESULT(${GLIBC_VERSION} family)
 	DEFAULT_SUPP="glibc-2.2.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.2-LinuxThreads-helgrind.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
 	;;
-
-     2.3)
-	AC_MSG_RESULT(2.3 family)
-	AC_DEFINE([GLIBC_2_3], 1, [Define to 1 if you're using glibc 2.3.x])
-	DEFAULT_SUPP="glibc-2.3.supp ${DEFAULT_SUPP}"
+     2.[[3-6]])
+	AC_MSG_RESULT(${GLIBC_VERSION} family)
+	DEFAULT_SUPP="glibc-${GLIBC_VERSION}.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
 	;;
-
-     2.4)
-	AC_MSG_RESULT(2.4 family)
-	AC_DEFINE([GLIBC_2_4], 1, [Define to 1 if you're using glibc 2.4.x])
-	DEFAULT_SUPP="glibc-2.4.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-
-     2.5)
-	AC_MSG_RESULT(2.5 family)
-	AC_DEFINE([GLIBC_2_5], 1, [Define to 1 if you're using glibc 2.5.x])
-	DEFAULT_SUPP="glibc-2.5.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.6)
-	AC_MSG_RESULT(2.6 family)
-	AC_DEFINE([GLIBC_2_6], 1, [Define to 1 if you're using glibc 2.6.x])
-	DEFAULT_SUPP="glibc-2.6.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.7)
-	AC_MSG_RESULT(2.7 family)
-	AC_DEFINE([GLIBC_2_7], 1, [Define to 1 if you're using glibc 2.7.x])
+     2.[[7-9]])
+	AC_MSG_RESULT(${GLIBC_VERSION} family)
 	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
 	;;
-     2.8)
-	AC_MSG_RESULT(2.8 family)
-	AC_DEFINE([GLIBC_2_8], 1, [Define to 1 if you're using glibc 2.8.x])
+     2.10|2.11)
+	AC_MSG_RESULT(${GLIBC_VERSION} family)
+        AC_DEFINE([GLIBC_MANDATORY_STRLEN_REDIRECT], 1,
+                  [Define to 1 if strlen() has been optimized heavily (amd64 glibc >= 2.10)])
 	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
 	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
 	;;
-     2.9)
-	AC_MSG_RESULT(2.9 family)
-	AC_DEFINE([GLIBC_2_9], 1, [Define to 1 if you're using glibc 2.9.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.10)
-	AC_MSG_RESULT(2.10 family)
-	AC_DEFINE([GLIBC_2_10], 1, [Define to 1 if you're using glibc 2.10.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.11)
-	AC_MSG_RESULT(2.11 family)
-	AC_DEFINE([GLIBC_2_11], 1, [Define to 1 if you're using glibc 2.11.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
+     2.*)
+        AC_MSG_RESULT(${GLIBC_VERSION} family)
+        AC_DEFINE([GLIBC_MANDATORY_STRLEN_REDIRECT], 1,
+                  [Define to 1 if strlen() has been optimized heavily (amd64 glibc >= 2.10)])
+        AC_DEFINE([GLIBC_MANDATORY_INDEX_AND_STRLEN_REDIRECT], 1,
+                  [Define to 1 if index() and strlen() have been optimized heavily (x86 glibc >= 2.12)])
+        DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
+        DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
+        DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
         ;;
-     2.12)
-	AC_MSG_RESULT(2.12 family)
-	AC_DEFINE([GLIBC_2_12], 1, [Define to 1 if you're using glibc 2.12.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.13)
-	AC_MSG_RESULT(2.13 family)
-	AC_DEFINE([GLIBC_2_13], 1, [Define to 1 if you're using glibc 2.13.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.14)
-	AC_MSG_RESULT(2.14 family)
-	AC_DEFINE([GLIBC_2_14], 1, [Define to 1 if you're using glibc 2.14.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.15)
-	AC_MSG_RESULT(2.15 family)
-	AC_DEFINE([GLIBC_2_15], 1, [Define to 1 if you're using glibc 2.15.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.16)
-	AC_MSG_RESULT(2.16 family)
-	AC_DEFINE([GLIBC_2_16], 1, [Define to 1 if you're using glibc 2.16.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.17)
-	AC_MSG_RESULT(2.17 family)
-	AC_DEFINE([GLIBC_2_17], 1, [Define to 1 if you're using glibc 2.17.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.18)
-	AC_MSG_RESULT(2.18 family)
-	AC_DEFINE([GLIBC_2_18], 1, [Define to 1 if you're using glibc 2.18.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.19)
-	AC_MSG_RESULT(2.19 family)
-	AC_DEFINE([GLIBC_2_19], 1, [Define to 1 if you're using glibc 2.19.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
-     2.20)
-	AC_MSG_RESULT(2.20 family)
-	AC_DEFINE([GLIBC_2_20], 1, [Define to 1 if you're using glibc 2.20.x])
-	DEFAULT_SUPP="glibc-2.X.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.34567-NPTL-helgrind.supp ${DEFAULT_SUPP}"
-	DEFAULT_SUPP="glibc-2.X-drd.supp ${DEFAULT_SUPP}"
-	;;
      darwin)
 	AC_MSG_RESULT(Darwin)
 	AC_DEFINE([DARWIN_LIBC], 1, [Define to 1 if you're using Darwin])
@@ -1028,26 +1053,32 @@ case "${GLIBC_VERSION}" in
 	AC_DEFINE([BIONIC_LIBC], 1, [Define to 1 if you're using Bionic])
 	DEFAULT_SUPP="bionic.supp ${DEFAULT_SUPP}"
 	;;
-
-     *)
+     solaris)
+        AC_MSG_RESULT(Solaris)
+        # DEFAULT_SUPP set in host_os switch-case above.
+        # No other suppression file is used.
+        ;;
+     2.0|2.1|*)
 	AC_MSG_RESULT([unsupported version ${GLIBC_VERSION}])
-	AC_MSG_ERROR([Valgrind requires glibc version 2.2 - 2.19])
-	AC_MSG_ERROR([or Darwin or Bionic libc])
+	AC_MSG_ERROR([Valgrind requires glibc version 2.2 or later,])
+	AC_MSG_ERROR([Darwin libc, Bionic libc or Solaris libc])
 	;;
 esac
 
 AC_SUBST(GLIBC_VERSION)
 
 
-# Add default suppressions for the X client libraries.  Make no
-# attempt to detect whether such libraries are installed on the
-# build machine (or even if any X facilities are present); just
-# add the suppressions antidisirregardless.
-DEFAULT_SUPP="xfree-4.supp ${DEFAULT_SUPP}"
-DEFAULT_SUPP="xfree-3.supp ${DEFAULT_SUPP}"
-
-# Add glibc and X11 suppressions for exp-sgcheck
-DEFAULT_SUPP="exp-sgcheck.supp ${DEFAULT_SUPP}"
+if test "$VGCONF_OS" != "solaris"; then
+   # Add default suppressions for the X client libraries.  Make no
+   # attempt to detect whether such libraries are installed on the
+   # build machine (or even if any X facilities are present); just
+   # add the suppressions antidisirregardless.
+   DEFAULT_SUPP="xfree-4.supp ${DEFAULT_SUPP}"
+   DEFAULT_SUPP="xfree-3.supp ${DEFAULT_SUPP}"
+   
+   # Add glibc and X11 suppressions for exp-sgcheck
+   DEFAULT_SUPP="exp-sgcheck.supp ${DEFAULT_SUPP}"
+fi
 
 
 #----------------------------------------------------------------------------

@@ -84,7 +84,8 @@ endif
 
 #VGPRELOAD_TAINTGRIND_SOURCES_COMMON = tnt_replace_strmem.c
 
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_SOURCES      =
+vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_SOURCES      = \
+        $(VGPRELOAD_TAINTGRIND_SOURCES_COMMON)
 vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_CPPFLAGS     = \
 	$(AM_CPPFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
 vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_CFLAGS       = \
