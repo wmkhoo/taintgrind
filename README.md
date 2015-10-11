@@ -181,7 +181,7 @@ Using the sign32.c example, run with
 
 Save to sign32.smt2 with
 
-        [valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind --smt2=yes ~/sign32 2>&1 | grep -v "==" | tee sign32.smt2
+        [valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind --smt2=yes ~/sign32 2>&1 >/dev/null | grep -v "==" | tee sign32.smt2
 
 Use z3 (https://github.com/Z3Prover/z3) to solve for alternative input values with
 
