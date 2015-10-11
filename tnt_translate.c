@@ -2017,6 +2017,35 @@ IRAtom* binary32Fx8_w_rm ( MCEnv* mce, IRAtom* vRM,
    return t1;
 }
 
+/* --- 64Fx2 unary FP ops, with rounding mode --- */
+
+static
+IRAtom* unary64Fx2_w_rm ( MCEnv* mce, IRAtom* vRM, IRAtom* vatomX )
+{
+   /* Same scheme as binary64Fx2_w_rm. */
+   // "do" the vector arg
+   IRAtom* t1 = unary64Fx2(mce, vatomX);
+   // PCast the RM, and widen it to 128 bits
+   IRAtom* t2 = mkPCastTo(mce, Ity_V128, vRM);
+   // Roll it into the result
+   t1 = mkUifUV128(mce, t1, t2);
+   return t1;
+}
+
+/* --- ... and ... 32Fx4 versions of the same --- */
+
+static
+IRAtom* unary32Fx4_w_rm ( MCEnv* mce, IRAtom* vRM, IRAtom* vatomX )
+{
+   /* Same scheme as unary32Fx4_w_rm. */
+   IRAtom* t1 = unary32Fx4(mce, vatomX);
+   // PCast the RM, and widen it to 128 bits
+   IRAtom* t2 = mkPCastTo(mce, Ity_V128, vRM);
+   // Roll it into the result
+   t1 = mkUifUV128(mce, t1, t2);
+   return t1;
+}
+
 
 /* --- --- Vector saturated narrowing --- --- */
 static
@@ -2746,6 +2775,11 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
 
       /* V128-bit SIMD */
 
+      case Iop_Sqrt32Fx4:
+         return unary32Fx4_w_rm(mce, vatom1, vatom2);
+      case Iop_Sqrt64Fx2:
+         return unary64Fx2_w_rm(mce, vatom1, vatom2);
+
       case Iop_ShrN8x16:
       case Iop_ShrN16x8:
       case Iop_ShrN32x4:
@@ -2770,6 +2804,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Sar8x16:
       case Iop_Sal8x16:
       case Iop_Rol8x16:
+      case Iop_Sh8Sx16:
+      case Iop_Sh8Ux16:
          return mkUifUV128(mce,
                    assignNew('V', mce, Ity_V128, binop(op, vatom1, atom2)),
                    mkPCast8x16(mce,vatom2)
@@ -2780,6 +2816,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Sar16x8:
       case Iop_Sal16x8:
       case Iop_Rol16x8:
+      case Iop_Sh16Sx8:
+      case Iop_Sh16Ux8:
          return mkUifUV128(mce,
                    assignNew('V', mce, Ity_V128, binop(op, vatom1, atom2)),
                    mkPCast16x8(mce,vatom2)
@@ -2790,7 +2828,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Sar32x4:
       case Iop_Sal32x4:
       case Iop_Rol32x4:
-      case Iop_Rol64x2:
+      case Iop_Sh32Sx4:
+      case Iop_Sh32Ux4:
          return mkUifUV128(mce,
                    assignNew('V', mce, Ity_V128, binop(op, vatom1, atom2)),
                    mkPCast32x4(mce,vatom2)
@@ -2800,10 +2839,31 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Shr64x2:
       case Iop_Sar64x2:
       case Iop_Sal64x2:
+      case Iop_Rol64x2:
+      case Iop_Sh64Sx2:
+      case Iop_Sh64Ux2:
          return mkUifUV128(mce,
                    assignNew('V', mce, Ity_V128, binop(op, vatom1, atom2)),
                    mkPCast64x2(mce,vatom2)
                 );
+
+      /* For the rounding variants of bi-di vector x vector shifts, the
+         rounding adjustment can cause undefinedness to propagate through
+         the entire lane, in the worst case.  Too complex to handle 
+         properly .. just UifU the arguments and then PCast them.
+         Suboptimal but safe. */
+      case Iop_Rsh8Sx16:
+      case Iop_Rsh8Ux16:
+         return binary8Ix16(mce, vatom1, vatom2);
+      case Iop_Rsh16Sx8:
+      case Iop_Rsh16Ux8:
+         return binary16Ix8(mce, vatom1, vatom2);
+      case Iop_Rsh32Sx4:
+      case Iop_Rsh32Ux4:
+         return binary32Ix4(mce, vatom1, vatom2);
+      case Iop_Rsh64Sx2:
+      case Iop_Rsh64Ux2:
+         return binary64Ix2(mce, vatom1, vatom2);
 
       case Iop_F32ToFixed32Ux4_RZ:
       case Iop_F32ToFixed32Sx4_RZ:
@@ -2833,6 +2893,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Avg8Sx16:
       case Iop_QAdd8Ux16:
       case Iop_QAdd8Sx16:
+      case Iop_QAddExtUSsatSS8x16:
+      case Iop_QAddExtSUsatUU8x16:
       case Iop_QSal8x16:
       case Iop_QShl8x16:
       case Iop_Add8x16:
@@ -2858,6 +2920,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Avg16Sx8:
       case Iop_QAdd16Ux8:
       case Iop_QAdd16Sx8:
+      case Iop_QAddExtUSsatSS16x8:
+      case Iop_QAddExtSUsatUU16x8:
       case Iop_QSal16x8:
       case Iop_QShl16x8:
       case Iop_Add16x8:
@@ -2874,6 +2938,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_QAdd32Ux4:
       case Iop_QSub32Sx4:
       case Iop_QSub32Ux4:
+      case Iop_QAddExtUSsatSS32x4:
+      case Iop_QAddExtSUsatUU32x4:
       case Iop_QSal32x4:
       case Iop_QShl32x4:
       case Iop_Avg32Ux4:
@@ -2904,6 +2970,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_QAdd64Sx2:
       case Iop_QSub64Ux2:
       case Iop_QSub64Sx2:
+      case Iop_QAddExtUSsatSS64x2:
+      case Iop_QAddExtSUsatUU64x2:
       case Iop_PolynomialMulAdd64x2:
       case Iop_CipherV128:
       case Iop_CipherLV128:
@@ -2921,16 +2989,14 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_QNarrowBin16Sto8Ux16:
          return vectorNarrowBinV128(mce, op, vatom1, vatom2);
 
-      case Iop_Sub64Fx2:
-      case Iop_Mul64Fx2:
       case Iop_Min64Fx2:
       case Iop_Max64Fx2:
-      case Iop_Div64Fx2:
       case Iop_CmpLT64Fx2:
       case Iop_CmpLE64Fx2:
       case Iop_CmpEQ64Fx2:
       case Iop_CmpUN64Fx2:
-      case Iop_Add64Fx2:
+      case Iop_RecipStep64Fx2:
+      case Iop_RSqrtStep64Fx2:
          return binary64Fx2(mce, vatom1, vatom2);      
 
       case Iop_Sub64F0x2:
@@ -3233,18 +3299,10 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
 
       /* V256-bit SIMD */
 
-      case Iop_Add64Fx4:
-      case Iop_Sub64Fx4:
-      case Iop_Mul64Fx4:
-      case Iop_Div64Fx4:
       case Iop_Max64Fx4:
       case Iop_Min64Fx4:
          return binary64Fx4(mce, vatom1, vatom2);
 
-      case Iop_Add32Fx8:
-      case Iop_Sub32Fx8:
-      case Iop_Mul32Fx8:
-      case Iop_Div32Fx8:
       case Iop_Max32Fx8:
       case Iop_Min32Fx8:
          return binary32Fx8(mce, vatom1, vatom2);
@@ -3275,6 +3333,7 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_TanF64:
       case Iop_2xm1F64:
       case Iop_SqrtF64:
+      case Iop_RecpExpF64:
          /* I32(rm) x I64/F64 -> I64/F64 */
          return mkLazy2(mce, Ity_I64, vatom1, vatom2);
 
@@ -3288,6 +3347,10 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_ShrD128:
       case Iop_RoundD128toInt:
          /* I32(rm) x D128 -> D128 */
+         return mkLazy2(mce, Ity_I128, vatom1, vatom2);
+
+      case Iop_RoundF128toInt:
+         /* I32(rm) x F128 -> F128 */
          return mkLazy2(mce, Ity_I128, vatom1, vatom2);
 
       case Iop_D64toI64S:
@@ -3326,6 +3389,7 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
 
       case Iop_RoundF32toInt:
       case Iop_SqrtF32:
+      case Iop_RecpExpF32:
          /* I32(rm) x I32/F32 -> I32/F32 */
          return mkLazy2(mce, Ity_I32, vatom1, vatom2);
 
@@ -3339,6 +3403,11 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_F32toI32U:
          /* First arg is I32 (rounding mode), second is F32/I32 (data). */
          return mkLazy2(mce, Ity_I32, vatom1, vatom2);
+
+      case Iop_F64toF16:
+      case Iop_F32toF16:
+         /* First arg is I32 (rounding mode), second is F64/F32 (data). */
+         return mkLazy2(mce, Ity_I16, vatom1, vatom2);
 
       case Iop_F128toI32S: /* IRRoundingMode(I32) x F128 -> signed I32  */
       case Iop_F128toI32U: /* IRRoundingMode(I32) x F128 -> unsigned I32  */
@@ -3786,9 +3855,10 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
    tl_assert(isOriginalAtom(mce,atom));
    switch (op) {
 
-      case Iop_Sqrt64Fx2:
       case Iop_Abs64Fx2:
       case Iop_Neg64Fx2:
+      case Iop_RSqrtEst64Fx2:
+      case Iop_RecipEst64Fx2:
          return unary64Fx2(mce, vatom);
 
       case Iop_Sqrt64F0x2:
@@ -3802,7 +3872,6 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_Sqrt64Fx4:
          return unary64Fx4(mce, vatom);
 
-      case Iop_Sqrt32Fx4:
       case Iop_RecipEst32Fx4:
       case Iop_I32UtoFx4:
       case Iop_I32StoFx4:
@@ -3874,6 +3943,7 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_I64UtoD128: /* unsigned I64 -> D128 */
          return mkPCastTo(mce, Ity_I128, vatom);
 
+      case Iop_F16toF64: 
       case Iop_F32toF64: 
       case Iop_I32StoF64:
       case Iop_I32UtoF64:
@@ -3903,6 +3973,7 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_TruncF64asF32:
       case Iop_NegF32:
       case Iop_AbsF32:
+      case Iop_F16toF32:
          return mkPCastTo(mce, Ity_I32, vatom);
 
       case Iop_Ctz32:
@@ -4096,7 +4167,7 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_I64UtoF32:
       default:
          ppIROp(op);
-         VG_(tool_panic)("memcheck:expr2vbits_Unop");
+         VG_(tool_panic)("tnt_translate: expr2vbits_Unop");
    }
 }
 
