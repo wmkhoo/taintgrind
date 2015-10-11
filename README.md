@@ -214,6 +214,7 @@ Which should give
 	    #x00)
 
 The two alternative values for myint are 0x00000000 and 0x80000000 (or -2147483648 as a signed 32-bit int).
+If TNT\_MAKE\_MEM\_TAINTED() was used, the default prefix is 'byte'.
 
 License
 -------
