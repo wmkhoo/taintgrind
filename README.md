@@ -213,7 +213,7 @@ Which should give
 	  (define-fun myint2 () (_ BitVec 8)
 	    #x00)
 
-The two alternative values for myint are 0x00000000 and 0x80000000 (-2^32 + 1).
+The two alternative values for myint are 0x00000000 and 0x80000000 (or -2147483648 as a signed 32-bit int).
 
 License
 -------
