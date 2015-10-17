@@ -2678,6 +2678,14 @@ int istty = 0;
       return; \
    }
 
+#define H_SMT2_LOAD( fn ) \
+   if ( TNT_(clo_smt2) ) \
+   { \
+      VG_(printf)("; " #fn " \n"); \
+      TNT_(fn)(clone, value, taint); \
+      return; \
+   }
+
 #define H_SMT2_not_implemented(fn) \
    if ( TNT_(clo_smt2) ) \
    { \
@@ -2924,7 +2932,7 @@ void TNT_(h32_load_t) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
-   H_SMT2(smt2_load_t);
+   H_SMT2_LOAD(smt2_load_t_32);
    H32_PC
 
    UInt address = tv[atmp];
@@ -2971,7 +2979,7 @@ void TNT_(h32_load_c) (
    H_WRTMP_BOOKKEEPING
 
    H_EXIT_EARLY
-   H_SMT2(smt2_load_c);
+   H_SMT2_LOAD(smt2_load_c_32);
    H32_PC
 
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
@@ -4045,7 +4053,7 @@ void TNT_(h64_load_t) (
    tl_assert( atmp < TI_MAX );
 
    H_EXIT_EARLY_LDST
-   H_SMT2(smt2_load_t);
+   H_SMT2_LOAD(smt2_load_t_64);
    H64_PC
 
    ULong address = tv[atmp];
@@ -4088,7 +4096,7 @@ void TNT_(h64_load_c) (
    H_WRTMP_BOOKKEEPING
 
    H_EXIT_EARLY
-   H_SMT2(smt2_load_c)
+   H_SMT2_LOAD(smt2_load_c_64)
    H64_PC
 
    UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;

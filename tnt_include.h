@@ -399,8 +399,10 @@ extern UInt  tt[TI_MAX];
 
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
-extern void TNT_(smt2_load_c)   ( IRStmt * );
-extern void TNT_(smt2_load_t)   ( IRStmt * );
+extern void TNT_(smt2_load_c_32)   ( IRStmt *, UInt, UInt );
+extern void TNT_(smt2_load_t_32)   ( IRStmt *, UInt, UInt );
+extern void TNT_(smt2_load_c_64)   ( IRStmt *, ULong, ULong );
+extern void TNT_(smt2_load_t_64)   ( IRStmt *, ULong, ULong );
 extern void TNT_(smt2_store_ct) ( IRStmt * );
 extern void TNT_(smt2_store_tc) ( IRStmt * );
 extern void TNT_(smt2_store_tt) ( IRStmt * );

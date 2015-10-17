@@ -39,16 +39,65 @@ void TNT_(smt2_preamble)()
     VG_(printf)("(set-logic QF_BV)\n");
 }
 
-static char *tnt_smt2_concat( char *buf, ULong addr, UInt c )
+// Get the concrete value (1 byte) of an address location
+#define a2v32(v, c) \
+   (UInt)((v >> ((3-(c))*8)) & 0xff)
+
+#define a2t32(t, c) \
+   (t >> ((3-(c))*8)) & 0xff
+
+#define a2v64(v, c) \
+   (UInt)((v >> ((7-(c))*8)) & 0xff)
+
+#define a2t64(t, c) \
+   (t >> ((7-(c))*8)) & 0xff
+
+static char *tnt_smt2_concat_32( char *buf, ULong addr, UInt c, UInt v, UInt t )
+{
+   char tmp[1024];
+   //VG_(printf)("c %d t %x a2t %x\n", c+1, t, a2t(t,c+1));
+   if ( c == 0 )
+   {
+      if ( a2t32(t,c) )
+         VG_(sprintf)(tmp, "a%llx", addr);
+      else
+         VG_(sprintf)(tmp, "#x%02x", a2v32(v,c));
+
+      if ( a2t32(t,c+1) )
+         VG_(sprintf)(buf, "(concat %s a%llx)", tmp, addr+1);
+      else
+         VG_(sprintf)(buf, "(concat %s #x%02x)", tmp, a2v32(v,c+1));
+      return buf;
+   }
+   if ( a2t32(t,c+1) )
+       VG_(sprintf)(tmp, "(concat a%llx %s)", addr, tnt_smt2_concat_32(buf, addr+1, c-1, v, t) );
+   else
+       VG_(sprintf)(tmp, "(concat #x%02x %s)", a2v32(v,c+1), tnt_smt2_concat_32(buf, addr+1, c-1, v, t) );
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
+static char *tnt_smt2_concat_64( char *buf, ULong addr, UInt c, ULong v, ULong t )
 {
    char tmp[1024];
 
    if ( c == 0 )
    {
-      VG_(sprintf)(buf, "(concat a%llx a%llx)", addr, addr+1);
+      if ( a2t64(t,c) )
+         VG_(sprintf)(tmp, "a%llx", addr);
+      else
+         VG_(sprintf)(tmp, "#x%02x", a2v64(v,c));
+
+      if ( a2t64(t,c+1) )
+         VG_(sprintf)(buf, "(concat %s a%llx)", tmp, addr+1);
+      else
+         VG_(sprintf)(buf, "(concat %s #x%02x)", tmp, a2v64(v,c+1));
       return buf;
    }
-   VG_(sprintf)(tmp, "(concat a%llx %s)", addr, tnt_smt2_concat(buf, addr+1, c-1) );
+   if ( a2t64(t,c+1) )
+       VG_(sprintf)(tmp, "(concat a%llx %s)", addr, tnt_smt2_concat_64(buf, addr+1, c-1, v, t) );
+   else
+       VG_(sprintf)(tmp, "(concat #x%02x %s)", a2v64(v,c+1), tnt_smt2_concat_64(buf, addr+1, c-1, v, t) );
    VG_(strcpy)(buf, tmp);
    return buf;
 }
@@ -117,7 +166,7 @@ static void tnt_smt2_loadstore_atmp ( UInt atmp, ULong address )
 }
 
 
-static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
+static void tnt_smt2_load_ltmp_32 ( UInt ltmp, UInt ty, ULong address, UInt value, UInt taint )
 {
    char buf[1024];
 
@@ -125,16 +174,44 @@ static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 
    if ( SMT2_ty[ty] == 128 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 14) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 14, value, taint) );
    } else if ( SMT2_ty[ty] == 64 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 6) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 6, value, taint) );
    } else if ( SMT2_ty[ty] == 32 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 2) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat(buf, address, 0) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 0, value, taint) );
+   } else if ( SMT2_ty[ty] == 8 )
+   {
+      VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
+   } else {
+      VG_(printf)("smt2_load_t: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
+      tl_assert(0);
+   }
+}
+
+
+static void tnt_smt2_load_ltmp_64 ( UInt ltmp, UInt ty, ULong address, ULong value, ULong taint )
+{
+   char buf[1024];
+
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+
+   if ( SMT2_ty[ty] == 128 )
+   {
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 14, value, taint) );
+   } else if ( SMT2_ty[ty] == 64 )
+   {
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 6, value, taint) );
+   } else if ( SMT2_ty[ty] == 32 )
+   {
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 2, value, taint) );
+   } else if ( SMT2_ty[ty] == 16 )
+   {
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 0, value, taint) );
    } else if ( SMT2_ty[ty] == 8 )
    {
       VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
@@ -146,7 +223,7 @@ static void tnt_smt2_load_ltmp ( UInt ltmp, UInt ty, ULong address )
 
 
 // ltmp = LOAD <ty> const 
-void TNT_(smt2_load_c) ( IRStmt *clone )
+void TNT_(smt2_load_c_32) ( IRStmt *clone, UInt value, UInt taint )
 {
 
    UInt ltmp     = clone->Ist.WrTmp.tmp;
@@ -155,14 +232,30 @@ void TNT_(smt2_load_c) ( IRStmt *clone )
    ULong address = extract_IRConst(addr->Iex.Const.con);
 
    if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp ( ltmp, ty, address );
+      tnt_smt2_load_ltmp_32 ( ltmp, ty, address, value, taint );
+
+   tt[ltmp] = SMT2_ty[ty];
+}
+
+
+// ltmp = LOAD <ty> const 
+void TNT_(smt2_load_c_64) ( IRStmt *clone, ULong value, ULong taint )
+{
+
+   UInt ltmp     = clone->Ist.WrTmp.tmp;
+   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
+   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
+   ULong address = extract_IRConst(addr->Iex.Const.con);
+
+   if ( is_tainted(ltmp) )
+      tnt_smt2_load_ltmp_64 ( ltmp, ty, address, value, taint );
 
    tt[ltmp] = SMT2_ty[ty];
 }
 
 
 // ltmp = LOAD <ty> atmp
-void TNT_(smt2_load_t) ( IRStmt *clone )
+void TNT_(smt2_load_t_32) ( IRStmt *clone, UInt value, UInt taint )
 {
 
    UInt ltmp     = clone->Ist.WrTmp.tmp;
@@ -175,7 +268,27 @@ void TNT_(smt2_load_t) ( IRStmt *clone )
       tnt_smt2_loadstore_atmp ( atmp, address );
 
    if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp ( ltmp, ty, address );
+      tnt_smt2_load_ltmp_32 ( ltmp, ty, address, value, taint );
+
+   tt[ltmp] = SMT2_ty[ty];
+}
+
+
+// ltmp = LOAD <ty> atmp
+void TNT_(smt2_load_t_64) ( IRStmt *clone, ULong value, ULong taint )
+{
+
+   UInt ltmp     = clone->Ist.WrTmp.tmp;
+   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
+   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
+   UInt atmp     = addr->Iex.RdTmp.tmp;
+   ULong address = tv[atmp];
+
+   if ( is_tainted(atmp) )
+      tnt_smt2_loadstore_atmp ( atmp, address );
+
+   if ( is_tainted(ltmp) )
+      tnt_smt2_load_ltmp_64 ( ltmp, ty, address, value, taint );
 
    tt[ltmp] = SMT2_ty[ty];
 }
