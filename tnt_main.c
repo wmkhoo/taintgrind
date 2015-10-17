@@ -3079,7 +3079,7 @@ void TNT_(h32_put_t) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_put_t);
+   H_SMT2(smt2_put_t_32);
    H32_PC
 
    IRExpr *data = clone->Ist.Put.data;
@@ -4192,7 +4192,7 @@ void TNT_(h64_put_t) (
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_put_t);
+   H_SMT2(smt2_put_t_64);
    H64_PC
    //H_VAR
 

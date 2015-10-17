@@ -798,25 +798,28 @@ void TNT_(smt2_get) ( IRStmt *clone )
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
 
-   if ( SMT2_ty[ty] == 8 ) {
-      VG_(printf)("(assert (= t%d_%d ((_ extract 7 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
-   } else if ( SMT2_ty[ty] == 16 ) {
-      VG_(printf)("(assert (= t%d_%d ((_ extract 15 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
-   } else if ( SMT2_ty[ty] == 32 ) {
-      //VG_(printf)("(assert (= t%d_%d r%d_%d))\n", ltmp, _ti(ltmp), reg, ri[reg] );
-      // If this works, it'll deal with both 32- and 64-bit platforms
-      VG_(printf)("(assert (= t%d_%d ((_ extract 31 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
-   } else if ( SMT2_ty[ty] == 64 ) {
-      VG_(printf)("(assert (= t%d_%d ((_ extract 63 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
-   } else {
-      VG_(printf)("smt2_get: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
-      tl_assert(0);
+   switch (SMT2_ty[ty]) {
+      case 8:
+         VG_(printf)("(assert (= t%d_%d ((_ extract 7 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         break;
+      case 16:
+         VG_(printf)("(assert (= t%d_%d ((_ extract 15 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         break;
+      case 32:
+         VG_(printf)("(assert (= t%d_%d ((_ extract 31 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         break;
+      case 64:
+         VG_(printf)("(assert (= t%d_%d ((_ extract 63 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         break;
+      default:
+         VG_(printf)("smt2_get: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
+         tl_assert(0);
    }
    tt[ltmp] = SMT2_ty[ty];
 }
 
 // reg = tmp
-void TNT_(smt2_put_t) ( IRStmt *clone )
+void TNT_(smt2_put_t_32) ( IRStmt *clone )
 {
 
    UInt reg     = clone->Ist.Put.offset;
@@ -825,8 +828,55 @@ void TNT_(smt2_put_t) ( IRStmt *clone )
 
    tl_assert(tt[tmp]);
 
-   VG_(printf)("(declare-fun r%d_%d () (_ BitVec %d))\n", reg, ri[reg], tt[tmp]);
-   VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 32))\n", reg, ri[reg]);
+
+   switch (tt[tmp]) {
+      case 8:
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 24) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      case 16:
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 16) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      case 32:
+         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      default:
+         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", tt[tmp]);
+         tl_assert(0);
+         break;
+   }
+}
+
+// reg = tmp
+void TNT_(smt2_put_t_64) ( IRStmt *clone )
+{
+
+   UInt reg     = clone->Ist.Put.offset;
+   IRExpr *data = clone->Ist.Put.data;
+   UInt tmp     = data->Iex.RdTmp.tmp;
+
+   tl_assert(tt[tmp]);
+
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 32))\n", reg, ri[reg]);
+
+   switch (tt[tmp]) {
+      case 8:
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 56) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      case 16:
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 48) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      case 32:
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 32) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      case 64:
+         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
+         break;
+      default:
+         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", tt[tmp]);
+         tl_assert(0);
+         break;
+   }
 }
 
 void TNT_(smt2_x86g_calculate_condition) ( IRStmt *clone )
