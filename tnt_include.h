@@ -216,6 +216,7 @@ extern Int    TNT_(clo_after_kbb);
 extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
+extern Bool   TNT_(clo_taint_network);
 extern Int    TNT_(do_print);
 extern Bool   TNT_(clo_smt2);
 //extern Char* TNT_(clo_allowed_syscalls);
@@ -319,8 +320,14 @@ extern void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes re
 extern void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno);
+extern void TNT_(syscall_socketcall)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_socket)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_connect)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_socketpair)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_accept)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
+extern void TNT_(syscall_recvmsg)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 
 /* Functions defined in tnt_translate.c */
 IRSB* TNT_(instrument)( VgCallbackClosure* closure,

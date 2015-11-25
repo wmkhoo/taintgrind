@@ -430,22 +430,147 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 	}
 }
 
+/*** Networking syscalls ***/
+
+void TNT_(syscall_socketcall)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+
+// int socketcall(int call, unsigned long *args);
+
+  switch (args[0]) {
+    case VKI_SYS_SOCKET:
+      //VG_(printf)("syscall_socketcall: SOCKET\n");
+      TNT_(syscall_socket)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_LISTEN:
+      //TNT_(syscall_listen)(tid, res);
+      break;
+    case VKI_SYS_ACCEPT:
+      //VG_(printf)("syscall_socketcall: ACCEPT\n");
+      TNT_(syscall_accept)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_CONNECT:
+      //VG_(printf)("syscall_socketcall: CONNECT\n");
+      // TODO: submit a syscall hooking patch to valgrind to avoid this.
+      TNT_(syscall_connect)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_GETPEERNAME:
+      //VG_(printf)("syscall_socketcall: GETPEERNAME\n");
+      break;
+    case VKI_SYS_GETSOCKNAME:
+      //VG_(printf)("syscall_socketcall: GETSOCKNAME\n");
+      break;
+    case VKI_SYS_SOCKETPAIR:
+      //VG_(printf)("syscall_socketcall: SOCKETPAIR\n");
+      TNT_(syscall_socketpair)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_RECV:
+     // VG_(printf)("syscall_socketcall: RECV\n");
+      TNT_(syscall_recv)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_RECVMSG:
+      //VG_(printf)("syscall_socketcall: RECVMSG\n");
+      TNT_(syscall_recvmsg)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_RECVFROM:
+      //VG_(printf)("syscall_socketcall: RECVFROM\n");
+      TNT_(syscall_recvfrom)(tid, args, nArgs, res);
+      break;
+    case VKI_SYS_SHUTDOWN:
+     // VG_(printf)("syscall_socketcall: SHUTDOWN\n");
+      break;
+    default:
+      return;
+  }
+}
+
+void TNT_(syscall_socket)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+  Int fd = sr_Res(res);
+  // Nothing to do if no network tainting
+  if (!TNT_(clo_taint_network))
+    return;
+
+  if (fd > -1 && fd < FD_MAX) {
+    tainted_fds[tid][fd] = True;
+    //VG_(printf)("syscall_socket: tainting %d\n", fd);
+  }
+}
+
+void TNT_(syscall_connect)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+  // Assume this is called directly after arguments have been populated.
+  Int fd = args[0];
+
+  // Nothing to do if no network tainting
+  if (!TNT_(clo_taint_network))
+    return;
+  if (fd > -1 && fd < FD_MAX) {
+    tainted_fds[tid][fd] = True;
+    // VG_(printf)("syscall_connect: tainting %d\n", fd);
+  }
+}
+
+void TNT_(syscall_socketpair)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+  // int socketpair(int domain, int type, int protocol, int sv[2]);
+
+  // Assume this is called directly after arguments have been populated.
+  Int fd = ((Int *)args[3])[0];
+
+  // Nothing to do if no network tainting
+  if (!TNT_(clo_taint_network))
+    return;
+  if (fd > -1 && fd < FD_MAX) {
+    tainted_fds[tid][fd] = True;
+    // VG_(printf)("syscall_socketpair: tainting fd %d\n", fd);
+  }
+}
+
+void TNT_(syscall_accept)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+  Int fd = sr_Res(res);
+  // Nothing to do if no network tainting
+  if (!TNT_(clo_taint_network))
+    return;
+  if (fd > -1 && fd < FD_MAX) {
+    tainted_fds[tid][fd] = True;
+    // VG_(printf)("syscall_connect: tainting %d\n", fd);
+  }
+}
+
 void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 // ssize_t recv(int sockfd, void *buf, size_t len, int flags)
-   //Int msglen  = sr_Res(res);
-   //HChar *data = (HChar *)args[1];
+   Int fd = args[0];
+   HChar *data = (HChar *)args[1];
+   Int msglen  = sr_Res(res);
    //VG_(printf)("syscall recv %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
+  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && msglen > 0) {
+    TNT_(make_mem_tainted)((UWord)data, msglen);
+  }
 }
 
 void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
 //                 struct sockaddr *src_addr, socklen_t *addrlen)
 // TODO: #include <arpa/inet.h> inet_ntop to pretty print IP address
-   //Int msglen  = sr_Res(res);
-   //HChar *data = (HChar *)args[1];
+   Int fd = args[0];
+   HChar *data = (HChar *)args[1];
+   Int msglen  = sr_Res(res);
    //VG_(printf)("syscall recvfrom %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
+  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && msglen > 0) {
+    TNT_(make_mem_tainted)((UWord)data, msglen);
+  }
+}
+
+/* Annoyingly uses the struct msghdr from sys/socket.h
+ * XXX: scatter gather array and readv() not yet supported.d 
+ */
+void TNT_(syscall_recvmsg)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
+  Int fd = args[0];
+  struct vki_msghdr *msg = (struct vki_msghdr *)args[1];
+
+  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && sr_Res(res) > 0) {
+    // XXX: if MSG_TRUNC, this will taint more memory than it should.
+    TNT_(make_mem_tainted)((UWord)msg->msg_control, sr_Res(res));
+  }
 }
 
 /*--------------------------------------------------------------------*/

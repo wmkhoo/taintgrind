@@ -5266,6 +5266,22 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_recvfrom)(tid, args, nArgs, res);
       break;
 #endif
+#ifdef __NR_socketcall
+    case __NR_socketcall:
+      TNT_(syscall_socketcall)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_accept
+    case __NR_accept:
+      TNT_(syscall_accept)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_socket
+    case __NR_socket:
+      TNT_(syscall_socket)(tid, args, nArgs, res);
+      break;
+#endif
+
 #endif // VGO_freebsd
   }
 }
@@ -5374,6 +5390,7 @@ Bool          TNT_(clo_taint_all)              = False;
 //Int           TNT_(clo_before_kbb)             = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = False;
+Bool          TNT_(clo_taint_network)          = False;
 Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
@@ -5395,6 +5412,7 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
    //else if VG_BINT_CLO(arg, "--before-kbb", TNT_(clo_before_kbb), 0, 1000000) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
+   else if VG_BOOL_CLO(arg, "--taint-network", TNT_(clo_taint_network)) {}
 //   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
 //	   TNT_(read_syscalls_file) = True;
 //   }
