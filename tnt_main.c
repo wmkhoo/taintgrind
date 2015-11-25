@@ -5264,19 +5264,25 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
     case __NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
+/*** Networking syscalls ***/
+#ifdef __NR_connect
+    case __NR_connect:
+      TNT_(syscall_connect)(tid, args, nArgs, res);
+      break;
+#endif
 #ifdef __NR_recv
     case __NR_recv:
       TNT_(syscall_recv)(tid, args, nArgs, res);
       break;
 #endif
+#ifdef __NR_recvmsg
+    case __NR_recvmsg:
+      TNT_(syscall_recvmsg)(tid, args, nArgs, res);
+      break;
+#endif
 #ifdef __NR_recvfrom
     case __NR_recvfrom:
       TNT_(syscall_recvfrom)(tid, args, nArgs, res);
-      break;
-#endif
-#ifdef __NR_socketcall
-    case __NR_socketcall:
-      TNT_(syscall_socketcall)(tid, args, nArgs, res);
       break;
 #endif
 #ifdef __NR_accept
@@ -5287,6 +5293,16 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
 #ifdef __NR_socket
     case __NR_socket:
       TNT_(syscall_socket)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_socketcall
+    case __NR_socketcall:
+      TNT_(syscall_socketcall)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_socketpair
+    case __NR_socketpair:
+      TNT_(syscall_socketpair)(tid, args, nArgs, res);
       break;
 #endif
 
