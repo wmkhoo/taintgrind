@@ -5415,6 +5415,7 @@ Bool          TNT_(clo_taint_all)              = False;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = False;
 Bool          TNT_(clo_taint_network)          = False;
+Bool          TNT_(clo_taint_stdin)            = False;
 Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
@@ -5437,6 +5438,7 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--taint-network", TNT_(clo_taint_network)) {}
+   else if VG_BOOL_CLO(arg, "--taint-stdin", TNT_(clo_taint_stdin)) {}
 //   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
 //	   TNT_(read_syscalls_file) = True;
 //   }
@@ -5555,6 +5557,9 @@ static void tnt_post_clo_init(void)
       TNT_(clo_tainted_ins_only) = True;
       TNT_(clo_critical_ins_only) = False;
    }
+
+   // If taint-stdin=yes, prepare stdin for tainting
+   TNT_(setup_tainted_map)();
 }
 
 static void tnt_fini(Int exitcode)

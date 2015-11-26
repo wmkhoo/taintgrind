@@ -217,6 +217,7 @@ extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
 extern Bool   TNT_(clo_taint_network);
+extern Bool   TNT_(clo_taint_stdin);
 extern Int    TNT_(do_print);
 extern Bool   TNT_(clo_smt2);
 //extern Char* TNT_(clo_allowed_syscalls);
@@ -311,6 +312,7 @@ SizeT TNT_(malloc_usable_size)   ( ThreadId tid, void* p );
 
 
 /* Functions defined in tnt_syswrap.c */
+extern void TNT_(setup_tainted_map)( void );
 /* System call wrappers */
 extern void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);
 extern void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res);

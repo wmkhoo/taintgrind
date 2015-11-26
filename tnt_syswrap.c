@@ -62,8 +62,18 @@ void resolve_filename(UWord fd, HChar *path, Int max)
 }
 
 /* enforce an arbitrary maximum */
-#define TG_N_THREADS 500 
-static Bool tainted_fds[TG_N_THREADS][FD_MAX];
+#define VG_N_THREADS 500 
+static Bool tainted_fds[VG_N_THREADS][FD_MAX];
+
+void TNT_(setup_tainted_map)( void ) {
+  ThreadId t = 0;
+  VG_(memset)(tainted_fds, False, sizeof(tainted_fds));
+  /* Taint stdin if specified */
+  if (TNT_(clo_taint_stdin))
+    for(t=0; t < VG_N_THREADS; ++t)
+      tainted_fds[t][0] = True;
+}
+
 static UInt read_offset = 0;
 
 void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
@@ -327,7 +337,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
    }
 
     // Nothing to do if no file tainting
-    if ( VG_(strlen)( TNT_(clo_file_filter)) == 0 )
+    if ( VG_(strlen)( TNT_(clo_file_filter)) == 0  && (fd != 0 || !TNT_(clo_taint_stdin)) )
         return;
 
     if (fd > -1 && fd < FD_MAX) {
@@ -365,6 +375,10 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
             if ( verbose )
                VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
             read_offset = 0;
+        } else if (TNT_(clo_taint_stdin)) {
+            tainted_fds[tid][fd] = True;
+            if ( verbose )
+               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
         } else
             tainted_fds[tid][fd] = False;
     }
