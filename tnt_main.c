@@ -900,7 +900,7 @@ __attribute__((noinline))
 void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
                                 Addr a, SizeT nBits, Bool bigendian )
 {
-   ULong  pessim[4];     /* only used when p-l-ok=yes */
+   //ULong  pessim[4];     /* only used when p-l-ok=yes */
    SSizeT szB            = nBits / 8;
    SSizeT szL            = szB / 8;  /* Size in Longs (64-bit units) */
    SSizeT i, j;          /* Must be signed. */
@@ -915,10 +915,10 @@ void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
 
    /* If this triggers, you probably just need to increase the size of
       the pessim array. */
-   tl_assert(szL <= sizeof(pessim) / sizeof(pessim[0]));
+   //tl_assert(szL <= sizeof(pessim) / sizeof(pessim[0]));
 
    for (j = 0; j < szL; j++) {
-      pessim[j] = V_BITS64_UNTAINTED;
+      //pessim[j] = V_BITS64_UNTAINTED;
       res[j] = V_BITS64_TAINTED;
    }
 
@@ -932,30 +932,26 @@ void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
       cross-check. */
    for (j = szL-1; j >= 0; j--) {
       ULong vbits64    = V_BITS64_TAINTED;
-      ULong pessim64   = V_BITS64_UNTAINTED;
+      //ULong pessim64   = V_BITS64_UNTAINTED;
       UWord long_index = byte_offset_w(szL, bigendian, j);
       for (i = 8-1; i >= 0; i--) {
          PROF_EVENT(31, "tnt_LOADV_128_or_256_slow(loop)");
          ai = a + 8*long_index + byte_offset_w(8, bigendian, i);
          ok = get_vbits8(ai, &vbits8);
          vbits64 <<= 8;
-         // Taintgrind: Optimistically untainted?
-         //vbits64 |= vbits8;
-         vbits64 &= vbits8;
+         vbits64 |= vbits8;
          if (!ok) n_addrs_bad++;
-         pessim64 <<= 8;
-         // Taintgrind: Optimistically untainted?
+         //pessim64 <<= 8;
          //pessim64 |= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
-         pessim64 &= (ok ? V_BITS8_UNTAINTED : V_BITS8_TAINTED);
       }
       res[long_index] = vbits64;
-      pessim[long_index] = pessim64;
+      //pessim[long_index] = pessim64;
    }
 
    /* In the common case, all the addresses involved are valid, so we
       just return the computed V bits and have done. */
-   if (LIKELY(n_addrs_bad == 0))
-      return;
+   //if (LIKELY(n_addrs_bad == 0))
+   return;
 
    /* If there's no possibility of getting a partial-loads-ok
       exemption, report the error and quit. */
@@ -988,25 +984,23 @@ void tnt_LOADV_128_or_256_slow ( /*OUT*/ULong* res,
    */
 
    /* "at least one of the addresses is invalid" */
-   ok = False;
-   for (j = 0; j < szL; j++)
-      ok |= pessim[j] != V_BITS8_UNTAINTED;
-   // Taintgrind: We're ok with ok not being ok
-   //tl_assert(ok);
+   //ok = False;
+   //for (j = 0; j < szL; j++)
+   //   ok |= pessim[j] != V_BITS8_TAINTED; //V_BITS8_UNTAINTED;
 
-   if (0 == (a & (szB - 1)) && n_addrs_bad < szB) {
-      /* Exemption applies.  Use the previously computed pessimising
-         value and return the combined result, but don't flag an
-         addressing error.  The pessimising value is Defined for valid
-         addresses and Undefined for invalid addresses. */
-      /* for assumption that doing bitwise or implements UifU */
-      tl_assert(V_BIT_TAINTED == 1 && V_BIT_UNTAINTED == 0);
-      /* (really need "UifU" here...)
-         vbits[j] UifU= pessim[j]  (is pessimised by it, iow) */
-      for (j = szL-1; j >= 0; j--)
-         res[j] |= pessim[j];
-      return;
-   }
+   //if (0 == (a & (szB - 1)) && n_addrs_bad < szB) {
+   //   /* Exemption applies.  Use the previously computed pessimising
+   //      value and return the combined result, but don't flag an
+   //      addressing error.  The pessimising value is Defined for valid
+   //      addresses and Undefined for invalid addresses. */
+   //   /* for assumption that doing bitwise or implements UifU */
+   //   tl_assert(V_BIT_TAINTED == 1 && V_BIT_UNTAINTED == 0);
+   //   /* (really need "UifU" here...)
+   //      vbits[j] UifU= pessim[j]  (is pessimised by it, iow) */
+   //   for (j = szL-1; j >= 0; j--)
+   //      res[j] |= pessim[j];
+   //   return;
+   //}
 
    /* Exemption doesn't apply.  Flag an addressing error in the normal
       way. */
@@ -4967,10 +4961,18 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
    const char* commonVarPrefix = "bytes inside ";
    char* varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix);
 
-   tl_assert(varPrefixPtr != NULL);
+   if (!varPrefixPtr) {
+      const char* commonVarPrefix2 = "byte inside ";
+      varPrefixPtr = VG_(strstr)(descr1str, commonVarPrefix2);
 
-   // fast forward to start of var name
-   varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
+      if (!varPrefixPtr) {
+         VG_(printf)("%s\n", descr1str);
+         tl_assert(varPrefixPtr != NULL);
+      }
+      varPrefixPtr += (VG_(strlen)(commonVarPrefix2)*sizeof(HChar));
+   } else
+      // fast forward to start of var name
+      varPrefixPtr += (VG_(strlen)(commonVarPrefix)*sizeof(HChar));
 
    // disambiguate between local var or others
    const char* localVarPrefix = "local var ";
