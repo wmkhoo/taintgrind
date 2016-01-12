@@ -857,7 +857,7 @@ void TNT_(smt2_put_t_64) ( IRStmt *clone )
 
    tl_assert(tt[tmp]);
 
-   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 32))\n", reg, ri[reg]);
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 64))\n", reg, ri[reg]);
 
    switch (tt[tmp]) {
       case 8:
