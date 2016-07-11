@@ -2752,15 +2752,15 @@ void TNT_(h32_next_t) (
 
    if ( istty && is_tainted(next) )
    {
-      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, ti[next], KNRM );
+      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
+      VG_(sprintf)( aTmp, "JMP t%d_%d", next, _ti(next) );
       H32_PRINT
    }
 
    if ( is_tainted(next) )
-      VG_(printf)( "t%d_%d\n", next, ti[next] );
+      VG_(printf)( "t%d_%d\n", next, _ti(next) );
    else
       VG_(printf)("\n");
 }
@@ -3867,16 +3867,16 @@ void TNT_(h64_next_t) (
 
    if ( istty && is_tainted(next) )
    {
-      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, ti[next], KNRM );
+      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "JMP t%d_%d", next, ti[next] );
+      VG_(sprintf)( aTmp, "JMP t%d_%d", next, _ti(next) );
       H64_PRINT
    }
 
 
    if ( is_tainted(next) )
-      VG_(printf)( "t%d_%d\n", next, ti[next] );
+      VG_(printf)( "t%d_%d\n", next, _ti(next) );
    else
       VG_(printf)("\n");
 }
