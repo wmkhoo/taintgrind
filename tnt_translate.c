@@ -5803,6 +5803,9 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
          return assignNew( 'C', mce, tyH, unop(Iop_ReinterpF64asI64, value) );
       case Ity_V128:
          return assignNew( 'C', mce, tyH, unop(Iop_V128to64, value) );
+      case Ity_V256:
+         // Warning: Only copies the least significant 64 bits, so there's info lost
+         return assignNew( 'C', mce, tyH, unop(Iop_V256to64_0, value) );
       default:
          ppIRType(ty);
          VG_(tool_panic)("tnt_translate.c: convert_Value");
