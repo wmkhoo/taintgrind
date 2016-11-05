@@ -32,7 +32,7 @@ const Int SMT2_ty[] = {
 };
 
 // Array for tracking tmp variable types
-UInt tt[TI_MAX];
+UInt *tt; //[TI_MAX];
 
 void TNT_(smt2_preamble)()
 {

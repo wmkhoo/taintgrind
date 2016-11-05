@@ -392,16 +392,22 @@ extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
 
 /* SMT2 functions */
-#define TI_MAX 2100 
-#define RI_MAX 740 
+//#define TI_MAX 2100 
+//#define RI_MAX 740 
+#define TI_MAX 500 
+#define RI_MAX 500 
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-extern UInt  ti[TI_MAX];
+//extern UInt  ti[TI_MAX];
+extern UInt  *ti;
 // Tmp variable values
-extern ULong tv[TI_MAX];
+//extern ULong tv[TI_MAX];
+extern ULong *tv;
 // Reg variable indices
-extern UInt  ri[RI_MAX];
+//extern UInt  ri[RI_MAX];
+extern UInt  *ri;
 // Tmp variable Types/Widths
-extern UInt  tt[TI_MAX];
+//extern UInt  tt[TI_MAX];
+extern UInt  *tt;
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)

@@ -2500,14 +2500,18 @@ Int atoi( HChar *s ){
 //#define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-UInt  ti[TI_MAX];
+//UInt  ti[TI_MAX];
+UInt  *ti;
 // Tmp variable values
-ULong tv[TI_MAX];
+//ULong tv[TI_MAX];
+ULong *tv;
 // Reg variable indices; values are obtained in real-time
-UInt  ri[RI_MAX];
+//UInt  ri[RI_MAX];
+UInt  *ri;
 
 struct   myStringArray lvar_s;
-int      lvar_i[STACK_SIZE];
+//int      lvar_i[STACK_SIZE];
+int      *lvar_i;
 
 ////////////////////////////////
 // Start of SOAAP-related data
@@ -2603,7 +2607,7 @@ int istty = 0;
    const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H_VAR \
-   HChar varname[1024]; \
+   HChar *varname = VG_(malloc)("H_VAR", 1024*sizeof(HChar)); \
    ThreadId tid = VG_(get_running_tid()); \
    enum VariableType type = 0; \
    enum VariableLocation var_loc; \
@@ -5013,14 +5017,14 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
 }
 
 void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
-
         const HChar *cvarname;
 
 	// first try to see if it is a global var
 	PtrdiffT pdt;
 	if ( VG_(get_datasym_and_offset)( addr, &cvarname, &pdt ) )
         {
-           VG_(strncpy)(varnamebuf, cvarname, bufsize);
+           VG_(strncpy)(varnamebuf, cvarname, bufsize-1);
+           varnamebuf[bufsize] = '\0';
            return;
         }
 
@@ -5031,8 +5035,10 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
         if ( ai.tag == Addr_DataSym )
         {
-           VG_(strncpy)(varnamebuf, ai.Addr.DataSym.name, bufsize);
+           VG_(strncpy)(varnamebuf, ai.Addr.DataSym.name, bufsize-1);
+           varnamebuf[bufsize] = '\0';
            return;
+
         } else if ( ai.tag == Addr_Variable )
         {
            //VG_(printf)("descr1 %s\n", VG_(indexXA)(ai.Addr.Variable.descr1,0) );
@@ -5129,7 +5135,6 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 //	   }
 //	}
 }
-
 
 
 /*------------------------------------------------------------*/
@@ -5530,6 +5535,13 @@ static void tnt_post_clo_init(void)
 
    if( TNT_(clo_critical_ins_only) )
       TNT_(clo_tainted_ins_only) = True;
+
+   // Assign memory for ti, tv, tt, ri
+   ti = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
+   tv = (ULong *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(ULong));
+   tt = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
+   ri = (UInt *)VG_(malloc)("clo_post_init", RI_MAX*sizeof(UInt));
+   lvar_i = (int *)VG_(malloc)("clo_post_init", STACK_SIZE*sizeof(int));
 
    // Initialise temporary variables/reg SSA index array
    Int i;
