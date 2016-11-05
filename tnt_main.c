@@ -2708,14 +2708,14 @@ void TNT_(h32_exit_t) (
 
    if ( istty && is_tainted(gtmp) )
    {
-      VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "IF %st%d_%d%s GOTO 0x%llx",
                                KRED,
                                gtmp, _ti(gtmp),
                                KNRM,
                                addr );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
       H32_PRINT
    }
 
@@ -2752,10 +2752,10 @@ void TNT_(h32_next_t) (
 
    if ( istty && is_tainted(next) )
    {
-      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "JMP t%d_%d", next, _ti(next) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP t%d_%d", next, _ti(next) );
       H32_PRINT
    }
 
@@ -2799,14 +2799,14 @@ void TNT_(h32_store_tt) (
 
    if ( istty && is_tainted(dtmp) )
    {
-      VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = %st%d_%d%s",
                                   atmp, _ti(atmp),
                                   KRED,
                                   dtmp, _ti(dtmp),
                                   KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = t%d_%d",
                                   atmp, _ti(atmp),
                                   dtmp, _ti(dtmp) );
       H32_PRINT
@@ -2851,7 +2851,7 @@ void TNT_(h32_store_tc) (
    UInt address = tv[atmp];
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%x", atmp, _ti(atmp), c );
+   VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%x", atmp, _ti(atmp), c );
    H32_PRINT
 
    // Information flow
@@ -2890,11 +2890,11 @@ void TNT_(h32_store_ct) (
 
    if ( istty && is_tainted(dtmp) )
    {
-      VG_(sprintf)( aTmp, "STORE 0x%x = %st%d_%d%s",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%x = %st%d_%d%s",
                     c, KRED, dtmp, _ti(dtmp), KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%x = t%d_%d", c, dtmp, _ti(dtmp) );
       H32_PRINT
    }
 
@@ -2934,14 +2934,14 @@ void TNT_(h32_load_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s t%d_%d",
                                   KRED,
                                   ltmp, _ti(ltmp),
                                   KNRM,
                                   IRType_string[ty], atmp, _ti(atmp) );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp),
                                   IRType_string[ty], atmp, _ti(atmp) );
       H32_PRINT
    }
@@ -2985,14 +2985,15 @@ void TNT_(h32_load_c) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%x",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s 0x%x",
                                                  KRED,
                                       ltmp, _ti(ltmp),
                                                  KNRM,
                                 IRType_string[ty], c );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%x", ltmp, _ti(ltmp),
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s 0x%x",
+                                            ltmp, _ti(ltmp),
                                             IRType_string[ty], c );
       H32_PRINT
    }
@@ -3031,14 +3032,14 @@ void TNT_(h32_get) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "%st%d_%d%s = r%d_%d %s",
                    KRED,
                    ltmp, _ti(ltmp),
                    KNRM,
                    reg, ri[reg], IRType_string[ty&0xff] );
       H32_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "t%d_%d = r%d_%d %s",
                    ltmp, _ti(ltmp),
                    reg, ri[reg], IRType_string[ty&0xff] );
       H32_PRINT
@@ -3083,14 +3084,14 @@ void TNT_(h32_put_t) (
 
    if ( istty && is_tainted(tmp) )
    {
-      VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s",
                    reg, ri[reg],
                    KRED,
                    tmp, _ti(tmp),
                    KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
                                             tmp, _ti(tmp) );
       H32_PRINT
    }
@@ -3120,7 +3121,7 @@ void TNT_(h32_put_c) (
    IRExpr *data = clone->Ist.Put.data;
    UInt c       = extract_IRConst(data->Iex.Const.con);
 
-   VG_(sprintf)(aTmp, "r%d_%d = 0x%x", reg, ri[reg], c);
+   VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = 0x%x", reg, ri[reg], c);
    H32_PRINT
 
    VG_(printf)("\n");
@@ -3146,12 +3147,13 @@ void TNT_(h32_puti) (
 
    if ( istty && is_tainted(tmp) )
    {
-      VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = %st%d%s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%s>[%x,%x] = %st%d%s",
                 IRType_string[elemTy], ix, bias,
                 KRED, tmp, KNRM );
       H32_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "PUTI<%s>[%x,%x] = t%d", IRType_string[elemTy], ix, bias, tmp);
+      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%s>[%x,%x] = t%d",
+                IRType_string[elemTy], ix, bias, tmp);
       H32_PRINT
    }
 
@@ -3198,17 +3200,17 @@ void TNT_(h32_unop_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
                     rtmp, _ti(rtmp) );
       H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
                     rtmp, _ti(rtmp) );
       H32_PRINT_OP
    }
@@ -3238,9 +3240,9 @@ void TNT_(h32_unop_c) (
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    UInt c = extract_IRConst( arg->Iex.Const.con );
 
-   VG_(sprintf)( aTmp1, "t%d_%d = ",
+   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                  ltmp, _ti(ltmp) );
-   VG_(sprintf)( aTmp2, " 0x%x", c );
+   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%x", c );
    H32_PRINT_OP
 
    // No information flow
@@ -3272,17 +3274,17 @@ void TNT_(h32_binop_tc) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d 0x%x",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%x",
                     rtmp1, _ti(rtmp1), c );
       H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d 0x%x",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%x",
                     rtmp1, _ti(rtmp1), c );
       H32_PRINT_OP
    }
@@ -3319,17 +3321,17 @@ void TNT_(h32_binop_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " 0x%x t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%x t%d_%d",
                     c, rtmp2, _ti(rtmp2) );
       H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " 0x%x t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%x t%d_%d",
                     c, rtmp2, _ti(rtmp2) );
       H32_PRINT_OP
    }
@@ -3367,18 +3369,18 @@ void TNT_(h32_binop_tt) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
       H32_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
       H32_PRINT_OP
@@ -3415,9 +3417,9 @@ void TNT_(h32_binop_cc) (
    UInt c1 = extract_IRConst( arg1->Iex.Const.con );
    UInt c2 = extract_IRConst( arg2->Iex.Const.con );
 
-   VG_(sprintf)( aTmp1, "t%d_%d = ",
+   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                  ltmp, _ti(ltmp) );
-   VG_(sprintf)( aTmp2, " 0x%x 0x%x",
+   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%x 0x%x",
                  c1, c2 );
    H32_PRINT_OP
 
@@ -3466,14 +3468,14 @@ void TNT_(h32_rdtmp) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     rtmp, _ti(rtmp) );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                           rtmp, _ti(rtmp) );
       H32_PRINT
    }
@@ -3510,14 +3512,14 @@ void TNT_(h32_ite_tc) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%x",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%x",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : 0x%x",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
       H32_PRINT
    }
@@ -3554,14 +3556,14 @@ void TNT_(h32_ite_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%x : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? 0x%x : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%x : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
       H32_PRINT
    }
@@ -3599,7 +3601,7 @@ void TNT_(h32_ite_tt) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
@@ -3607,7 +3609,7 @@ void TNT_(h32_ite_tt) (
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
       H32_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
       H32_PRINT
@@ -3649,7 +3651,7 @@ void TNT_(h32_ite_cc) (
    tl_assert( ctmp  < TI_MAX );
    if ( (ti[ctmp] & 0x80000000) == 0 ) return;
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%x : 0x%x",
+   VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%x : 0x%x",
                  ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
    H32_PRINT
 
@@ -3686,7 +3688,7 @@ void TNT_(h32_ccall) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM);
@@ -3695,7 +3697,7 @@ void TNT_(h32_ccall) (
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
@@ -3731,7 +3733,7 @@ void TNT_(h32_x86g_calculate_condition) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM);
@@ -3740,7 +3742,7 @@ void TNT_(h32_x86g_calculate_condition) (
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
@@ -3798,7 +3800,7 @@ void TNT_(h32_none) (
    H_SMT2_not_implemented("h32_none");
    H32_PC
 
-   VG_(sprintf)( aTmp, "%s", str);
+   VG_(snprintf)( aTmp, sizeof(aTmp), "%s", str);
    H32_PRINT
    // No information flow info
    VG_(printf)("\n");
@@ -3826,10 +3828,10 @@ void TNT_(h64_exit_t) (
 
    if ( istty && is_tainted(gtmp) )
    {
-      VG_(sprintf)( aTmp, "IF %st%d_%d%s GOTO 0x%llx", KRED, gtmp, _ti(gtmp), KNRM, addr );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "IF %st%d_%d%s GOTO 0x%llx", KRED, gtmp, _ti(gtmp), KNRM, addr );
       H64_PRINTC 
    } else {
-      VG_(sprintf)( aTmp, "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
       H64_PRINT 
    }
 
@@ -3867,10 +3869,10 @@ void TNT_(h64_next_t) (
 
    if ( istty && is_tainted(next) )
    {
-      VG_(sprintf)( aTmp, "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP %st%d_%d%s", KRED, next, _ti(next), KNRM );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "JMP t%d_%d", next, _ti(next) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP t%d_%d", next, _ti(next) );
       H64_PRINT
    }
 
@@ -3890,7 +3892,7 @@ void TNT_(h64_next_c) (
 
    H_EXIT_EARLY
    H64_PC
-   VG_(sprintf)( aTmp, "JMP 0x%llx", value );
+   VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%llx", value );
    H64_PRINT
    VG_(printf)("\n");
    // End of BB
@@ -3920,14 +3922,14 @@ void TNT_(h64_store_tt) (
 
    if ( istty && is_tainted(dtmp) )
    {
-      VG_(sprintf)( aTmp, "STORE t%d_%d = %st%d_%d%s",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = %st%d_%d%s",
                                   atmp, _ti(atmp),
                                   KRED,
                                   dtmp, _ti(dtmp),
                                   KNRM );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "STORE t%d_%d = t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = t%d_%d",
                                   atmp, _ti(atmp),
                                   dtmp, _ti(dtmp) );
       H64_PRINT
@@ -3972,7 +3974,7 @@ void TNT_(h64_store_tc) (
    ULong address = c;
    H_VAR
 
-   VG_(sprintf)( aTmp, "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
+   VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
    H64_PRINT
 
    // Information flow
@@ -4011,10 +4013,10 @@ void TNT_(h64_store_ct) (
 
    if ( istty && is_tainted(dtmp) )
    {
-      VG_(sprintf)( aTmp, "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
       H64_PRINT
    }
 
@@ -4055,10 +4057,10 @@ void TNT_(h64_load_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], atmp, _ti(atmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], atmp, _ti(atmp) );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp), IRType_string[ty], atmp, _ti(atmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp), IRType_string[ty], atmp, _ti(atmp) );
       H64_PRINT
    }
 
@@ -4102,10 +4104,10 @@ void TNT_(h64_load_c) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], c );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], c );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp), IRType_string[ty], c );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp), IRType_string[ty], c );
       H64_PRINT
    }
 
@@ -4144,14 +4146,14 @@ void TNT_(h64_get) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)(aTmp, "%st%d_%d%s = r%d_%d %s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "%st%d_%d%s = r%d_%d %s",
                            KRED,
                            ltmp, _ti(ltmp),
                            KNRM,
                            reg, ri[reg], IRType_string[ty&0xff] );
       H64_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "t%d_%d = r%d_%d %s",
+      VG_(snprintf)(aTmp, sizeof(aTmp), "t%d_%d = r%d_%d %s",
                            ltmp, _ti(ltmp),
                            reg, ri[reg], IRType_string[ty&0xff] );
       H64_PRINT
@@ -4197,13 +4199,13 @@ void TNT_(h64_put_t) (
 
    if ( istty && is_tainted(tmp) )
    {
-      VG_(sprintf)(aTmp, "r%d_%d = %st%d_%d%s", reg, ri[reg],
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s", reg, ri[reg],
                                             KRED,
                                             tmp, _ti(tmp),
                                             KNRM );
       H64_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "r%d_%d = t%d_%d", reg, ri[reg],
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
                                             tmp, _ti(tmp) );
       H64_PRINT
    }
@@ -4234,7 +4236,7 @@ void TNT_(h64_put_c) (
    IRExpr *data = clone->Ist.Put.data;
    ULong c      = extract_IRConst(data->Iex.Const.con);
 
-   VG_(sprintf)(aTmp, "r%d_%d = 0x%llx", reg, ri[reg], c);
+   VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = 0x%llx", reg, ri[reg], c);
    H64_PRINT
 
    VG_(printf)("\n");
@@ -4264,10 +4266,10 @@ void TNT_(h64_puti) (
 
    if ( istty && is_tainted(tmp) )
    {
-      VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = %st%d%s", base, IRType_string[elemTy], nElems, ix, bias, KRED, tmp, KNRM);
+      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%d:%s:%d>[%x,%x] = %st%d%s", base, IRType_string[elemTy], nElems, ix, bias, KRED, tmp, KNRM);
       H64_PRINTC
    } else {
-      VG_(sprintf)(aTmp, "PUTI<%d:%s:%d>[%x,%x] = t%d", base, IRType_string[elemTy], nElems, ix, bias, tmp);
+      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%d:%s:%d>[%x,%x] = t%d", base, IRType_string[elemTy], nElems, ix, bias, tmp);
       H64_PRINT
    }
 
@@ -4315,17 +4317,17 @@ void TNT_(h64_unop_t) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
                     rtmp, _ti(rtmp) );
       H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
                     rtmp, _ti(rtmp) );
       H64_PRINT_OP
    }
@@ -4355,9 +4357,9 @@ void TNT_(h64_unop_c) (
    IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
    ULong c = extract_IRConst( arg->Iex.Const.con );
 
-   VG_(sprintf)( aTmp1, "t%d_%d = ",
+   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                  ltmp, _ti(ltmp) );
-   VG_(sprintf)( aTmp2, " 0x%llx", c );
+   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx", c );
    H64_PRINT_OP
 
    // No information flow
@@ -4390,17 +4392,17 @@ void TNT_(h64_binop_tc) (
    
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d 0x%llx",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%llx",
                     rtmp1, _ti(rtmp1), c );
       H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d 0x%llx",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%llx",
                     rtmp1, _ti(rtmp1), c );
       H64_PRINT_OP
    }
@@ -4437,17 +4439,17 @@ void TNT_(h64_binop_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " 0x%llx t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx t%d_%d",
                     c, rtmp2, _ti(rtmp2) );
       H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " 0x%llx t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx t%d_%d",
                     c, rtmp2, _ti(rtmp2) );
       H64_PRINT_OP
    }
@@ -4485,18 +4487,18 @@ void TNT_(h64_binop_tt) (
 
    if ( istty && is_tainted(ltmp) ) 
    {
-      VG_(sprintf)( aTmp1, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM );
-      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
       H64_PRINTC_OP
    } else {
-      VG_(sprintf)( aTmp1, "t%d_%d = ",
+      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                     ltmp, _ti(ltmp) );
-      VG_(sprintf)( aTmp2, " t%d_%d t%d_%d",
+      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
                     rtmp1, _ti(rtmp1),
                     rtmp2, _ti(rtmp2) );
       H64_PRINT_OP
@@ -4533,9 +4535,9 @@ void TNT_(h64_binop_cc) (
    ULong c1 = extract_IRConst( arg1->Iex.Const.con );
    ULong c2 = extract_IRConst( arg2->Iex.Const.con );
 
-   VG_(sprintf)( aTmp1, "t%d_%d = ",
+   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
                  ltmp, _ti(ltmp) );
-   VG_(sprintf)( aTmp2, " 0x%llx 0x%llx",
+   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx 0x%llx",
                  c1, c2 );
    H64_PRINT_OP
 
@@ -4598,14 +4600,14 @@ void TNT_(h64_rdtmp) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d",
                                 KRED,
                                 ltmp, _ti(ltmp),
                                 KNRM,
                                 rtmp, _ti(rtmp) );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
                                              rtmp, _ti(rtmp) );
       H64_PRINT
    }
@@ -4641,14 +4643,14 @@ void TNT_(h64_ite_tc) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%llx",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%llx",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
       H64_PRINT
    }
@@ -4685,14 +4687,14 @@ void TNT_(h64_ite_ct) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? 0x%llx : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? 0x%llx : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
                     ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
       H64_PRINT
    }
@@ -4730,7 +4732,7 @@ void TNT_(h64_ite_tt) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM,
@@ -4738,7 +4740,7 @@ void TNT_(h64_ite_tt) (
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
       H64_PRINTC
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
                     ltmp, _ti(ltmp), ctmp, _ti(ctmp),
                     rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
       H64_PRINT
@@ -4778,7 +4780,7 @@ void TNT_(h64_ite_cc) (
    tl_assert( ctmp  < TI_MAX );
    if ( (ti[ctmp] & 0x80000000) == 0 ) return;
 
-   VG_(sprintf)( aTmp, "t%d_%d = t%d_%d ? 0x%llx : 0x%llx",
+   VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%llx : 0x%llx",
                  ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
    H64_PRINT
 
@@ -4815,7 +4817,7 @@ void TNT_(h64_ccall) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM);
@@ -4824,7 +4826,7 @@ void TNT_(h64_ccall) (
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
@@ -4860,7 +4862,7 @@ void TNT_(h64_amd64g_calculate_condition) (
 
    if ( istty && is_tainted(ltmp) )
    {
-      VG_(sprintf)( aTmp, "%st%d_%d%s = ",
+      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
                     KRED,
                     ltmp, _ti(ltmp),
                     KNRM);
@@ -4869,7 +4871,7 @@ void TNT_(h64_amd64g_calculate_condition) (
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
    } else {
-      VG_(sprintf)( aTmp, "t%d_%d = ", ltmp, _ti(ltmp) );
+      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
       ppIRExpr( ccall );
       VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
@@ -4927,7 +4929,7 @@ void TNT_(h64_none) (
    H_SMT2_not_implemented("h64_none");
    H64_PC
 
-   VG_(sprintf)( aTmp, "%s", str);
+   VG_(snprintf)( aTmp, sizeof(aTmp), "%s", str);
    H64_PRINT
 
    // No information flow info
@@ -5071,7 +5073,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
 	   /* If we could not obtain the variable name, then just use "unknownobj" */
 	   if (descr1 == NULL) {
-	      VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
+	      VG_(snprintf)( varnamebuf, sizeof(varnamebuf), "%lx_unknownobj", addr );
 	   }
 	   else {
               processDescr1(descr1, varnamebuf, bufsize);
@@ -5492,7 +5494,7 @@ static int tnt_isatty(void)
    // If stderr goes to terminal, buf should be /dev/pts/[0-9]
    for ( i=0; i<10; i++ )
    {
-      VG_(sprintf)(dev2, "%s%d", dev, i);
+      VG_(snprintf)(dev2, sizeof(dev2), "%s%d", dev, i);
       if ( VG_(strncmp)(buf, dev2, 10) == 0 ) return 1;
    }
    return 0;
