@@ -2500,17 +2500,13 @@ Int atoi( HChar *s ){
 //#define RI_MAX 740 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-//UInt  ti[TI_MAX];
 UInt  *ti;
 // Tmp variable values
-//ULong tv[TI_MAX];
 ULong *tv;
 // Reg variable indices; values are obtained in real-time
-//UInt  ri[RI_MAX];
 UInt  *ri;
 
 struct   myStringArray lvar_s;
-//int      lvar_i[STACK_SIZE];
 int      *lvar_i;
 
 ////////////////////////////////
