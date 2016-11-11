@@ -2509,6 +2509,9 @@ UInt  *ri;
 struct   myStringArray lvar_s;
 int      *lvar_i;
 
+// Stores the variable name derived from describe_data()
+HChar *varname;
+
 ////////////////////////////////
 // Start of SOAAP-related data
 ////////////////////////////////
@@ -2603,7 +2606,6 @@ int istty = 0;
    const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
 #define H_VAR \
-   HChar *varname = VG_(malloc)("H_VAR", 1024*sizeof(HChar)); \
    ThreadId tid = VG_(get_running_tid()); \
    enum VariableType type = 0; \
    enum VariableLocation var_loc; \
@@ -5075,7 +5077,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
 	   /* If we could not obtain the variable name, then just use "unknownobj" */
 	   if (descr1 == NULL) {
-	      VG_(snprintf)( varnamebuf, sizeof(varnamebuf), "%lx_unknownobj", addr );
+	      VG_(snprintf)( varnamebuf, bufsize-1, "%lx_unknownobj", addr );
 	   }
 	   else {
               processDescr1(descr1, varnamebuf, bufsize);
@@ -5538,6 +5540,7 @@ static void tnt_post_clo_init(void)
    tt = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
    ri = (UInt *)VG_(malloc)("clo_post_init", RI_MAX*sizeof(UInt));
    lvar_i = (int *)VG_(malloc)("clo_post_init", STACK_SIZE*sizeof(int));
+   varname = (HChar *)VG_(malloc)("H_VAR", 1024*sizeof(HChar));
 
    // Initialise temporary variables/reg SSA index array
    Int i;
@@ -5576,6 +5579,12 @@ static void tnt_post_clo_init(void)
 
 static void tnt_fini(Int exitcode)
 {
+   VG_(free)(ti);
+   VG_(free)(tv);
+   VG_(free)(tt);
+   VG_(free)(ri);
+   VG_(free)(lvar_i);
+   VG_(free)(varname);
 }
 
 static void tnt_pre_clo_init(void)
@@ -5633,11 +5642,11 @@ static void tnt_pre_clo_init(void)
 
 VG_DETERMINE_INTERFACE_VERSION(tnt_pre_clo_init)
 
-void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc) {
+void TNT_(check_var_access)(ThreadId tid, const HChar* vname, Int var_request, enum VariableType type, enum VariableLocation var_loc) {
 	if (type == Global && var_loc == GlobalFromApplication) {
 		const HChar *fnname;
 		TNT_(get_fnname)(tid, &fnname);
-		Int var_idx = myStringArray_getIndex(&shared_vars, varname);
+		Int var_idx = myStringArray_getIndex(&shared_vars, vname);
 		// first check if this access is allowed
 		Bool allowed = var_idx != -1 && (shared_vars_perms[var_idx] & var_request);
 		if (IN_SANDBOX && !allowed) {
@@ -5656,17 +5665,17 @@ void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request,
 					break;
 				}
 			}
-			VG_(printf)("*** Sandbox %s global variable \"%s\" in method %s, but it is not allowed to. ***\n", access_str, varname, fnname);
+			VG_(printf)("*** Sandbox %s global variable \"%s\" in method %s, but it is not allowed to. ***\n", access_str, vname, fnname);
 			VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 			VG_(printf)("\n");
 		}
 		// check for unnannotated writes to global vars both inside and outside
 		// sandboxes
 		if (var_request == VAR_WRITE) {
-			if (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, varname) != 0) {
+			if (next_shared_variable_to_update == NULL || VG_(strcmp)(next_shared_variable_to_update, vname) != 0) {
 				if (IN_SANDBOX) {
 					if (allowed) {
-						VG_(printf)("*** Sandbox is allowed to write to global variable \"%s\" in method %s, but you have not explicitly declared this. ***\n", varname, fnname);
+						VG_(printf)("*** Sandbox is allowed to write to global variable \"%s\" in method %s, but you have not explicitly declared this. ***\n", vname, fnname);
 						VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 						VG_(printf)("\n");
 					}
@@ -5675,7 +5684,7 @@ void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request,
 					// only output this error if the sandbox is allowed at least read access
 					Bool allowed_read = var_idx != -1 && (shared_vars_perms[var_idx] & VAR_READ);
 					if (allowed_read) {
-						VG_(printf)("*** Global variable \"%s\" is being written to in method %s after a sandbox has been created and so the sandbox will not see this new value. ***\n", varname, fnname);
+						VG_(printf)("*** Global variable \"%s\" is being written to in method %s after a sandbox has been created and so the sandbox will not see this new value. ***\n", vname, fnname);
 						VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 						VG_(printf)("\n");
 					}
