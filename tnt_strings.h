@@ -11,6 +11,7 @@ const char *IRType_string[] = {
    "I32",
    "I64",
    "I128",  /* 128-bit scalar */
+   "F16",   /* 16 bit float */
    "F32",   /* IEEE 754 float */
    "F64",   /* IEEE 754 double */
    "D32",   /* 32-bit Decimal floating point */
