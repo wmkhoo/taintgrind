@@ -2506,9 +2506,6 @@ ULong *tv;
 // Reg variable indices; values are obtained in real-time
 UInt  *ri;
 
-struct   myStringArray lvar_s;
-int      *lvar_i;
-
 // Stores the variable name derived from describe_data()
 HChar *varname;
 
@@ -2815,19 +2812,13 @@ void TNT_(h32_store_tt) (
    }
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(dtmp) && is_tainted(atmp) ) {
-      VG_(printf)( "%s_%d <- t%d_%d", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
-      VG_(printf)( "; %s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
+      VG_(printf)( "; %s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
    } else if ( is_tainted(dtmp) )
-      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
    else if ( is_tainted(atmp) )
-      VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
 }
@@ -2857,14 +2848,8 @@ void TNT_(h32_store_tc) (
    H32_PRINT
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(atmp) )
-      VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <-*- t%d_%d\n", varname, atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
 }
@@ -2901,13 +2886,8 @@ void TNT_(h32_store_ct) (
    }
 
    // Information flow
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(dtmp) )
-      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
    else
       VG_(printf)("\n");
 }
@@ -2949,16 +2929,11 @@ void TNT_(h32_load_t) (
    }
 
    // Information flow
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(ltmp) && is_tainted(atmp) ) {
-      VG_(printf)( "t%d_%d <- %s_%d", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
       VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    } else if ( is_tainted(ltmp) )
-      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
    else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    else
@@ -3001,13 +2976,8 @@ void TNT_(h32_load_c) (
    }
 
    // Information flow
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(ltmp) )
-      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
    else
       VG_(printf)("\n");
 }
@@ -3938,19 +3908,13 @@ void TNT_(h64_store_tt) (
    }
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(dtmp) && is_tainted(atmp) ) {
-      VG_(printf)( "%s_%d <- t%d_%d", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
-      VG_(printf)( "; %s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
+      VG_(printf)( "; %s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
    } else if ( is_tainted(dtmp) )
-      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
    else if ( is_tainted(atmp) )
-      VG_(printf)( "%s_%d <*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
 }
@@ -3980,14 +3944,8 @@ void TNT_(h64_store_tc) (
    H64_PRINT
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(atmp) )
-      VG_(printf)( "%s_%d <-*- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], atmp, _ti(atmp) );
+      VG_(printf)( "%s <-*- t%d_%d\n", varname, atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
 }
@@ -4023,14 +3981,8 @@ void TNT_(h64_store_ct) (
    }
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(dtmp) )
-      VG_(printf)( "%s_%d <- t%d_%d\n", varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ], dtmp, _ti(dtmp) );
+      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
    else
       VG_(printf)("\n");
 }
@@ -4067,17 +4019,11 @@ void TNT_(h64_load_t) (
    }
 
    // Information flow
-   // Check if it hasn't been seen before
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(ltmp) && is_tainted(atmp) ) {
-      VG_(printf)( "t%d_%d <- %s_%d", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
       VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    } else if ( is_tainted(ltmp) )
-      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
    else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    else
@@ -4114,13 +4060,8 @@ void TNT_(h64_load_c) (
    }
 
    // Information flow
-   if( myStringArray_getIndex( &lvar_s, varname ) == -1 ){
-      myStringArray_push( &lvar_s, varname );
-   }
-   //lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ]++;
-
    if ( is_tainted(ltmp) )
-      VG_(printf)( "t%d_%d <- %s_%d\n", ltmp, _ti(ltmp), varname, lvar_i[ myStringArray_getIndex( &lvar_s, varname ) ] );
+      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
    else
       VG_(printf)("\n");
 }
@@ -5539,7 +5480,6 @@ static void tnt_post_clo_init(void)
    tv = (ULong *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(ULong));
    tt = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
    ri = (UInt *)VG_(malloc)("clo_post_init", RI_MAX*sizeof(UInt));
-   lvar_i = (int *)VG_(malloc)("clo_post_init", STACK_SIZE*sizeof(int));
    varname = (HChar *)VG_(malloc)("H_VAR", 1024*sizeof(HChar));
 
    // Initialise temporary variables/reg SSA index array
@@ -5551,9 +5491,6 @@ static void tnt_post_clo_init(void)
    }
    for( i=0; i< RI_MAX; i++ )
       ri[i] = 0;
-   for( i=0; i< STACK_SIZE; i++ )
-      lvar_i[i] = 0;
-   lvar_s.size = 0;
 
 //   if (TNT_(read_syscalls_file)) {
 //	   read_allowed_syscalls();
@@ -5583,7 +5520,6 @@ static void tnt_fini(Int exitcode)
    VG_(free)(tv);
    VG_(free)(tt);
    VG_(free)(ri);
-   VG_(free)(lvar_i);
    VG_(free)(varname);
 }
 
