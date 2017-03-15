@@ -2794,7 +2794,6 @@ void TNT_(h32_store_tt) (
    H32_PC
 
    UInt address = tv[atmp];
-   H_VAR
 
    if ( istty && is_tainted(dtmp) )
    {
@@ -2813,13 +2812,16 @@ void TNT_(h32_store_tt) (
 
    // Information flow
    if ( is_tainted(dtmp) && is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
       VG_(printf)( "; %s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   } else if ( is_tainted(dtmp) )
+   } else if ( is_tainted(dtmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-   else if ( is_tainted(atmp) )
+   } else if ( is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -2842,15 +2844,15 @@ void TNT_(h32_store_tc) (
    H32_PC
 
    UInt address = tv[atmp];
-   H_VAR
 
    VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%x", atmp, _ti(atmp), c );
    H32_PRINT
 
    // Information flow
-   if ( is_tainted(atmp) )
+   if ( is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <-*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -2873,7 +2875,6 @@ void TNT_(h32_store_ct) (
    tl_assert( dtmp < TI_MAX );
 
    UInt address = c;
-   H_VAR
 
    if ( istty && is_tainted(dtmp) )
    {
@@ -2886,9 +2887,10 @@ void TNT_(h32_store_ct) (
    }
 
    // Information flow
-   if ( is_tainted(dtmp) )
+   if ( is_tainted(dtmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -2912,7 +2914,6 @@ void TNT_(h32_load_t) (
    H32_PC
 
    UInt address = tv[atmp];
-   H_VAR
 
    if ( istty && is_tainted(ltmp) )
    {
@@ -2930,11 +2931,13 @@ void TNT_(h32_load_t) (
 
    // Information flow
    if ( is_tainted(ltmp) && is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
       VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
-   } else if ( is_tainted(ltmp) )
+   } else if ( is_tainted(ltmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-   else if ( is_tainted(atmp) )
+   } else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
@@ -2958,7 +2961,6 @@ void TNT_(h32_load_c) (
    UInt c       = extract_IRConst(addr->Iex.Const.con);
 
    UInt address = c;
-   H_VAR
 
    if ( istty && is_tainted(ltmp) )
    {
@@ -2976,9 +2978,10 @@ void TNT_(h32_load_c) (
    }
 
    // Information flow
-   if ( is_tainted(ltmp) )
+   if ( is_tainted(ltmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -3890,7 +3893,6 @@ void TNT_(h64_store_tt) (
    H64_PC
 
    ULong address = tv[atmp];
-   H_VAR
 
    if ( istty && is_tainted(dtmp) )
    {
@@ -3909,13 +3911,16 @@ void TNT_(h64_store_tt) (
 
    // Information flow
    if ( is_tainted(dtmp) && is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
       VG_(printf)( "; %s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   } else if ( is_tainted(dtmp) )
+   } else if ( is_tainted(dtmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-   else if ( is_tainted(atmp) )
+   } else if ( is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -3938,15 +3943,15 @@ void TNT_(h64_store_tc) (
    H64_PC
 
    ULong address = c;
-   H_VAR
 
    VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
    H64_PRINT
 
    // Information flow
-   if ( is_tainted(atmp) )
+   if ( is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "%s <-*- t%d_%d\n", varname, atmp, _ti(atmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -3969,7 +3974,6 @@ void TNT_(h64_store_ct) (
    tl_assert( dtmp < TI_MAX );
 
    ULong address = c;
-   H_VAR
 
    if ( istty && is_tainted(dtmp) )
    {
@@ -3981,9 +3985,10 @@ void TNT_(h64_store_ct) (
    }
 
    // Information flow
-   if ( is_tainted(dtmp) )
+   if ( is_tainted(dtmp) ) {
+      H_VAR
       VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -4007,7 +4012,6 @@ void TNT_(h64_load_t) (
    H64_PC
 
    ULong address = tv[atmp];
-   H_VAR
 
    if ( istty && is_tainted(ltmp) )
    {
@@ -4020,11 +4024,13 @@ void TNT_(h64_load_t) (
 
    // Information flow
    if ( is_tainted(ltmp) && is_tainted(atmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
       VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
-   } else if ( is_tainted(ltmp) )
+   } else if ( is_tainted(ltmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-   else if ( is_tainted(atmp) )
+   } else if ( is_tainted(atmp) )
       VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
    else
       VG_(printf)("\n");
@@ -4048,7 +4054,6 @@ void TNT_(h64_load_c) (
    ULong c      = extract_IRConst64(addr->Iex.Const.con);
 
    ULong address = c;
-   H_VAR
 
    if ( istty && is_tainted(ltmp) )
    {
@@ -4060,9 +4065,10 @@ void TNT_(h64_load_c) (
    }
 
    // Information flow
-   if ( is_tainted(ltmp) )
+   if ( is_tainted(ltmp) ) {
+      H_VAR
       VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-   else
+   } else
       VG_(printf)("\n");
 }
 
@@ -4079,7 +4085,6 @@ void TNT_(h64_get) (
    H_EXIT_EARLY
    H_SMT2(smt2_get);
    H64_PC
-   //H_VAR
 
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
@@ -4133,7 +4138,6 @@ void TNT_(h64_put_t) (
    H_EXIT_EARLY
    H_SMT2(smt2_put_t_64);
    H64_PC
-   //H_VAR
 
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
@@ -4174,7 +4178,6 @@ void TNT_(h64_put_c) (
 
    H_EXIT_EARLY
    H64_PC
-   //H_VAR
 
    IRExpr *data = clone->Ist.Put.data;
    ULong c      = extract_IRConst(data->Iex.Const.con);
@@ -4198,7 +4201,6 @@ void TNT_(h64_puti) (
    H_EXIT_EARLY
    H_SMT2_not_implemented("h64_puti");
    H64_PC
-   //H_VAR
 
    UInt base = (tt1 >> 32) & 0xffffffff;
    UInt elemTy = (tt1 >> 16) & 0xff;
@@ -4529,7 +4531,6 @@ void TNT_(h64_rdtmp) (
    H_EXIT_EARLY
    H_SMT2(smt2_rdtmp);
    H64_PC
-   //H_VAR
 
    UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
 
