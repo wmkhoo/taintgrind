@@ -4957,6 +4957,8 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
 }
 
 void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
+        // get_datasym_and_offset seems to cause memory errors
+#if 0
         const HChar *cvarname;
 
 	// first try to see if it is a global var
@@ -4967,7 +4969,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
            varnamebuf[bufsize] = '\0';
            return;
         }
-
+#endif
         AddrInfo ai; ai.tag = Addr_Undescribed;
         VG_(describe_addr)(addr, &ai);
         //VG_(pp_addrinfo)(addr, &ai);
