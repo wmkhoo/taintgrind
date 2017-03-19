@@ -217,7 +217,7 @@ typedef  IRExpr  IRAtom;
 
 /* (used for sanity checks only): is this an atom which looks
    like it's from original code? */
-static Bool isOriginalAtom ( MCEnv* mce, IRAtom* a1 ) //303
+static Bool isOriginalAtom ( MCEnv* mce, IRAtom* a1 )
 {
    if (a1->tag == Iex_Const)
       return True;
@@ -262,7 +262,7 @@ static Bool sameKindedAtoms ( IRAtom* a1, IRAtom* a2 )
    given type.  The only valid shadow types are Bit, I8, I16, I32,
    I64, V128. */
 
-static IRType shadowTypeV ( IRType ty ) //348
+static IRType shadowTypeV ( IRType ty )
 {
    switch (ty) {
       case Ity_I1:
@@ -287,7 +287,7 @@ static IRType shadowTypeV ( IRType ty ) //348
 
 /* Produce a 'defined' value of the given shadow type.  Should only be
    supplied shadow types (Bit/I8/I16/I32/UI64). */
-static IRExpr* definedOfType ( IRType ty ) { //367
+static IRExpr* definedOfType ( IRType ty ) {
    switch (ty) {
       case Ity_I1:   return IRExpr_Const(IRConst_U1(False));
       case Ity_I8:   return IRExpr_Const(IRConst_U8(0));
@@ -306,7 +306,7 @@ static IRExpr* definedOfType ( IRType ty ) { //367
 /*------------------------------------------------------------*/
 
 /* add stmt to a bb */
-static inline void stmt ( HChar cat, MCEnv* mce, IRStmt* st ) { //385
+static inline void stmt ( HChar cat, MCEnv* mce, IRStmt* st ) {
    if (mce->trace) {
       VG_(printf)("  %c: ", cat);
       ppIRStmt(st);
@@ -321,7 +321,7 @@ void assign ( HChar cat, MCEnv* mce, IRTemp tmp, IRExpr* expr ) {
    stmt(cat, mce, IRStmt_WrTmp(tmp,expr));
 }
 
-/* build various kinds of expressions *///400
+/* build various kinds of expressions */
 #define triop(_op, _arg1, _arg2, _arg3) \
                                  IRExpr_Triop((_op),(_arg1),(_arg2),(_arg3))
 #define binop(_op, _arg1, _arg2) IRExpr_Binop((_op),(_arg1),(_arg2))
@@ -342,7 +342,7 @@ void assign ( HChar cat, MCEnv* mce, IRTemp tmp, IRExpr* expr ) {
    needs to be.  But passing it in is redundant, since we can deduce
    the type merely by inspecting 'e'.  So at least use that fact to
    assert that the two types agree. */
-static IRAtom* assignNew ( HChar cat, MCEnv* mce, IRType ty, IRExpr* e ) //418
+static IRAtom* assignNew ( HChar cat, MCEnv* mce, IRType ty, IRExpr* e )
 {
    TempKind k;
    IRTemp   t;
@@ -383,7 +383,7 @@ static IRExpr *i128_const_zero(void)
 
 /* --------- Defined-if-either-defined --------- */
 
-static IRAtom* mkDifD8 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) { //444
+static IRAtom* mkDifD8 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
    tl_assert(isShadowAtom(mce,a1));
    tl_assert(isShadowAtom(mce,a2));
    return assignNew('V', mce, Ity_I8, binop(Iop_And8, a1, a2));
@@ -497,7 +497,7 @@ static IRAtom* mkLeft64 ( MCEnv* mce, IRAtom* a1 ) {
 /* ImproveAND(data, vbits) = data OR vbits.  Defined (0) data 0s give
    defined (0); all other -> undefined (1).
 */
-static IRAtom* mkImproveAND8 ( MCEnv* mce, IRAtom* data, IRAtom* vbits ) //546
+static IRAtom* mkImproveAND8 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
 {
    tl_assert(isOriginalAtom(mce, data));
    tl_assert(isShadowAtom(mce, vbits));
@@ -805,7 +805,7 @@ static IRAtom* mkPCastXXtoXXlsb ( MCEnv* mce, IRAtom* varg, IRType ty )
 }
 
 /* --------- Accurate interpretation of CmpEQ/CmpNE. --------- */
-static IRAtom* expensiveCmpEQorNE ( MCEnv*  mce, //774
+static IRAtom* expensiveCmpEQorNE ( MCEnv*  mce,
                                     IRType  ty,
                                     IRAtom* vxx, IRAtom* vyy,
                                     IRAtom* xx,  IRAtom* yy )
@@ -882,7 +882,7 @@ static IRAtom* expensiveCmpEQorNE ( MCEnv*  mce, //774
 
 
 /* --------- Semi-accurate interpretation of CmpORD. --------- */
-static Bool isZeroU32 ( IRAtom* e ) //886
+static Bool isZeroU32 ( IRAtom* e )
 {
    return
       toBool( e->tag == Iex_Const
@@ -975,7 +975,7 @@ static IRAtom* doCmpORD ( MCEnv*  mce,
    behaviour of all 'emit-a-complaint' style functions we might
    call. */
 
-static void setHelperAnns ( MCEnv* mce, IRDirty* di ) { //970
+static void setHelperAnns ( MCEnv* mce, IRDirty* di ) {
    di->nFxState = 2;
    di->fxState[0].fx     = Ifx_Read;
    di->fxState[0].offset = mce->layout->offset_SP;
@@ -1111,7 +1111,7 @@ static void complainIfTainted ( MCEnv* mce, IRAtom* atom, IRDirty* di2 )
    partially fall into such a region: (offset,size) should either be
    completely in such a region or completely not-in such a region.
 */
-static Bool isAlwaysDefd ( MCEnv* mce, Int offset, Int size ) //1159
+static Bool isAlwaysDefd ( MCEnv* mce, Int offset, Int size )
 {
    Int minoffD, maxoffD, i;
    Int minoff = offset;
@@ -1253,7 +1253,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRPutI *puti )
    given GET (passed in in pieces).
 */
 static
-IRExpr* shadow_GET ( MCEnv* mce, Int offset, IRType ty ) //1270
+IRExpr* shadow_GET ( MCEnv* mce, Int offset, IRType ty )
 {
    IRType tyS = shadowTypeV(ty);
    tl_assert(ty != Ity_I1);
@@ -1309,7 +1309,7 @@ IRExpr* shadow_GETI ( MCEnv* mce,
    specified shadow type.
 */
 static
-IRAtom* mkLazy2 ( MCEnv* mce, IRType finalVty, IRAtom* va1, IRAtom* va2 ) //1322
+IRAtom* mkLazy2 ( MCEnv* mce, IRType finalVty, IRAtom* va1, IRAtom* va2 )
 {
    IRAtom* at;
    IRType t1 = typeOfIRExpr(mce->sb->tyenv, va1);
@@ -1803,7 +1803,7 @@ static IRAtom* scalarShift ( MCEnv*  mce,
 
 /* Vector pessimisation -- pessimise within each lane individually. */
 
-static IRAtom* mkPCast8x16 ( MCEnv* mce, IRAtom* at ) //1688
+static IRAtom* mkPCast8x16 ( MCEnv* mce, IRAtom* at )
 {
    return assignNew('V', mce, Ity_V128, unop(Iop_CmpNEZ8x16, at));
 }
@@ -1872,7 +1872,7 @@ static IRAtom* mkPCast8x4 ( MCEnv* mce, IRAtom* at )
    code and while only generating ops that can be efficiently
    implemented in SSE1. */
 static
-IRAtom* binary32Fx4 ( MCEnv* mce, IRAtom* vatomX, IRAtom* vatomY ) //1761
+IRAtom* binary32Fx4 ( MCEnv* mce, IRAtom* vatomX, IRAtom* vatomY )
 {
    IRAtom* at;
    tl_assert(isShadowAtom(mce, vatomX));
@@ -1918,7 +1918,7 @@ IRAtom* unary32F0x4 ( MCEnv* mce, IRAtom* vatomX )
 /* --- ... and ... 64Fx2 versions of the same ... --- */
 
 static
-IRAtom* binary64Fx2 ( MCEnv* mce, IRAtom* vatomX, IRAtom* vatomY ) //1807
+IRAtom* binary64Fx2 ( MCEnv* mce, IRAtom* vatomX, IRAtom* vatomY )
 {
    IRAtom* at;
    tl_assert(isShadowAtom(mce, vatomX));
@@ -2311,7 +2311,7 @@ IRAtom* binary64Ix4 ( MCEnv* mce, IRAtom* vatom1, IRAtom* vatom2 )
 /* --- V128-bit versions --- */
 
 static
-IRAtom* binary8Ix16 ( MCEnv* mce, IRAtom* vatom1, IRAtom* vatom2 ) //1927
+IRAtom* binary8Ix16 ( MCEnv* mce, IRAtom* vatom1, IRAtom* vatom2 )
 {
    IRAtom* at;
    at = mkUifUV128(mce, vatom1, vatom2);
@@ -2410,7 +2410,7 @@ IRAtom* binary16Ix2 ( MCEnv* mce, IRAtom* vatom1, IRAtom* vatom2 )
 /*------------------------------------------------------------*/
 
 static
-IRAtom* expr2vbits_Qop ( MCEnv* mce, //1997
+IRAtom* expr2vbits_Qop ( MCEnv* mce,
                          IROp op,
                          IRAtom* atom1, IRAtom* atom2,
                          IRAtom* atom3, IRAtom* atom4 )
@@ -4481,7 +4481,7 @@ IRAtom* expr2vbits_Load_guarded_Simple ( MCEnv* mce,
 }
 
 static
-IRAtom* expr2vbits_ITE ( MCEnv* mce, //2881
+IRAtom* expr2vbits_ITE ( MCEnv* mce,
                          IRAtom* cond, IRAtom* iftrue, IRAtom* iffalse )
 {
    IRAtom *vbitsC, *vbitsT, *vbitsF;
@@ -4510,7 +4510,7 @@ IRAtom* expr2vbits_ITE ( MCEnv* mce, //2881
 /* --------- This is the main expression-handling function. --------- */
 
 static
-IRExpr* expr2vbits ( MCEnv* mce, IRExpr* e ) //2909
+IRExpr* expr2vbits ( MCEnv* mce, IRExpr* e )
 {
    switch (e->tag) {
       case Iex_Get:
@@ -5190,7 +5190,7 @@ void do_AbiHint ( MCEnv* mce, IRExpr* base, Int len, IRExpr* nia )
 //}
 
 
-/* ------ Dealing with IRCAS (big and complex) ------ */ //3434
+/* ------ Dealing with IRCAS (big and complex) ------ */
 
 /* FWDS */
 static void do_shadow_CAS_single ( MCEnv* mce, IRCAS* cas );
