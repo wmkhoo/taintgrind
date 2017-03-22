@@ -2669,7 +2669,7 @@ int istty = 0;
       VG_(printf)("smt2: %s not implemented yet", fn); \
       tl_assert(0); \
    }
-
+#if 0
 // ltmp = x86g_calculate_condition(
 //           UInt/*X86Condcode*/ cond, 
 //           UInt cc_op, 
@@ -2746,7 +2746,7 @@ void TNT_(h32_x86g_calculate_condition) (
    } else
       VG_(printf)("\n");
 }
-
+#endif
 /**** 64-bit helpers ****/
 
 // IF <gtmp> GOTO <jk> addr
@@ -3771,15 +3771,19 @@ void TNT_(h64_ccall) (
 VG_REGPARM(3)
 void TNT_(h64_amd64g_calculate_condition) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
    if( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2(smt2_amd64g_calculate_condition);
+   if (sizeof(UWord) == 4) {
+      H_SMT2(smt2_x86g_calculate_condition);
+   } else {
+      H_SMT2(smt2_amd64g_calculate_condition);
+   }
    H64_PC
 
    IRExpr *ccall = clone->Ist.WrTmp.data;
@@ -3792,14 +3796,17 @@ void TNT_(h64_amd64g_calculate_condition) (
                     KNRM);
 
       VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
-      ppIRExpr( ccall );
-      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
    } else {
       VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
-      ppIRExpr( ccall );
-      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
    }
+
+   ppIRExpr( ccall );
+
+   if (sizeof(UWord) == 4)
+      VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
+   else
+      VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
 
    // Information flow
    if ( is_tainted(ltmp) ) {

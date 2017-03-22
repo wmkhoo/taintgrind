@@ -106,7 +106,7 @@ void TNT_(make_mem_tainted_named)( Addr a, SizeT len, const HChar *varname );
 void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
-VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
+//VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
 VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_exit_c)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_next_t)   ( IRExpr *, UWord, UWord );
@@ -136,7 +136,7 @@ VG_REGPARM(3) void TNT_(h64_ite_ct)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_ite_tt)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_ite_cc)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_ccall)    ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, ULong, ULong );
+VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, UWord, UWord );
 
 /* Strings used by tnt_translate, printed by tnt_main */
