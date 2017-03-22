@@ -3942,7 +3942,7 @@ void TNT_(h64_store_tc) (
    H_SMT2(smt2_store_tc);
    H64_PC
 
-   ULong address = c;
+   ULong address = tv[atmp];
 
    VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
    H64_PRINT
