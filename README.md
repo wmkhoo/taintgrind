@@ -87,6 +87,8 @@ Taintgrind is based on [Valgrind](http://valgrind.org)'s MemCheck and [Flayer](h
 
 Taintgrind borrows the bit-precise shadow memory from MemCheck and only propagates explicit data flow. This means that Taintgrind will not propagate taint in control structures such as if-else, for-loops and while-loops. Taintgrind will also not propagate taint in dereferenced tainted pointers.
 
+Taintgrind has been used in [SOAAP](https://github.com/CTSRD-SOAAP/) and [Secretgrind](https://github.com/lmrs2/secretgrind).
+
 
 
 Client requests
