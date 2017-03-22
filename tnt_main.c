@@ -2648,20 +2648,32 @@ int istty = 0;
    VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, value, taint);
 
 #define H64_PRINT \
-   VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, value, taint);
+   if (sizeof(UWord) == 4) \
+      VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, (UInt)value, (UInt)taint); \
+   else \
+      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, (ULong)value, (ULong)taint);
 
 #define H64_PRINT_OP \
    VG_(printf)("%s | %s", fnname, aTmp1); \
    ppIROp(op); \
-   VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, value, taint);
+   if (sizeof(UWord) == 4) \
+      VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, (UInt)value, (UInt)taint); \
+   else \
+      VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, (ULong)value, (ULong)taint);
 
 #define H64_PRINTC \
-   VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, value, taint);
+   if (sizeof(UWord) == 4) \
+      VG_(printf)("%s%s%s | %s | 0x%x | 0x%x | ", KMAG, fnname, KNRM, aTmp, (UInt)value, (UInt)taint); \
+   else \
+      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, (ULong)value, (ULong)taint);
 
 #define H64_PRINTC_OP \
    VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp1); \
    ppIROp(op); \
-   VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, value, taint);
+   if (sizeof(UWord) == 4) \
+      VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, (UInt)value, (UInt)taint); \
+   else \
+      VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, (ULong)value, (ULong)taint);
 
 #define H_SMT2( fn ) \
    if ( TNT_(clo_smt2) ) \
@@ -3877,8 +3889,8 @@ void TNT_(h64_next_c) (
 VG_REGPARM(3)
 void TNT_(h64_store_tt) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
@@ -3928,8 +3940,8 @@ void TNT_(h64_store_tt) (
 VG_REGPARM(3)
 void TNT_(h64_store_tc) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
@@ -3959,8 +3971,8 @@ void TNT_(h64_store_tc) (
 VG_REGPARM(3)
 void TNT_(h64_store_ct) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_EXIT_EARLY
    H_SMT2(smt2_store_ct);

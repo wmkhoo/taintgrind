@@ -6016,36 +6016,20 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone,
                           convert_Value( mce, data ),
                           convert_Value( mce, atom2vbits( mce, data ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_store_tt);
-         nm    = "TNT_(h32_store_tt)";
-      } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
-         fn    = &TNT_(h32_store_tc);
-         nm    = "TNT_(h32_store_tc)";
-      } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_store_ct);
-         nm    = "TNT_(h32_store_ct)";
-      } else {
-         VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 32-bit cfg");
-      }
-   }else if(mce->hWordTy == Ity_I64){
-      if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_store_tt);
-         nm    = "TNT_(h64_store_tt)";
-      } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
-         fn    = &TNT_(h64_store_tc);
-         nm    = "TNT_(h64_store_tc)";
-      } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_store_ct);
-         nm    = "TNT_(h64_store_ct)";
-      } else {
-         ppIRExpr(addr);
-         ppIRExpr(data);
-         VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unk 64-bit cfg");
-      }
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: Unknown platform");
+   if ( addr->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_store_tt);
+      nm    = "TNT_(h64_store_tt)";
+   } else if ( addr->tag == Iex_RdTmp && data->tag == Iex_Const ) {
+      fn    = &TNT_(h64_store_tc);
+      nm    = "TNT_(h64_store_tc)";
+   } else if ( addr->tag == Iex_Const && data->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_store_ct);
+      nm    = "TNT_(h64_store_ct)";
+   } else {
+      ppIRExpr(addr);
+      ppIRExpr(data);
+      VG_(tool_panic)("tnt_translate.c: create_dirty_STORE: unknown cfg");
+   }
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
