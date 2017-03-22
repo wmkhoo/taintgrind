@@ -2578,13 +2578,13 @@ int istty = 0;
 #define KMAG "\e[35m"
 #define KNRM "\e[0m"
 
-#define H32_PC \
+//#define H32_PC \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
    HChar aTmp[128]; \
    infer_client_binary_name(pc); \
    const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
-#define H32_PC_OP \
+//#define H32_PC_OP \
    UInt  pc = VG_(get_IP)( VG_(get_running_tid)() ); \
    HChar aTmp1[128], aTmp2[128]; \
    infer_client_binary_name(pc); \
@@ -2631,18 +2631,18 @@ int istty = 0;
       ti[ltmp] &= 0x7fffffff; \
    tv[ltmp] = value;
 
-#define H32_PRINT \
+//#define H32_PRINT \
    VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, value, taint);
 
-#define H32_PRINT_OP \
+//#define H32_PRINT_OP \
    VG_(printf)("%s | %s", fnname, aTmp1); \
    ppIROp(op); \
    VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, value, taint);
 
-#define H32_PRINTC \
+//#define H32_PRINTC \
    VG_(printf)("%s%s%s | %s | 0x%x | 0x%x | ", KMAG, fnname, KNRM, aTmp, value, taint);
 
-#define H32_PRINTC_OP \
+//#define H32_PRINTC_OP \
    VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp1); \
    ppIROp(op); \
    VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, value, taint);
@@ -2698,7 +2698,7 @@ int istty = 0;
       tl_assert(0); \
    }
 
-
+#if 0
 // if <gtmp> goto <jk> dst
 VG_REGPARM(3)
 void TNT_(h32_exit_t) (
@@ -3697,6 +3697,25 @@ void TNT_(h32_ccall) (
       VG_(printf)("\n");
 }
 
+// No decoding necessary. Just print the string
+VG_REGPARM(3)
+void TNT_(h32_none) ( 
+   HChar *str, 
+   UInt value, 
+   UInt taint ) {
+
+   if( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H_SMT2_not_implemented("h32_none");
+   H32_PC
+
+   VG_(snprintf)( aTmp, sizeof(aTmp), "%s", str);
+   H32_PRINT
+   // No information flow info
+   VG_(printf)("\n");
+}
+#endif
 // ltmp = x86g_calculate_condition(
 //           UInt/*X86Condcode*/ cond, 
 //           UInt cc_op, 
@@ -3714,7 +3733,7 @@ void TNT_(h32_x86g_calculate_condition) (
 
    H_EXIT_EARLY
    H_SMT2(smt2_x86g_calculate_condition);
-   H32_PC
+   H64_PC
 
    IRExpr *ccall = clone->Ist.WrTmp.data;
 
@@ -3774,33 +3793,14 @@ void TNT_(h32_x86g_calculate_condition) (
       VG_(printf)("\n");
 }
 
-// No decoding necessary. Just print the string
-VG_REGPARM(3)
-void TNT_(h32_none) ( 
-   HChar *str, 
-   UInt value, 
-   UInt taint ) {
-
-   if( TNT_(clo_critical_ins_only) ) return;
-
-   H_EXIT_EARLY
-   H_SMT2_not_implemented("h32_none");
-   H32_PC
-
-   VG_(snprintf)( aTmp, sizeof(aTmp), "%s", str);
-   H32_PRINT
-   // No information flow info
-   VG_(printf)("\n");
-}
-
 /**** 64-bit helpers ****/
 
 // IF <gtmp> GOTO <jk> addr
 VG_REGPARM(3)
 void TNT_(h64_exit_t) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_EXIT_EARLY
    H_SMT2(smt2_exit);
@@ -3833,8 +3833,8 @@ void TNT_(h64_exit_t) (
 VG_REGPARM(3)
 void TNT_(h64_exit_c) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    // End of BB ??
 }
@@ -3843,8 +3843,8 @@ void TNT_(h64_exit_c) (
 VG_REGPARM(3)
 void TNT_(h64_next_t) (
    IRExpr *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_EXIT_EARLY
    H_SMT2_not_implemented("h64_next_t");
@@ -3874,12 +3874,15 @@ void TNT_(h64_next_t) (
 VG_REGPARM(3)
 void TNT_(h64_next_c) (
    IRExpr *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_EXIT_EARLY
    H64_PC
-   VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%llx", value );
+   if (sizeof(UWord) == 4)
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%x", (UInt)value );
+   else
+      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%llx", (ULong)value );
    H64_PRINT
    VG_(printf)("\n");
    // End of BB
@@ -4008,8 +4011,8 @@ void TNT_(h64_store_ct) (
 VG_REGPARM(3)
 void TNT_(h64_load_t) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4052,8 +4055,8 @@ void TNT_(h64_load_t) (
 VG_REGPARM(3)
 void TNT_(h64_load_c) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4087,8 +4090,8 @@ void TNT_(h64_load_c) (
 VG_REGPARM(3)
 void TNT_(h64_get) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4128,8 +4131,8 @@ void TNT_(h64_get) (
 VG_REGPARM(3)
 void TNT_(h64_geti) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 }
@@ -4138,8 +4141,8 @@ void TNT_(h64_geti) (
 VG_REGPARM(3)
 void TNT_(h64_put_t) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
    // Reg book-keeping
    UInt reg     = clone->Ist.Put.offset;
    tl_assert( reg < RI_MAX );
@@ -4179,8 +4182,8 @@ void TNT_(h64_put_t) (
 VG_REGPARM(3)
 void TNT_(h64_put_c) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
    // Reg bookkeeping
    UInt reg     = clone->Ist.Put.offset;
    tl_assert( reg < RI_MAX );
@@ -4203,10 +4206,10 @@ void TNT_(h64_put_c) (
 
 VG_REGPARM(3)
 void TNT_(h64_puti) (
-   ULong tt1, 
-   ULong tt2, 
-   ULong value, 
-   ULong taint ) {
+   UWord tt1, 
+   UWord tt2, 
+   UWord value, 
+   UWord taint ) {
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
@@ -4243,20 +4246,23 @@ void TNT_(h64_puti) (
 VG_REGPARM(3)
 void TNT_(h64_wrtmp_c) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
-   VG_(printf)("%llx %llx\n", value, taint);
+   if (sizeof(UWord) == 4)
+      VG_(printf)("%x %x\n", (UInt)value, (UInt)taint);
+   else
+      VG_(printf)("%llx %llx\n", (ULong)value, (ULong)taint);
 }
 
 // ltmp = <op> rtmp
 VG_REGPARM(3)
 void TNT_(h64_unop_t) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4300,8 +4306,8 @@ void TNT_(h64_unop_t) (
 VG_REGPARM(3)
 void TNT_(h64_unop_c) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4327,8 +4333,8 @@ void TNT_(h64_unop_c) (
 VG_REGPARM(3)
 void TNT_(h64_binop_tc) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4375,8 +4381,8 @@ void TNT_(h64_binop_tc) (
 VG_REGPARM(3)
 void TNT_(h64_binop_ct) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4422,8 +4428,8 @@ void TNT_(h64_binop_ct) (
 VG_REGPARM(3)
 void TNT_(h64_binop_tt) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4476,8 +4482,8 @@ void TNT_(h64_binop_tt) (
 VG_REGPARM(3)
 void TNT_(h64_binop_cc) (
    IRStmt *clone,
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4506,8 +4512,8 @@ void TNT_(h64_binop_cc) (
 VG_REGPARM(3)
 void TNT_(h64_triop) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4520,8 +4526,8 @@ void TNT_(h64_triop) (
 VG_REGPARM(3)
 void TNT_(h64_qop) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4533,8 +4539,8 @@ void TNT_(h64_qop) (
 VG_REGPARM(3)
 void TNT_(h64_rdtmp) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4550,8 +4556,8 @@ void TNT_(h64_rdtmp) (
 
    // Sanity check for the WrTmp book-keeping,
    // since RdTmp is essentially a no-op
-   if ( value != tv[rtmp] )
-      VG_(printf)("value 0x%llx != tv[rtmp] 0x%llx\n", value, tv[rtmp] );
+   //if ( value != tv[rtmp] )
+   //   VG_(printf)("value 0x%llx != tv[rtmp] 0x%llx\n", value, tv[rtmp] );
    tl_assert( value == tv[rtmp] );
 
    if ( istty && is_tainted(ltmp) )
@@ -4578,8 +4584,8 @@ void TNT_(h64_rdtmp) (
 VG_REGPARM(3)
 void TNT_(h64_ite_tc) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4622,8 +4628,8 @@ void TNT_(h64_ite_tc) (
 VG_REGPARM(3)
 void TNT_(h64_ite_ct) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4631,7 +4637,7 @@ void TNT_(h64_ite_ct) (
 
    H_EXIT_EARLY
    H_SMT2_not_implemented("h64_ite_ct");
-   H32_PC
+   H64_PC
 
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
@@ -4666,8 +4672,8 @@ void TNT_(h64_ite_ct) (
 VG_REGPARM(3)
 void TNT_(h64_ite_tt) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4717,8 +4723,8 @@ void TNT_(h64_ite_tt) (
 VG_REGPARM(3)
 void TNT_(h64_ite_cc) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4752,8 +4758,8 @@ void TNT_(h64_ite_cc) (
 VG_REGPARM(3)
 void TNT_(h64_ccall) (
    IRStmt *clone, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    H_WRTMP_BOOKKEEPING
 
@@ -4780,12 +4786,20 @@ void TNT_(h64_ccall) (
 
       VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
       ppIRExpr( ccall );
-      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+
+      if (sizeof(UWord) == 4)
+         VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
+      else
+         VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
    } else {
       VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
       VG_(printf)("%s | %s", fnname, aTmp);
       ppIRExpr( ccall );
-      VG_(printf)(" | 0x%llx | 0x%llx | ", value, taint);
+
+      if (sizeof(UWord) == 4)
+         VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
+      else
+         VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
    }
 
    // Information flow
@@ -4876,8 +4890,8 @@ void TNT_(h64_amd64g_calculate_condition) (
 VG_REGPARM(3)
 void TNT_(h64_none) ( 
    HChar *str, 
-   ULong value, 
-   ULong taint ) {
+   UWord value, 
+   UWord taint ) {
 
    if( TNT_(clo_critical_ins_only) ) return;
 

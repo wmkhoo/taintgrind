@@ -5937,16 +5937,10 @@ IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data )
                           convert_Value( mce, data ),
                           convert_Value( mce, atom2vbits( mce, data ) ) );
 
-   if(mce->hWordTy == Ity_I32 && data->tag == Iex_RdTmp){
-      fn    = &TNT_(h32_put_t);
-      nm    = "TNT_(h32_put_t)";
-   } else if(mce->hWordTy == Ity_I32 && data->tag == Iex_Const){
-      fn    = &TNT_(h32_put_c);
-      nm    = "TNT_(h32_put_c)";
-   }else if(mce->hWordTy == Ity_I64 && data->tag == Iex_RdTmp){
+   if(data->tag == Iex_RdTmp){
       fn    = &TNT_(h64_put_t);
       nm    = "TNT_(h64_put_t)";
-   } else if(mce->hWordTy == Ity_I64 && data->tag == Iex_Const){
+   } else if(data->tag == Iex_Const){
       fn    = &TNT_(h64_put_c);
       nm    = "TNT_(h64_put_c)";
    }else
@@ -5965,10 +5959,10 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
    if(data->tag == Iex_Const)
       return NULL;
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_puti);
-      nm    = "TNT_(h32_puti)";
+   fn    = &TNT_(h64_puti);
+   nm    = "TNT_(h64_puti)";
 
+   if(mce->hWordTy == Ity_I32){
       // There are too many bits to fit into 64 bits
       // We choose: elemTy, ix, bias, data
       UInt tt1 = descr->elemTy << 16;
@@ -5981,9 +5975,6 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
    }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_puti);
-      nm    = "TNT_(h64_puti)";
-
       ULong tt1 = (ULong)descr->base << 32;
             tt1 |= (ULong)descr->elemTy << 16;
             tt1 |= (ULong)descr->nElems & 0xffff;
@@ -5996,7 +5987,7 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias,
                              convert_Value( mce, data ),
                              convert_Value( mce, atom2vbits( mce, data ) ) );
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown type");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6104,13 +6095,8 @@ typedef
    else if( details->dataLo->tag == Iex_Const )
       VG_(sprintf)( aStr, "%s 0x%x", aStr, extract_IRAtom(details->dataLo) );
 
-   if ( mce->hWordTy == Ity_I32 ) {
-      fn    = &TNT_(h32_none);
-      nm    = "TNT_(h32_none)";
-   } else {
-      fn    = &TNT_(h64_none);
-      nm    = "TNT_(h64_none)";
-   }
+   fn    = &TNT_(h64_none);
+   nm    = "TNT_(h64_none)";
 
    args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
                           convert_Value( mce, IRExpr_RdTmp( details->oldLo ) ),
@@ -6184,13 +6170,8 @@ typedef
    tl_assert( num_args <= 4 );
 
    nargs = 3;
-   if ( mce->hWordTy == Ity_I32 ) {
-      fn    = &TNT_(h32_none);
-      nm    = "TNT_(h32_none)";
-   } else {
-      fn    = &TNT_(h64_none);
-      nm    = "TNT_(h64_none)";
-   }
+   fn    = &TNT_(h64_none);
+   nm    = "TNT_(h64_none)";
 
    if( details->tmp == IRTemp_INVALID )
       args  = mkIRExprVec_3( mkIRExpr_HWord( (HWord)aStr ),
@@ -6217,20 +6198,14 @@ IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard, IRJumpKind
                           convert_Value( mce, guard ),
                           convert_Value( mce, atom2vbits( mce, guard ) ) );
 
-   if(mce->hWordTy == Ity_I32 && guard->tag == Iex_Const){
-      fn    = &TNT_(h32_exit_c);
-      nm    = "TNT_(h32_exit_c)";
-   }else if(mce->hWordTy == Ity_I32 && guard->tag == Iex_RdTmp){
-      fn    = &TNT_(h32_exit_t);
-      nm    = "TNT_(h32_exit_t)";
-   }else if(mce->hWordTy == Ity_I64 && guard->tag == Iex_Const){
+   if(guard->tag == Iex_Const){
       fn    = &TNT_(h64_exit_c);
       nm    = "TNT_(h64_exit_c)";
-   }else if(mce->hWordTy == Ity_I64 && guard->tag == Iex_RdTmp){
+   }else if(guard->tag == Iex_RdTmp){
       fn    = &TNT_(h64_exit_t);
       nm    = "TNT_(h64_exit_t)";
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT: Unknown platform");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6250,20 +6225,14 @@ IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
                           convert_Value( mce, next ),
                           convert_Value( mce, atom2vbits( mce, next ) ) );
 
-   if(mce->hWordTy == Ity_I32 && next->tag == Iex_Const){
-      fn    = &TNT_(h32_next_c);
-      nm    = "TNT_(h32_next_c)";
-   }else if(mce->hWordTy == Ity_I32 && next->tag == Iex_RdTmp){
-      fn    = &TNT_(h32_next_t);
-      nm    = "TNT_(h32_next_t)";
-   }else if(mce->hWordTy == Ity_I64 && next->tag == Iex_Const){
+   if(next->tag == Iex_Const){
       fn    = &TNT_(h64_next_c);
       nm    = "TNT_(h64_next_c)";
-   }else if(mce->hWordTy == Ity_I64 && next->tag == Iex_RdTmp){
+   }else if(next->tag == Iex_RdTmp){
       fn    = &TNT_(h64_next_t);
       nm    = "TNT_(h64_next_t)";
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_NEXT: Unknown platform");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_NEXT");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6339,15 +6308,14 @@ IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp )
    void*    fn;
    IRExpr** args;
 
+   fn    = &TNT_(h64_wrtmp_c);
+   nm    = "TNT_(h64_wrtmp_c)";
+
    if ( mce->hWordTy == Ity_I32 ) {
-      fn    = &TNT_(h32_wrtmp_c);
-      nm    = "TNT_(h32_wrtmp_c)";
       args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                        convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                        mkU32( 0 ) );
    } else if ( mce->hWordTy == Ity_I64 ){
-      fn    = &TNT_(h64_wrtmp_c);
-      nm    = "TNT_(h64_wrtmp_c)";
       args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                        convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                        mkU64( 0 ) );
@@ -6368,14 +6336,8 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp, Int offset, IR
                           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_get);
-      nm    = "TNT_(h32_get)";
-   }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_get);
-      nm    = "TNT_(h64_get)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_GET: Unknown platform");
+   fn    = &TNT_(h64_get);
+   nm    = "TNT_(h64_get)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6391,13 +6353,8 @@ IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRRegArray* d
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_geti);
-      nm    = "TNT_(h32_geti)";
-   } else {
-      fn    = &TNT_(h64_geti);
-      nm    = "TNT_(h64_geti)";
-   }
+   fn    = &TNT_(h64_geti);
+   nm    = "TNT_(h64_geti)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6414,14 +6371,8 @@ IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRTemp data 
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      fn    = &TNT_(h32_rdtmp);
-      nm    = "TNT_(h32_rdtmp)";
-   }else if(mce->hWordTy == Ity_I64){
-      fn    = &TNT_(h64_rdtmp);
-      nm    = "TNT_(h64_rdtmp)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_RDTMP: Unknown platform");
+   fn    = &TNT_(h64_rdtmp);
+   nm    = "TNT_(h64_rdtmp)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6439,13 +6390,8 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if ( mce->hWordTy == Ity_I32 ){
-      fn       = &TNT_(h32_qop);
-      nm       = "TNT_(h32_qop)";
-   } else {
-      fn       = &TNT_(h64_qop);
-      nm       = "TNT_(h64_qop)";
-   }
+   fn       = &TNT_(h64_qop);
+   nm       = "TNT_(h64_qop)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6463,13 +6409,8 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if ( mce->hWordTy == Ity_I32 ){
-      fn       = &TNT_(h32_triop);
-      nm       = "TNT_(h32_triop)";
-   } else {
-      fn       = &TNT_(h64_triop);
-      nm       = "TNT_(h64_triop)";
-   }
+   fn       = &TNT_(h64_triop);
+   nm       = "TNT_(h64_triop)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6491,40 +6432,21 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if ( mce->hWordTy == Ity_I32 ){
-      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
-         fn = &TNT_(h32_binop_tc);
-         nm = "TNT_(h32_binop_tc)";
-      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
-         fn = &TNT_(h32_binop_ct);
-         nm = "TNT_(h32_binop_ct)";
-      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
-         fn = &TNT_(h32_binop_cc);
-         nm = "TNT_(h32_binop_cc)";
-      } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
-         fn = &TNT_(h32_binop_tt);
-         nm = "TNT_(h32_binop_tt)";
-      } else {
-         VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
-      }
-   }else if( mce->hWordTy == Ity_I64 ){
-      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
-         fn = &TNT_(h64_binop_tc);
-         nm = "TNT_(h64_binop_tc)";
-      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
-         fn = &TNT_(h64_binop_ct);
-         nm = "TNT_(h64_binop_ct)";
-      } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
-         fn = &TNT_(h64_binop_cc);
-         nm = "TNT_(h64_binop_cc)";
-      } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
-         fn = &TNT_(h64_binop_tt);
-         nm = "TNT_(h64_binop_tt)";
-      } else {
-         VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
-      }
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP: Unknown platform");
+   if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
+      fn = &TNT_(h64_binop_tc);
+      nm = "TNT_(h64_binop_tc)";
+   } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
+      fn = &TNT_(h64_binop_ct);
+      nm = "TNT_(h64_binop_ct)";
+   } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
+      fn = &TNT_(h64_binop_cc);
+      nm = "TNT_(h64_binop_cc)";
+   } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+      fn = &TNT_(h64_binop_tt);
+      nm = "TNT_(h64_binop_tt)";
+   } else {
+      VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
+   }
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6541,20 +6463,15 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op, IREx
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                  convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                  convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-   if ( mce->hWordTy == Ity_I32 && arg->tag == Iex_Const ) {
-         fn    = &TNT_(h32_unop_c);
-         nm    = "TNT_(h32_unop_c)";
-   } else if ( mce->hWordTy == Ity_I32 && arg->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_unop_t);
-         nm    = "TNT_(h32_unop_t)";
-   } else if ( mce->hWordTy == Ity_I64 && arg->tag == Iex_Const ) {
+
+   if ( arg->tag == Iex_Const ) {
          fn    = &TNT_(h64_unop_c);
          nm    = "TNT_(h64_unop_c)";
-   } else if ( mce->hWordTy == Ity_I64 && arg->tag == Iex_RdTmp ) {
+   } else if ( arg->tag == Iex_RdTmp ) {
          fn    = &TNT_(h64_unop_t);
          nm    = "TNT_(h64_unop_t)";
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP: Unknown platform");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6572,24 +6489,13 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp,
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      if ( addr->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_load_t);
-         nm    = "TNT_(h32_load_t)";
-      } else {
-         fn    = &TNT_(h32_load_c);
-         nm    = "TNT_(h32_load_c)";
-      }
-   }else if(mce->hWordTy == Ity_I64){
-      if ( addr->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_load_t);
-         nm    = "TNT_(h64_load_t)";
-      } else {
-         fn    = &TNT_(h64_load_c);
-         nm    = "TNT_(h64_load_c)";
-      }
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_LOAD: Unknown platform");
+   if ( addr->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_load_t);
+      nm    = "TNT_(h64_load_t)";
+   } else {
+      fn    = &TNT_(h64_load_c);
+      nm    = "TNT_(h64_load_c)";
+   }
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6606,22 +6512,15 @@ IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp,
               convert_Value( mce, IRExpr_RdTmp( tmp ) ),
               convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if ( mce->hWordTy == Ity_I32 ) {
-      if ( VG_(strcmp)(cee->name, "x86g_calculate_condition") == 0 ) {
-         fn    = &TNT_(h32_x86g_calculate_condition);
-         nm    = "TNT_(h32_x86g_calculate_condition)";
-      } else {
-         fn    = &TNT_(h32_ccall);
-         nm    = "TNT_(h32_ccall)";
-      }
+   if ( VG_(strcmp)(cee->name, "x86g_calculate_condition") == 0 ) {
+      fn    = &TNT_(h32_x86g_calculate_condition);
+      nm    = "TNT_(h32_x86g_calculate_condition)";
+   } else if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
+      fn    = &TNT_(h64_amd64g_calculate_condition);
+      nm    = "TNT_(h64_amd64g_calculate_condition)";
    } else {
-      if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
-         fn    = &TNT_(h64_amd64g_calculate_condition);
-         nm    = "TNT_(h64_amd64g_calculate_condition)";
-      } else {
-         fn    = &TNT_(h64_ccall);
-         nm    = "TNT_(h64_ccall)";
-      }
+      fn    = &TNT_(h64_ccall);
+      nm    = "TNT_(h64_ccall)";
    }
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
@@ -6641,38 +6540,20 @@ IRDirty* create_dirty_ITE( MCEnv* mce, IRStmt *clone, IRTemp tmp,
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
            convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if(mce->hWordTy == Ity_I32){
-      if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
-         fn    = &TNT_(h32_ite_tc);
-         nm    = "TNT_(h32_ite_tc)";
-      } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_ite_ct);
-         nm    = "TNT_(h32_ite_ct)";
-      } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h32_ite_tt);
-         nm    = "TNT_(h32_ite_tt)";
-      } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_Const ) {
-         fn    = &TNT_(h32_ite_cc);
-         nm    = "TNT_(h32_ite_cc)";
-      } else
-         VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 32-bit mode");
-   }else if(mce->hWordTy == Ity_I64){
-      if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
-         fn    = &TNT_(h64_ite_tc);
-         nm    = "TNT_(h64_ite_tc)";
-      } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_ite_ct);
-         nm    = "TNT_(h64_ite_ct)";
-      } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_ite_tt);
-         nm    = "TNT_(h64_ite_tt)";
-      } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_Const ) {
-         fn    = &TNT_(h64_ite_cc);
-         nm    = "TNT_(h64_ite_cc)";
-      } else
-         VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 64-bit mode");
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown platform");
+   if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
+      fn    = &TNT_(h64_ite_tc);
+      nm    = "TNT_(h64_ite_tc)";
+   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_ite_ct);
+      nm    = "TNT_(h64_ite_ct)";
+   } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_ite_tt);
+      nm    = "TNT_(h64_ite_tt)";
+   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_Const ) {
+      fn    = &TNT_(h64_ite_cc);
+      nm    = "TNT_(h64_ite_cc)";
+   } else
+      VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 64-bit mode");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
