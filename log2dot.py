@@ -11,13 +11,15 @@ def get_load_or_store_addr(line):
         # Retrieve tmp
         tmp = insn.split("STORE ")[1].split()[0]
     else:
-        print "***get_load_or_store_addr: %s" % (line)
+        print "***get_load_or_store_addr: not load or store %s" % (line)
+        sys.exit(0)
 
     if tmp in var:
         (addr2,insn2,val2,tnt2,flow2) = var[tmp].split("|")
         return val2.split()[0]
     else:
         print "***%s not defined: %s" % (tmp, line)
+        print "***Suggest calling TNT_START_PRINT()"
         sys.exit(0)
 
 def resolve_unknown_var(varname, line):
@@ -26,10 +28,35 @@ def resolve_unknown_var(varname, line):
 
         if addr in var:
             return var[addr]
-        else:
-            print "***%s not in var: %s" % (addr,line)
 
     return varname
+
+def get_op(line):
+    if "LOAD" in line:     return "LOAD"
+    if "STORE" in line:    return "STORE"
+    if "IF" in line:       return "IF"
+    if line.split(" | ")[1][0] == 'r':  return "PUT"
+    if line.split(" = ")[1].split()[0][0] == 't': return "RDTMP"
+    return line.split(" = ")[1].split()[0]
+
+ops_to_skip = ["1Uto32",
+               "32to1",
+               "PUT",
+               "RDTMP",
+               "LOAD",
+               "STORE"]
+
+# Check if the op can be skipped
+def op_can_be_skipped(line):
+    for op in ops_to_skip:
+        if op in get_op(line):
+            return True
+    return False
+
+# Get the location of a line
+# 0x8048507: main (sign32.c:10)
+def get_loc(line):
+    return line.split()[1] 
 
 if len(sys.argv) != 2:
     print "Usage: %s <log file>" % (sys.argv[0])
@@ -61,12 +88,8 @@ while line:
         
         elts[-1] = " " + nextline
         line = "|".join(elts)
-        #print "After: " + line
 
     data.append(line)
-    #if len(line.split("|")) == 4:
-    #    (addr,insn,val,tnt) = line.split("|")
-    #else:
     (addr,insn,val,tnt,flow) = line.split("|")
     
     if insn[1] == 't' or \
@@ -82,7 +105,8 @@ while line:
     line = f.readline()
 
 # Now we construct the graph
-print "digraph {"
+edges = []
+nodes = {}
 
 for line in data:
     (addr,insn,val,tnt,flow) = line.split("|")
@@ -99,6 +123,63 @@ for line in data:
             elif "STORE" in line:
                 sink = resolve_unknown_var(sink, line)
                 
-            print "%s -> %s" % (source,sink)
+            edges.append("%s -> %s" % (source,sink))
+
+            if source not in nodes:
+                nodes[source] = source
+
+            if sink not in nodes:
+                nodes[sink] = sink
+
+            if not op_can_be_skipped(line):
+                nodes[sink] = "%s [label=\"%s (%s)\"]" % (sink,sink,get_op(line))
+        else:
+            nodes[sink] = "%s [label=\"%s (%s)\"]" % (sink,sink,get_op(line))
+
+# Collect the nodes into subgraphs
+subgraph = {}
+
+for line in data:
+    (addr,insn,val,tnt,flow) = line.split("|")
+
+    # If there is taint flow
+    if len(line.split(" | ")[-1]) >= 4:
+        flow = line.split(" | ")[-1].rstrip()
+
+        if "<-" in flow:
+            (sink,source) = flow.split(" <- ")
+
+            if "LOAD" in line:
+                source = resolve_unknown_var(source, line)
+            elif "STORE" in line:
+                sink = resolve_unknown_var(sink, line)
+
+            loc = get_loc(line)
+    
+            if loc not in subgraph:
+                subgraph[loc] = ""
+            subgraph[loc] += "    %s\n" % (nodes[sink])
+        else:
+
+            loc = get_loc(line)
+    
+            if loc not in subgraph:
+                subgraph[loc] = ""
+            subgraph[loc] += "    %s\n" % (nodes[sink])
+
+
+# Now we construct the graph
+print "digraph {"
+
+# Print subgraphs
+for s in subgraph:
+    print "    subgraph cluster_%s{" % (s)
+    print "        label=\"%s\"" % (s)
+    print subgraph[s]
+    print "    }"
+
+# Print the edges
+for e in edges:
+    print "    " + e
 
 print "}"
