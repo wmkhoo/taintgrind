@@ -18,9 +18,9 @@ def get_load_or_store_addr(line):
         (addr2,insn2,val2,tnt2,flow2) = var[tmp].split("|")
         return val2.split()[0]
     else:
-        print "***%s not defined: %s" % (tmp, line)
-        print "***Suggest calling TNT_START_PRINT()"
-        sys.exit(0)
+        #print "***%s not defined: %s" % (tmp, line)
+        #print "***Suggest calling TNT_START_PRINT()"
+        return tmp
 
 def resolve_unknown_var(varname, line):
     if "_unknownobj" in varname:
@@ -29,7 +29,7 @@ def resolve_unknown_var(varname, line):
         if addr in var:
             return var[addr]
 
-    return varname
+    return 'g' + varname
 
 def get_op(line):
     if "LOAD" in line:     return "LOAD"
@@ -39,8 +39,11 @@ def get_op(line):
     if line.split(" = ")[1].split()[0][0] == 't': return "RDTMP"
     return line.split(" = ")[1].split()[0]
 
-ops_to_skip = ["1Uto32",
-               "32to1",
+ops_to_skip = ["to1",
+               "to8",
+               "to16",
+               "to32",
+               "to64",
                "PUT",
                "RDTMP",
                "LOAD",
@@ -56,6 +59,8 @@ def op_can_be_skipped(line):
 # Get the location of a line
 # 0x8048507: main (sign32.c:10)
 def get_loc(line):
+    if '(' in line.split()[1]:
+        return line.split()[1].split('(')[0]
     return line.split()[1] 
 
 if len(sys.argv) != 2:
@@ -122,11 +127,18 @@ for line in data:
                 source = resolve_unknown_var(source, line)
             elif "STORE" in line:
                 sink = resolve_unknown_var(sink, line)
-                
-            edges.append("%s -> %s" % (source,sink))
 
-            if source not in nodes:
-                nodes[source] = source
+            src = []
+            if ", " in source:
+                src = source.split(", ")
+            else:
+                src.append(source)
+ 
+            for source in src:
+                edges.append("%s -> %s" % (source,sink))
+
+                if source not in nodes:
+                    nodes[source] = source
 
             if sink not in nodes:
                 nodes[sink] = sink
@@ -173,7 +185,7 @@ print "digraph {"
 
 # Print subgraphs
 for s in subgraph:
-    print "    subgraph cluster_%s{" % (s)
+    print "    subgraph cluster_%s{" % (s.replace(":","_"))
     print "        label=\"%s\"" % (s)
     print subgraph[s]
     print "    }"
