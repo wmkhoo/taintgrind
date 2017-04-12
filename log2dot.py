@@ -1,4 +1,5 @@
 import os, sys
+import re
 
 def get_load_or_store_addr(line):
     (addr,insn,val,tnt,flow) = line.split("|")
@@ -29,7 +30,9 @@ def resolve_unknown_var(varname, line):
         if addr in var:
             return var[addr]
 
-    return 'g' + varname
+    if re.match('^[0-9]',varname):
+        return 'g' + varname
+    return varname
 
 def get_op(line):
     if "LOAD" in line:     return "LOAD"
@@ -105,7 +108,10 @@ while line:
     if "LOAD" in insn and "_unknownobj" not in line and len(flow) >= 4:
         addr = get_load_or_store_addr(line)
         if addr not in var:
-            var[addr] = flow.rstrip().split("<- ")[1]
+            if "<- " in flow:
+                var[addr] = flow.rstrip().split("<- ")[1]
+            elif "<*- " in flow:
+                var[addr] = flow.rstrip().split("<*- ")[1]
 
     line = f.readline()
 
@@ -120,8 +126,14 @@ for line in data:
     if len(line.split(" | ")[-1]) >= 4:
         flow = line.split(" | ")[-1].rstrip()
 
-        if "<-" in flow:
-            (sink,source) = flow.split(" <- ")
+        if "<-" in flow or "<*-" in flow:
+            sink = ""
+            source = ""
+
+            if " <- " in flow:
+                (sink,source) = flow.split(" <- ")
+            elif " <*- " in flow:
+                (sink,source) = flow.split(" <*- ")
 
             if "LOAD" in line:
                 source = resolve_unknown_var(source, line)
@@ -158,8 +170,14 @@ for line in data:
     if len(line.split(" | ")[-1]) >= 4:
         flow = line.split(" | ")[-1].rstrip()
 
-        if "<-" in flow:
-            (sink,source) = flow.split(" <- ")
+        if "<-" in flow or "<*-" in flow:
+            sink = ""
+            source = ""
+
+            if " <- " in flow:
+                (sink,source) = flow.split(" <- ")
+            elif " <*- " in flow:
+                (sink,source) = flow.split(" <*- ")
 
             if "LOAD" in line:
                 source = resolve_unknown_var(source, line)
@@ -185,7 +203,7 @@ print "digraph {"
 
 # Print subgraphs
 for s in subgraph:
-    print "    subgraph cluster_%s{" % (s.replace(":","_"))
+    print "    subgraph cluster_%s{" % (s.replace(":","_").replace("???","unknown"))
     print "        label=\"%s\"" % (s)
     print subgraph[s]
     print "    }"
