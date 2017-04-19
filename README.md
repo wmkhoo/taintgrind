@@ -80,6 +80,21 @@ Only one run-time/taint value per instruction is shown. That variable is usually
 Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 
 
+
+Graph Visualisation
+-------------------
+
+Create a Graphviz dot file with e.g.
+
+	> valgrind --tool=taintgrind tests/sign32 2>&1 | python log2dot.py > sign32.dot
+
+Visualise the graph with
+
+	> dot -Tpng sign32.dot -o sign32.png
+[images/sign32.png]
+
+
+
 Notes
 -----
 
