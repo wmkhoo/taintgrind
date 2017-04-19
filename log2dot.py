@@ -1,4 +1,5 @@
 import os, sys
+import fileinput
 import re
 
 def get_load_or_store_addr(line):
@@ -70,33 +71,33 @@ def get_loc(line):
         return line.split()[1].split('(')[0]
     return line.split()[1] 
 
-if len(sys.argv) != 2:
-    print "Usage: %s <log file>" % (sys.argv[0])
-    sys.exit(0)
-
-f = open(sys.argv[1], "r")
-
-line = f.readline()
 
 # array to store all lines
 data = []
 
 # associative array to retrieve by variable name if any
 var = {}
+f = []
 
-while line:
-    if line.startswith("=="):
-        line = f.readline()
+for line in fileinput.input():
+    f.append(line)
+
+for i in range(len(f)):
+    line = f[i]
+
+    if not line.startswith("0x"):
         continue
 
     # Need to remove valgrind warnings, which add a LF
     # We need to add the next line as well
     if "-- warning:" in line:
         elts = line.split("|")
-        nextline = f.readline()
+        nextline = f[i+1]
+        c = 2
 
         while "-- warning:" in nextline:
-            nextline = f.readline()
+            nextline = f[i+c]
+            c += 1
         
         elts[-1] = " " + nextline
         line = "|".join(elts)
@@ -123,7 +124,6 @@ while line:
                 elif "<*- " in flow:
                     var[addr] = flow.rstrip().split("<*- ")[1]
 
-    line = f.readline()
 
 # Now we construct the graph
 edges = []
