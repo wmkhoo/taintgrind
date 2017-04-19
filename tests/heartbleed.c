@@ -1,7 +1,8 @@
+// Source: https://gist.github.com/simonwagner/10271224
+
 #include <stdlib.h>
 #include <string.h>
 
-//#define n2s(c,s) ((s=(((unsigned int)(c[0]))<< 8)| (((unsigned int (c[1])))),c+=2)
 #define n2s(c,s)	((s=(((unsigned int)(c[0]))<< 8)| \
 			    (((unsigned int)(c[1]))    )),c+=2)
 #define s2n(s,c)	((c[0]=(unsigned char)(((s)>> 8)&0xff), \
