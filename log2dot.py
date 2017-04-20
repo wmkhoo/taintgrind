@@ -46,23 +46,6 @@ def get_op(line):
     if line.split(" = ")[1].split()[0][0] == 't': return "RDTMP"
     return line.split(" = ")[1].split()[0]
 
-ops_to_skip = ["to1",
-               "to8",
-               "to16",
-               "to32",
-               "to64",
-               "GET",
-               "PUT",
-               "RDTMP",
-               "LOAD",
-               "STORE"]
-
-# Check if the op can be skipped
-def op_can_be_skipped(line):
-    for op in ops_to_skip:
-        if op in get_op(line):
-            return True
-    return False
 
 # Get the location of a line
 # 0x8048507: main (sign32.c:10)
@@ -171,15 +154,12 @@ for line in data:
                 if sink not in nodes:
                     nodes[sink] = sink
 
-                if not op_can_be_skipped(line):
-                    if ";" in flow_orig:
-                        nodes[sink] = "%s [label=\"%s (%s)\",color=red]" % (sink,sink,get_op(line))
-                    else:
-                        nodes[sink] = "%s [label=\"%s (%s)\"]" % (sink,sink,get_op(line))
-                elif ";" in flow_orig:
-                    nodes[sink] = "%s [color=red]" % (sink)
+                if ";" in flow_orig:
+                    nodes[sink] = "%s [label=\"%s:%s (%s)\",color=red]" % (sink,sink,val,get_op(line))
+                else:
+                    nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
         else:
-            nodes[sink] = "%s [label=\"%s (%s)\"]" % (sink,sink,get_op(line))
+            nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
 
 # Collect the nodes into subgraphs
 subgraph = {}
