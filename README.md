@@ -91,7 +91,7 @@ Create a Graphviz dot file with e.g.
 Visualise the graph with
 
 	> dot -Tpng sign32.dot -o sign32.png
-![Example taint graph](/images/heartbleed.png)
+![Example taint graph](/images/sign32.png)
 
 
 
