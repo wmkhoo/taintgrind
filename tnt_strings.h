@@ -38,9 +38,12 @@ const char *IRConst_string[] = {
    "Ico_U16", 
    "Ico_U32", 
    "Ico_U64",
+   "Ico_F32",
+   "Ico_F32i",
    "Ico_F64",
    "Ico_F64i",
-   "Ico_V128" };
+   "Ico_V128",
+   "Ico_V256" };
 
 /* ------------------ Expressions ------------------ */
 
