@@ -1,9 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
-2015-10-6 Support for Valgrind 3.11.0, x86\_linux and amd64\_linux
+2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
 
-2015-10-6 Highly experimental feature: SMT-libv2 output via --smt2=yes
+2015-10-06 Support for Valgrind 3.11.0, x86\_linux and amd64\_linux
+
+2015-10-06 Highly experimental feature: SMT-libv2 output via --smt2=yes
 
 2014-09-25 Support for client requests
 
