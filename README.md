@@ -38,6 +38,11 @@ Installation
 		[me@machine ~/valgrind-X.X.X/taintgrind] ./configure --prefix=`pwd`/../inst
 		[me@machine ~/valgrind-X.X.X/taintgrind] make && make install
 
+3. To compile examples in tests/
+
+
+		[me@machine ~/valgrind-X.X.X/taintgrind] make check
+
 Usage
 -----
 
