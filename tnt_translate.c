@@ -5625,11 +5625,13 @@ static void do_shadow_LoadG ( MCEnv* mce, IRLoadG* lg )
    IROp   vwiden   = Iop_INVALID;
    IRType loadedTy = Ity_INVALID;
    switch (lg->cvt) {
-      case ILGop_Ident32: loadedTy = Ity_I32; vwiden = Iop_INVALID; break;
-      case ILGop_16Uto32: loadedTy = Ity_I16; vwiden = Iop_16Uto32; break;
-      case ILGop_16Sto32: loadedTy = Ity_I16; vwiden = Iop_16Sto32; break;
-      case ILGop_8Uto32:  loadedTy = Ity_I8;  vwiden = Iop_8Uto32;  break;
-      case ILGop_8Sto32:  loadedTy = Ity_I8;  vwiden = Iop_8Sto32;  break;
+      case ILGop_IdentV128: loadedTy = Ity_V128; vwiden = Iop_INVALID; break;
+      case ILGop_Ident64:   loadedTy = Ity_I64;  vwiden = Iop_INVALID; break;
+      case ILGop_Ident32:   loadedTy = Ity_I32;  vwiden = Iop_INVALID; break;
+      case ILGop_16Uto32:   loadedTy = Ity_I16;  vwiden = Iop_16Uto32; break;
+      case ILGop_16Sto32:   loadedTy = Ity_I16;  vwiden = Iop_16Sto32; break;
+      case ILGop_8Uto32:    loadedTy = Ity_I8;   vwiden = Iop_8Uto32;  break;
+      case ILGop_8Sto32:    loadedTy = Ity_I8;   vwiden = Iop_8Sto32;  break;
       default: VG_(tool_panic)("do_shadow_LoadG");
    }
 
