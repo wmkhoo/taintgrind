@@ -154,7 +154,7 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 Int  ctoi( HChar c );
 Int  ctoi_test( HChar c );
 Int  atoi( HChar *s );
-Int get_and_check_reg( HChar *reg );
+void check_reg( UInt reg );
 Int get_and_check_tvar( HChar *tmp );
 void infer_client_binary_name(UInt pc);
 // -End- Forward declarations for Taintgrind
@@ -2530,19 +2530,12 @@ UInt callgate_nesting_depth = 0;
 // End of SOAAP-related data
 ////////////////////////////////
 
-Int get_and_check_reg( HChar *reg ){
+void check_reg( UInt reg ){
 
-   Int regnum = atoi( reg );
-//   if( regnum % 4 ){
-//      VG_(printf)("get_and_check_tvar: regnum %d mod 4 != 0\n", regnum );
-//      tl_assert( !( regnum % 4 ) );
-//   }
-   if( regnum >= RI_MAX ){
-      VG_(printf)("get_and_check_reg: regnum %d >= %d\n", regnum, RI_MAX );
-      tl_assert( regnum < RI_MAX );
+   if( reg >= RI_MAX ){
+      VG_(printf)("check_reg: reg %d >= %d\n", reg, RI_MAX );
+      tl_assert( reg < RI_MAX );
    }
-
-   return regnum;
 }
 
 Int get_and_check_tvar( HChar *tmp ){
@@ -3059,7 +3052,7 @@ void TNT_(h64_get) (
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
    UInt reg     = data->Iex.Get.offset;
 
-   tl_assert( reg < RI_MAX );
+   check_reg( reg );
 
    if ( istty && is_tainted(ltmp) )
    {
@@ -3099,7 +3092,7 @@ void TNT_(h64_put_t) (
    UWord taint ) {
    // Reg book-keeping
    UInt reg     = clone->Ist.Put.offset;
-   tl_assert( reg < RI_MAX );
+   check_reg( reg );
    ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
@@ -3140,7 +3133,7 @@ void TNT_(h64_put_c) (
    UWord taint ) {
    // Reg bookkeeping
    UInt reg     = clone->Ist.Put.offset;
-   tl_assert( reg < RI_MAX );
+   check_reg( reg );
    ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
