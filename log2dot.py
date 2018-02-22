@@ -38,9 +38,10 @@ def resolve_unknown_var(varname, line):
     return varname
 
 def get_op(line):
-    if "LOAD" in line:     return "LOAD"
+    if "LOAD"  in line:    return "LOAD"
     if "STORE" in line:    return "STORE"
-    if "IF" in line:       return "IF"
+    if "IF"    in line:    return "IF"
+    if "JMP"   in line:    return "JMP"
     if line.split(" | ")[1][0] == 'r':  return "PUT"
     if line.split(" = ")[1].split()[0][0] == 'r': return "GET"
     if line.split(" = ")[1].split()[0][0] == 't': return "RDTMP"
@@ -155,9 +156,13 @@ for line in data:
                     nodes[sink] = sink
 
                 if ";" in flow_orig:
+                    # If there is more than 1 taint source to this node, colour it red
                     nodes[sink] = "%s [label=\"%s:%s (%s)\",color=red]" % (sink,sink,val,get_op(line))
                 else:
                     nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
+        elif "JMP" in get_op(line):
+            # If jump target is tainted, colour it red
+            nodes[sink] = "%s [label=\"%s:%s (%s)\",color=red]" % (sink,sink,val,get_op(line))
         else:
             nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
 
