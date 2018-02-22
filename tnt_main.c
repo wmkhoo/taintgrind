@@ -3875,7 +3875,6 @@ void TNT_(h64_none) (
 
 static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
 {
-   //VG_(printf)("descr1: %s descr2: %s\n", (HChar*)VG_(indexXA)(descr1,0), (HChar*)VG_(indexXA)(descr2,0));
 
    // descr1 will either be of the form:
    // (1) Location 0xbef29644 is 0 bytes inside local var "n"
@@ -3887,7 +3886,8 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
    // (4) Location 0xbebb842c is 0 bytes inside args[1].str,
    // or
    // (5) Location 0xbebb842c is 0 bytes inside args.str[0],
-   //
+   // or
+   // (6) Location 0x4e300f0 is 0 bytes inside global var "init_done"
    // So, the terminator for a variable name is either '"' or ','
 
    HChar* descr1str =  (HChar*)VG_(indexXA)(descr1, 0);
@@ -3910,24 +3910,34 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
    // disambiguate between local var or others
    const char* localVarPrefix = "local var ";
    char* varStart = VG_(strstr)(varPrefixPtr, localVarPrefix);
+   const char* globalVarPrefix = "global var ";
+   char* gvarStart = VG_(strstr)(varPrefixPtr, globalVarPrefix);
    HChar* varEnd;
    int varNameLen = 0;
 
-   if (varStart == NULL) {
+   if (varStart == NULL && gvarStart == NULL) {
       // case 2, 3, 4 or 5
       varStart = varPrefixPtr;
       varEnd = VG_(strchr)(varStart, ',');
-      //VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
-      tl_assert(varEnd != NULL);
-   }
-   else {
+      if (varEnd == NULL) {
+         VG_(printf)("descr1: %s\n", (HChar*)VG_(indexXA)(descr1,0));
+         tl_assert(varEnd != NULL);
+      }
+   } else if (varStart) {
       // case 1: local variable
       varStart += ((VG_(strlen)(localVarPrefix)+1)*sizeof(HChar)); // +1 to skip first "
+      varEnd = VG_(strchr)(varStart, '"');
+   } else if (gvarStart) {
+      // case 6: global variable
+      varStart = gvarStart + ((VG_(strlen)(globalVarPrefix)+1)*sizeof(HChar)); // +1 to skip first "
       varEnd = VG_(strchr)(varStart, '"');
    }
 
    tl_assert(varStart != NULL);
-   tl_assert(varEnd != NULL);
+   if (varEnd == NULL) {
+      VG_(printf)("descr1: %s\n", (HChar*)VG_(indexXA)(descr1,0));
+      tl_assert(varEnd != NULL);
+   }
 
    //VG_(printf)("varStart: %s, varEnd: %s, descr1: %s, descr2: %s\n", varStart, varEnd, descr1str, (HChar*)VG_(indexXA)(descr2,0));
    //VG_(printf)("varStart: %s, varEnd: %s\n", varStart, varEnd);
