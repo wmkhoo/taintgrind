@@ -3967,8 +3967,10 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 
         if ( ai.tag == Addr_DataSym )
         {
+           UInt len = VG_(strlen)(ai.Addr.DataSym.name);
+           tl_assert(len < bufsize);
            VG_(strncpy)(varnamebuf, ai.Addr.DataSym.name, bufsize-1);
-           varnamebuf[bufsize] = '\0';
+           varnamebuf[len] = '\0';
            return;
 
         } else if ( ai.tag == Addr_Variable )
