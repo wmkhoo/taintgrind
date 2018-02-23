@@ -362,7 +362,7 @@ extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_r
 
 /* SMT2 functions */
 #define TI_MAX 2100 
-#define RI_MAX 740 
+#define RI_MAX 960 
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
 extern UInt  *ti;
 // Tmp variable values
