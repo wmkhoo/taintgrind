@@ -162,7 +162,7 @@ for line in data:
                     nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
         elif "JMP" in get_op(line):
             # If jump target is tainted, colour it red
-            nodes[sink] = "%s [label=\"%s:%s (%s)\",color=red]" % (sink,sink,val,get_op(line))
+            nodes[sink] = "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (sink,sink,val,get_op(line))
         else:
             nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (sink,sink,val,get_op(line))
 
