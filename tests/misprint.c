@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     iter = atoi(argv[1]);
     val = atoi(argv[2]);
 
-    TNT_MAKE_MEM_TAINTED( &iter, sizeof(iter));
+    //TNT_MAKE_MEM_TAINTED( &iter, sizeof(iter));
     TNT_MAKE_MEM_TAINTED( &val, sizeof(val));
     //TNT_START_PRINT();
 
