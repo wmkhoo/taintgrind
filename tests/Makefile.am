@@ -11,7 +11,8 @@ check_PROGRAMS = heartbleed \
                  sign64 \
                  signstdin \
                  signstdin2 \
-                 taint_stdin
+                 taint_stdin \
+                 misprint
 
 heartbleed_SOURCES = heartbleed.c
 heartbleed_CFLAGS = -I../ -I../../include
@@ -31,3 +32,5 @@ signstdin2_SOURCES = signstdin2.c
 signstdin2_CFLAGS = -I../ -I../../include
 taint_stdin_SOURCES = taint_stdin.c
 taint_stdin_CFLAGS = -I../ -I../../include
+misprint_SOURCES = misprint.c
+misprint_CFLAGS = -I../ -I../../include -g -O0 -fno-inline -fno-omit-frame-pointer -fno-stack-protector -m32
