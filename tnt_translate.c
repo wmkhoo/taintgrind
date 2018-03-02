@@ -999,7 +999,7 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
 
 // The IRStmt types
 IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data );
-IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias, IRExpr* data );
+IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt* clone, IRExpr *ix, IRExpr* data );
 IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone, IREndness end,
                              IRTemp resSC, IRExpr* addr,
                              IRExpr* data );
@@ -1199,17 +1199,13 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
    given PUTI (passed in in pieces).
 */
 static
-void do_shadow_PUTI ( MCEnv* mce, IRPutI *puti )
-//                      IRRegArray* descr,
-//                      IRAtom* ix, Int bias, IRAtom* atom )
+void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone,
+                      IRRegArray* descr,
+                      IRAtom* ix, Int bias, IRAtom* atom )
 {
    IRAtom* vatom;
    IRType  ty, tyS;
    //Int     arrSize;
-   IRRegArray* descr = puti->descr;
-   IRAtom*     ix    = puti->ix;
-   Int         bias  = puti->bias;
-   IRAtom*     atom  = puti->data;
    IRDirty* di2;
 
    // Don't do shadow PUTIs if we're not doing undefined value checking.
@@ -1229,7 +1225,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRPutI *puti )
    tl_assert(isOriginalAtom(mce,ix));
 
    // Taintgrind:
-   di2 = create_dirty_PUTI( mce, descr, ix, bias, atom );
+   di2 = create_dirty_PUTI( mce, clone, ix, atom );
    complainIfTainted(mce, ix, di2);
 
    // Taintgrind: Let's keep the vbits regardless
@@ -5951,45 +5947,29 @@ IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data )
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_PUTI( MCEnv* mce, IRRegArray* descr, IRExpr* ix, Int bias, IRExpr* data ){
+IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone,
+                            IRExpr *ix, IRExpr* data ){
 // ppIRExpr output: PUTI(<descr.base:descr.nElems:descr.elemTy>)[ix, bias] = data
    Int          nargs = 3;
    const HChar* nm;
    void*        fn;
    IRExpr**     args;
 
-   if(data->tag == Iex_Const)
-      return NULL;
+   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+                          convert_Value( mce, data ),
+                          convert_Value( mce, atom2vbits( mce, data ) ) );
 
-   fn    = &TNT_(h64_puti);
-   nm    = "TNT_(h64_puti)";
-
-   if(mce->hWordTy == Ity_I32){
-      // There are too many bits to fit into 64 bits
-      // We choose: elemTy, ix, bias, data
-      UInt tt1 = descr->elemTy << 16;
-           tt1 |= extract_IRAtom( ix ) & 0xffff;
-      UInt tt2 = bias << 16;
-           tt2 |= extract_IRAtom( data ) & 0xffff;
-
-      args  = mkIRExprVec_4( mkU32( tt1 ),
-                             mkU32( tt2 ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
-   }else if(mce->hWordTy == Ity_I64){
-      ULong tt1 = (ULong)descr->base << 32;
-            tt1 |= (ULong)descr->elemTy << 16;
-            tt1 |= (ULong)descr->nElems & 0xffff;
-      ULong tt2 = (ULong)extract_IRAtom( ix ) << 32;
-            tt2 |= bias << 16;
-            tt2 |= extract_IRAtom( data ) & 0xffff;
-
-      args  = mkIRExprVec_4( mkU64( tt1 ),
-                             mkU64( tt2 ),
-                             convert_Value( mce, data ),
-                             convert_Value( mce, atom2vbits( mce, data ) ) );
+   if ( ix->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_puti_tt);
+      nm    = "TNT_(h64_puti_tt)";
+   } else if ( ix->tag == Iex_RdTmp && data->tag == Iex_Const ) {
+      fn    = &TNT_(h64_puti_tc);
+      nm    = "TNT_(h64_puti_tc)";
+   } else if ( ix->tag == Iex_Const && data->tag == Iex_RdTmp ) {
+      fn    = &TNT_(h64_puti_ct);
+      nm    = "TNT_(h64_puti_ct)";
    }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI");
+      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown type");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6942,7 +6922,12 @@ typedef
             break;
 
          case Ist_PutI:
-              do_shadow_PUTI( &mce, st->Ist.PutI.details);
+              do_shadow_PUTI( &mce,
+                              clone,
+                              st->Ist.PutI.details->descr,
+                              st->Ist.PutI.details->ix,
+                              st->Ist.PutI.details->bias,
+                              st->Ist.PutI.details->data );
             break;
 
          case Ist_Store:

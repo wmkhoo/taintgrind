@@ -3150,44 +3150,155 @@ void TNT_(h64_put_c) (
    VG_(printf)("\n");
 }
 
-
+// reg = tmp
 VG_REGPARM(3)
-void TNT_(h64_puti) (
-   UWord tt1, 
-   UWord tt2, 
+void TNT_(h64_puti_tt) (
+   IRStmt *clone, 
    UWord value, 
    UWord taint ) {
+   // Calculate the actual offset
+   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
+   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
+   IRRegArray *descr = clone->Ist.PutI.details->descr;
+   IRExpr *ix        = clone->Ist.PutI.details->ix;
+   Int bias          = clone->Ist.PutI.details->bias;
+   IRType ty         = descr->elemTy;
+   Int nElems        = descr->nElems;
+
+   UInt ix_tmp       = ix->Iex.RdTmp.tmp;
+
+   tl_assert( ix_tmp < TI_MAX );
+
+   UInt ix_value     = tv[ix_tmp];
+   UInt array_index  = (ix_value + bias) % nElems;
+
+   // Reg bookkeeping
+   UInt reg          = descr->base + array_index * sizeofIRType(ty);
+   check_reg( reg );
+   ri[reg]++;
 
    if ( TNT_(clo_critical_ins_only) ) return;
 
    H_EXIT_EARLY
-   H_SMT2_not_implemented("h64_puti");
    H64_PC
 
-   UInt base = (tt1 >> 32) & 0xffffffff;
-   UInt elemTy = (tt1 >> 16) & 0xff;
-   UInt nElems = tt1 & 0xffff;
-   UInt ix = (tt2 >> 32) & 0xffffffff;
-   UInt bias = (tt2 >> 16) & 0xffff;
-   UInt tmp = tt2 & 0xffff;
+   IRExpr *data = clone->Ist.PutI.details->data;
+   UInt tmp     = data->Iex.RdTmp.tmp;
+
+   tl_assert( tmp < TI_MAX );
 
    if ( istty && is_tainted(tmp) )
    {
-      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%d:%s:%d>[%x,%x] = %st%d%s", base, IRType_string[elemTy], nElems, ix, bias, KRED, tmp, KNRM);
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s", reg, ri[reg],
+                                            KRED,
+                                            tmp, _ti(tmp),
+                                            KNRM );
       H64_PRINTC
    } else {
-      VG_(snprintf)(aTmp, sizeof(aTmp), "PUTI<%d:%s:%d>[%x,%x] = t%d", base, IRType_string[elemTy], nElems, ix, bias, tmp);
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
       H64_PRINT
    }
 
-   // TODO: Info flow
-   //tl_assert( reg < RI_MAX );
-   //tl_assert( tmp < TI_MAX );
-   //ri[reg]++;
+   if ( is_tainted(tmp) )
+      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   else
+      VG_(printf)("\n");
+}
 
-   //VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, ti[tmp]);
+// reg = const
+VG_REGPARM(3)
+void TNT_(h64_puti_tc) (
+   IRStmt *clone, 
+   UWord value, 
+   UWord taint ) {
+   // Calculate the actual offset
+   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
+   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
+   IRRegArray *descr = clone->Ist.PutI.details->descr;
+   IRExpr *ix        = clone->Ist.PutI.details->ix;
+   Int bias          = clone->Ist.PutI.details->bias;
+   IRType ty         = descr->elemTy;
+   Int nElems        = descr->nElems;
+
+   UInt ix_tmp       = ix->Iex.RdTmp.tmp;
+
+   tl_assert( ix_tmp < TI_MAX );
+
+   UInt ix_value     = tv[ix_tmp];
+   UInt array_index  = (ix_value + bias) % nElems;
+
+   // Reg bookkeeping
+   UInt reg          = descr->base + array_index * sizeofIRType(ty);
+   check_reg( reg );
+   ri[reg]++;
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   IRExpr *data = clone->Ist.PutI.details->data;
+   ULong c      = extract_IRConst(data->Iex.Const.con);
+
+   VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = 0x%llx", reg, ri[reg], c);
+   H64_PRINT
+
    VG_(printf)("\n");
 }
+
+
+// reg = tmp
+VG_REGPARM(3)
+void TNT_(h64_puti_ct) (
+   IRStmt *clone, 
+   UWord value, 
+   UWord taint ) {
+   // Calculate the actual offset
+   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
+   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
+   IRRegArray *descr = clone->Ist.PutI.details->descr;
+   IRExpr *ix        = clone->Ist.PutI.details->ix;
+   Int bias          = clone->Ist.PutI.details->bias;
+   IRType ty         = descr->elemTy;
+   Int nElems        = descr->nElems;
+   ULong ix_value    = extract_IRConst(ix->Iex.Const.con);
+   UInt array_index  = (ix_value + bias) % nElems;
+
+   // Reg bookkeeping
+   UInt reg          = descr->base + array_index * sizeofIRType(ty);
+   check_reg( reg );
+   ri[reg]++;
+
+   if ( TNT_(clo_critical_ins_only) ) return;
+
+   H_EXIT_EARLY
+   H64_PC
+
+   IRExpr *data = clone->Ist.PutI.details->data;
+   UInt tmp     = data->Iex.RdTmp.tmp;
+
+   tl_assert( tmp < TI_MAX );
+
+   if ( istty && is_tainted(tmp) )
+   {
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s", reg, ri[reg],
+                                            KRED,
+                                            tmp, _ti(tmp),
+                                            KNRM );
+      H64_PRINTC
+   } else {
+      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
+                                            tmp, _ti(tmp) );
+      H64_PRINT
+   }
+
+   if ( is_tainted(tmp) )
+      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
+   else
+      VG_(printf)("\n");
+}
+
 
 // ltmp = <op> ...
 VG_REGPARM(3)
