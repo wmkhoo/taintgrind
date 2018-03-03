@@ -998,34 +998,28 @@ ULong extract_IRConst64( IRConst* con );
 static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
 
 // The IRStmt types
-IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data );
-IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt* clone, IRExpr *ix, IRExpr* data );
-IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone, IREndness end,
-                             IRTemp resSC, IRExpr* addr,
-                             IRExpr* data );
-IRDirty* create_dirty_CAS( MCEnv* mce, IRCAS* details );
-IRDirty* create_dirty_DIRTY( MCEnv* mce, IRDirty* details );
-IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard, IRJumpKind jk, IRConst* dst );
-IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next );
+IRDirty* create_dirty_PUT   ( MCEnv* mce, IRStmt *clone, IRExpr* data );
+IRDirty* create_dirty_PUTI  ( MCEnv* mce, IRStmt* clone, IRExpr *ix, IRExpr* data );
+IRDirty* create_dirty_STORE ( MCEnv* mce, IRStmt *clone, IRExpr* addr, IRExpr* data );
+IRDirty* create_dirty_CAS   ( MCEnv* mce, IRCAS* details );
+IRDirty* create_dirty_DIRTY ( MCEnv* mce, IRDirty* details );
+IRDirty* create_dirty_EXIT  ( MCEnv* mce, IRStmt *clone, IRExpr* guard );
+IRDirty* create_dirty_NEXT  ( MCEnv* mce, IRExpr* next );
 
 // The IRExpr types with the destination tmp, dst, as an additional argument
-IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* data );
+IRDirty* create_dirty_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* data );
 IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp );
-IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp dst, Int offset, IRType ty );
-IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp dst, IRRegArray* descr, IRExpr* ix, Int bias );
-IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp dst, IRTemp tmp );
-IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op,
-                           IRExpr* arg1, IRExpr* arg2, IRExpr* arg3, IRExpr* arg4 );
-IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op, 
-                             IRExpr* arg1, IRExpr* arg2, IRExpr* arg3 );
-IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op, IRExpr* arg1, IRExpr* arg2 );
-IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp dst, IROp op, IRExpr* arg );
-IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp, Bool isLL, IREndness end,
-                            IRType ty, IRExpr* addr );
-IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp, 
-                             IRCallee* cee, IRType retty, IRExpr** args );
-IRDirty* create_dirty_ITE( MCEnv* mce, IRStmt *clone, IRTemp tmp, 
-                           IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse );
+IRDirty* create_dirty_GET   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+IRDirty* create_dirty_GETI  ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+IRDirty* create_dirty_RDTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+IRDirty* create_dirty_QOP   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+IRDirty* create_dirty_TRIOP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+IRDirty* create_dirty_BINOP ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg1, IRExpr* arg2 );
+IRDirty* create_dirty_UNOP  ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg );
+IRDirty* create_dirty_LOAD  ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* addr );
+IRDirty* create_dirty_CCALL ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee );
+IRDirty* create_dirty_ITE   ( MCEnv* mce, IRStmt *clone, IRTemp tmp, 
+                              IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse );
 IRDirty* create_dirty_from_dirty( IRDirty* di_old );
 
 /* Check the supplied **original** atom for undefinedness, and emit
@@ -1189,7 +1183,7 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
       // For why total_sizeB is added to offset, 
       // see VEX/pub/libvex.h "A note about guest state layout"
       if( atom && clone && !TNT_(clo_critical_ins_only) ){
-         IRDirty* di2 = create_dirty_PUT( mce, clone, offset, atom );
+         IRDirty* di2 = create_dirty_PUT( mce, clone, atom );
          if ( di2 ) complainIfTainted( mce, NULL /*atom*/, di2 ); 
       }
 //   }
@@ -4730,7 +4724,7 @@ void do_shadow_Store ( MCEnv* mce,
    // Taintgrind: What to do in the vdata case?
    //        vdata cases (CAS, Dirty) are handled by their resp. shadow routines
    if( data && clone ){
-      di2 = create_dirty_STORE( mce, clone, end, 0/*resSC*/, addr, data );
+      di2 = create_dirty_STORE( mce, clone, addr, data );
       if ( di2 ) complainIfTainted( mce, addr, di2 );
    }
 
@@ -5860,7 +5854,6 @@ ULong extract_IRConst64( IRConst* con ){
 static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
    IRType ty = typeOfIRExpr(mce->sb->tyenv, value);
    IRType tyH = mce->hWordTy;
-//   IRExpr* e;
 
    if(tyH == Ity_I32){
       switch( ty ){
@@ -5922,14 +5915,13 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
    }
 }
 
-IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data ){
+
+IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, IRExpr* data ){
 //         ppIRExpr output: PUT(<offset>) = data
    Int          nargs = 3;
    const HChar* nm;
    void*        fn;
    IRExpr**     args;
-
-   //if(data->tag == Iex_Const) return NULL;
 
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                           convert_Value( mce, data ),
@@ -5946,6 +5938,7 @@ IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, Int offset, IRExpr* data )
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
+
 
 IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone,
                             IRExpr *ix, IRExpr* data ){
@@ -5974,8 +5967,8 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
+
 IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone,
-                             IREndness end, IRTemp resSC, 
                              IRExpr* addr, IRExpr* data ){
 //         ppIRExpr output: ST<end>(<addr>) = <data>
    Int          nargs = 3;
@@ -6006,6 +5999,7 @@ IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone,
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
+
 
 IRDirty* create_dirty_CAS( MCEnv* mce, IRCAS* details ){
 /* VEX/pub/libvex_ir.h
@@ -6087,6 +6081,7 @@ typedef
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
+
 IRDirty* create_dirty_DIRTY( MCEnv* mce, IRDirty* details ){
 /*             ppIRStmt output:
                t<tmp> = DIRTY <guard> <effects>
@@ -6167,7 +6162,7 @@ typedef
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard, IRJumpKind jk, IRConst* dst ){
+IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard ){
 // ppIRStmt output:  if(<guard>) goto {<jk>} <dst>
    Int      nargs = 3;
    const HChar*   nm;
@@ -6223,58 +6218,26 @@ IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
 
    switch( e->tag ){
       case Iex_Get:
-         return create_dirty_GET( mce, clone, tmp, e->Iex.Get.offset, e->Iex.Get.ty );
-
+         return create_dirty_GET( mce, clone, tmp );
       case Iex_GetI:
-         return create_dirty_GETI( mce, clone, tmp, e->Iex.GetI.descr,
-                                             e->Iex.GetI.ix,
-                                             e->Iex.GetI.bias );
-
+         return create_dirty_GETI( mce, clone, tmp );
       case Iex_RdTmp:
-         return create_dirty_RDTMP( mce, clone, tmp, e->Iex.RdTmp.tmp );
-
+         return create_dirty_RDTMP( mce, clone, tmp );
       case Iex_Qop:
-         return create_dirty_QOP(
-                mce, clone, tmp,
-                e->Iex.Qop.details->op,
-                e->Iex.Qop.details->arg1, e->Iex.Qop.details->arg2,
-                e->Iex.Qop.details->arg3, e->Iex.Qop.details->arg4
-             );
-
+         return create_dirty_QOP( mce, clone, tmp );
      case Iex_Triop:
-        return create_dirty_TRIOP(
-               mce, clone, tmp,
-               e->Iex.Triop.details->op,
-               e->Iex.Triop.details->arg1, e->Iex.Triop.details->arg2,
-               e->Iex.Triop.details->arg3
-            );
-
+        return create_dirty_TRIOP( mce, clone, tmp );
       case Iex_Binop:
-         return create_dirty_BINOP(
-                mce, clone, tmp,
-                e->Iex.Binop.op,
-                e->Iex.Binop.arg1, e->Iex.Binop.arg2
-             );
-
+         return create_dirty_BINOP( mce, clone, tmp, e->Iex.Binop.arg1, e->Iex.Binop.arg2 );
       case Iex_Unop:
-         return create_dirty_UNOP( mce, clone, tmp,
-                                   e->Iex.Unop.op, e->Iex.Unop.arg );
-
+         return create_dirty_UNOP( mce, clone, tmp, e->Iex.Unop.arg );
       case Iex_Load:
-         return create_dirty_LOAD( mce, clone, tmp, False /*isLL*/, e->Iex.Load.end,
-                                   e->Iex.Load.ty,
-                                   e->Iex.Load.addr );
-
+         return create_dirty_LOAD( mce, clone, tmp, e->Iex.Load.addr );
       case Iex_CCall:
-         return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee,
-                                              e->Iex.CCall.retty,
-                                              e->Iex.CCall.args );
-
+         return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee );
       case Iex_ITE:
-         return create_dirty_ITE( mce, clone, tmp,
-               e->Iex.ITE.cond, e->Iex.ITE.iftrue,
-                               e->Iex.ITE.iffalse );
-
+         return create_dirty_ITE( mce, clone, tmp, e->Iex.ITE.cond, e->Iex.ITE.iftrue,
+                                  e->Iex.ITE.iffalse );
       default:
          VG_(printf)("\n");
          ppIRExpr(e);
@@ -6307,7 +6270,7 @@ IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp )
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp, Int offset, IRType ty ){
+IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 // ppIRStmt output: t<tmp> = GET(<offset>:<ty>)
    Int      nargs = 3;
    const HChar*   nm;
@@ -6324,7 +6287,7 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp, Int offset, IR
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRRegArray* descr, IRExpr* ix, Int bias ){
+IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 // ppIRStmt output:  t<tmp> = GETI(<base>)[<ix>, <bias>]
    Int      nargs = 3;
    const HChar*   nm;
@@ -6342,7 +6305,7 @@ IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRRegArray* d
 }
 
 
-IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRTemp data ){
+IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 // ppIRStmt output:  t<tmp> = t<data>
    Int      nargs = 3;
    const HChar*   nm;
@@ -6359,9 +6322,7 @@ IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRTemp data 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
-                           IRExpr* arg1, IRExpr* arg2,
-                           IRExpr* arg3, IRExpr* arg4 ){
+IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3, arg4 )
    Int          nargs = 3;
    const HChar* nm;
@@ -6378,9 +6339,7 @@ IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
-                             IRExpr* arg1, IRExpr* arg2,
-                             IRExpr* arg3 ){
+IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3 )
    Int          nargs = 3;
    const HChar* nm;
@@ -6397,18 +6356,15 @@ IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
+
 IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
-                             IRTemp tmp, IROp op,
+                             IRTemp tmp,
                              IRExpr* arg1, IRExpr* arg2 ){
 // ppIRStmt output:  t<tmp> = op( arg1, arg2 )
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-
-   // Iop_INVALID = 0x1400
-   //if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const )  return NULL;
-      //return create_dirty_WRTMP_const(mce, clone, tmp);
    
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
            convert_Value( mce, IRExpr_RdTmp( tmp ) ),
@@ -6433,14 +6389,13 @@ IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op, IRExpr* arg ){
+
+IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* arg ){
 // ppIRStmt output:  t<tmp> = op( arg )
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
    IRExpr** args;
-
-   //if ( arg->tag == Iex_Const )  return NULL;
    
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                  convert_Value( mce, IRExpr_RdTmp( tmp ) ),
@@ -6458,9 +6413,8 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IROp op, IREx
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp,
-                            Bool isLL, IREndness end,
-                            IRType ty, IRAtom* addr ){
+
+IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr *addr ){
 //         ppIRExpr output: tmp = LD<end>:<ty>(<addr>), eg. t0 = LDle:I32(t1)
    Int      nargs = 3;
    const HChar*   nm;
@@ -6482,8 +6436,8 @@ IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp,
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp,
-                        IRCallee* cee, IRType retty, IRExpr** args ){
+
+IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee ){
 // ppIRStmt output: t<tmp> = CCALL <callee>:<retty>(<args>)
    Int          nargs = 3;
    const HChar* nm = "";
@@ -6507,6 +6461,7 @@ IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp,
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
 }
+
 
 IRDirty* create_dirty_ITE( MCEnv* mce, IRStmt *clone, IRTemp tmp,
                            IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse ){
@@ -6948,8 +6903,7 @@ typedef
             break;
 
          case Ist_Exit: // Conditional jumps, if(t<guard>) goto {Boring} <addr>:I32
-            di2 = create_dirty_EXIT( &mce, clone, st->Ist.Exit.guard, 
-                                     st->Ist.Exit.jk, st->Ist.Exit.dst );
+            di2 = create_dirty_EXIT( &mce, clone, st->Ist.Exit.guard );
             complainIfTainted( &mce, st->Ist.Exit.guard, di2 );
             break;
 

@@ -3387,6 +3387,7 @@ void TNT_(h64_unop_c) (
    VG_(printf)("\n");
 }
 
+
 // ltmp = <op> rtmp1 const
 VG_REGPARM(3)
 void TNT_(h64_binop_tc) (
@@ -3435,6 +3436,7 @@ void TNT_(h64_binop_tc) (
       VG_(printf)("\n");
 }
 
+
 // ltmp = <op> const rtmp2
 VG_REGPARM(3)
 void TNT_(h64_binop_ct) (
@@ -3481,6 +3483,7 @@ void TNT_(h64_binop_ct) (
    else
       VG_(printf)("\n");
 }
+
 
 // ltmp = <op> rtmp1 rtmp2
 VG_REGPARM(3)
@@ -3536,6 +3539,7 @@ void TNT_(h64_binop_tt) (
       VG_(printf)("\n");
 }
 
+
 // ltmp = <op> const1 const2
 VG_REGPARM(3)
 void TNT_(h64_binop_cc) (
@@ -3566,6 +3570,7 @@ void TNT_(h64_binop_cc) (
    VG_(printf)("\n");
 }
 
+
 // ltmp = <op> rtmp1, rtmp2, rtmp3
 VG_REGPARM(3)
 void TNT_(h64_triop) (
@@ -3580,6 +3585,7 @@ void TNT_(h64_triop) (
    }
 }
 
+
 // ltmp = <op> rtmp1, rtmp2, rtmp3, rtmp4
 VG_REGPARM(3)
 void TNT_(h64_qop) (
@@ -3593,6 +3599,7 @@ void TNT_(h64_qop) (
       VG_(printf)( "qop tainted\n" );
    }
 }
+
 
 VG_REGPARM(3)
 void TNT_(h64_rdtmp) (
@@ -3638,6 +3645,7 @@ void TNT_(h64_rdtmp) (
       VG_(printf)("\n");
 }
 
+
 // ltmp = ctmp? rtmp1 : const
 VG_REGPARM(3)
 void TNT_(h64_ite_tc) (
@@ -3682,6 +3690,7 @@ void TNT_(h64_ite_tc) (
       VG_(printf)("\n");
 }
 
+
 // ltmp = ctmp? const : rtmp2
 VG_REGPARM(3)
 void TNT_(h64_ite_ct) (
@@ -3725,6 +3734,7 @@ void TNT_(h64_ite_ct) (
    else
       VG_(printf)("\n");
 }
+
 
 // ltmp = ctmp? rtmp1 : rtmp2
 VG_REGPARM(3)
@@ -3777,6 +3787,7 @@ void TNT_(h64_ite_tt) (
       VG_(printf)("\n");
 }
 
+
 // ltmp = ctmp? const1 : const2
 VG_REGPARM(3)
 void TNT_(h64_ite_cc) (
@@ -3811,6 +3822,7 @@ void TNT_(h64_ite_cc) (
    else
       VG_(printf)("\n");
 }
+
 
 // ltmp = callee( arg[0], ... )
 VG_REGPARM(3)
@@ -3866,6 +3878,7 @@ void TNT_(h64_ccall) (
    } else
       VG_(printf)("\n");
 }
+
 
 // ltmp = amd64g_calculate_condition(
 //           ULong/*AMD64Condcode*/ cond, 
@@ -3950,6 +3963,7 @@ void TNT_(h64_amd64g_calculate_condition) (
    } else
       VG_(printf)("\n");
 }
+
 
 // No decoding necessary. Just print the string
 VG_REGPARM(3)
