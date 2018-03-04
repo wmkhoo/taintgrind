@@ -157,6 +157,10 @@ Int  atoi( HChar *s );
 void check_reg( UInt reg );
 Int get_and_check_tvar( HChar *tmp );
 void infer_client_binary_name(UInt pc);
+void bookkeeping(IRStmt *clone, UWord value, UWord taint);
+Int exit_early (IRStmt *clone, UWord taint);
+void do_smt2(IRStmt *clone, UWord value, UWord taint);
+void print_info_flow(IRStmt *clone, UWord taint);
 // -End- Forward declarations for Taintgrind
 
 static void update_SM_counts(SecMap* oldSM, SecMap* newSM); //285
@@ -2630,6 +2634,14 @@ int istty = 0;
    else \
       VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, (ULong)value, (ULong)taint);
 
+#define G_SMT2( fn ) \
+   VG_(printf)("; " #fn " \n"); \
+   TNT_(fn)(clone);
+
+#define G_SMT2_LOAD( fn ) \
+   VG_(printf)("; " #fn " \n"); \
+   TNT_(fn)(clone, value, taint);
+
 #define H_SMT2( fn ) \
    if ( TNT_(clo_smt2) ) \
    { \
@@ -3081,7 +3093,7 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
       {
-         UInt reg     = clone->Ist.Put.offset;
+         UInt reg = clone->Ist.Put.offset;
          check_reg( reg );
          ri[reg]++;
          break;
@@ -3092,7 +3104,6 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
          if ( ltmp >= TI_MAX )
             VG_(printf)("ltmp %d\n", ltmp);
          tl_assert( ltmp < TI_MAX );
-         tl_assert( ti[ltmp] < 0x7fffffff );
          ti[ltmp]++;
          if ( taint )
             ti[ltmp] |= 0x80000000;
@@ -3101,17 +3112,19 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
          tv[ltmp] = value;
          break;
       }
+      default:
+         break;
    }
 }
 
 
 // Exit early if we're only printing tainted insns
 // and nothing is tainted
-Int exit_early(IRStmt *clone, UWord taint) {
+Int exit_early (IRStmt *clone, UWord taint) {
    IRExpr *addr;
    UInt atmp;
 
-   if ( TNT_(clo_critical_ins_only) ) return;
+   if ( TNT_(clo_critical_ins_only) ) return 1;
    if(!TNT_(do_print) && taint)  TNT_(do_print) = 1;
    if(!TNT_(do_print))  return 1;
 
@@ -3143,14 +3156,41 @@ Int exit_early(IRStmt *clone, UWord taint) {
 }
 
 
-void do_smt2(IRStmt *clone) {
+void do_smt2(IRStmt *clone, UWord value, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
       {
-         if (sizeof(UWord) == 4) { H_SMT2(smt2_put_t_32); }
-         else                    { H_SMT2(smt2_put_t_64); }
+         if (sizeof(UWord) == 4) { G_SMT2(smt2_put_t_32); }
+         else                    { G_SMT2(smt2_put_t_64); }
          break;
       }
+      case Ist_WrTmp:
+      {
+         IRExpr *e = clone->Ist.WrTmp.data;
+
+         switch (e->tag) {
+            case Iex_Get:
+            {
+               G_SMT2(smt2_get);
+               break;
+            }
+            case Iex_Load:
+            {
+               IRExpr *addr = e->Iex.Load.addr;
+
+               if (addr->tag == Iex_RdTmp) {
+                  G_SMT2_LOAD(smt2_load_t_64);
+               } else {
+                  G_SMT2_LOAD(smt2_load_c_64);
+               }
+               break;
+            }
+            default:
+               break;
+         }
+      }
+      default:
+         break;
    }
 }
 
@@ -3170,6 +3210,52 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          VG_(printf)("r%d_%d <- t%d_%d", reg, ri[reg], tmp, _ti(tmp));
          break;
       }
+      case Ist_Store:
+      {
+         IRExpr *addr = clone->Ist.Store.addr;
+         IRExpr *data = clone->Ist.Store.data;
+         ULong address;
+         // Case 1: Address is RdTmp
+         if (addr->tag == Iex_RdTmp) {
+            UInt atmp    = addr->Iex.RdTmp.tmp;
+            tl_assert( atmp < TI_MAX );
+            address = tv[atmp];
+
+            if (data->tag == Iex_RdTmp) {
+               UInt dtmp    = data->Iex.RdTmp.tmp;
+               tl_assert( dtmp < TI_MAX );
+
+               if ( is_tainted(dtmp) && is_tainted(atmp) ) {
+                  H_VAR
+                  VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
+                  VG_(printf)( "; %s <*- t%d_%d", varname, atmp, _ti(atmp) );
+               } else if ( is_tainted(dtmp) ) {
+                  H_VAR
+                  VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
+               } else if ( is_tainted(atmp) ) {
+                  H_VAR
+                  VG_(printf)( "%s <*- t%d_%d", varname, atmp, _ti(atmp) );
+               }
+            } else {
+               if ( is_tainted(atmp) ) {
+                  H_VAR
+                  VG_(printf)( "%s <-*- t%d_%d", varname, atmp, _ti(atmp) );
+               }
+            }
+         } else {
+         // Case 2: Address is Const
+            UInt dtmp    = data->Iex.RdTmp.tmp;
+            address = extract_IRConst64(addr->Iex.Const.con);
+
+            tl_assert( dtmp < TI_MAX );
+
+            if ( is_tainted(dtmp) ) {
+               H_VAR
+               VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
+            }
+         }
+         break;
+      }
       case Ist_WrTmp:
       {
          UInt ltmp = clone->Ist.WrTmp.tmp;
@@ -3177,14 +3263,26 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          tl_assert( ltmp < TI_MAX );
 
          switch (e->tag) {
+            case Iex_Get:
+            {
+               if (!taint) break;
+
+               UInt reg = e->Iex.Get.offset;
+               check_reg( reg );
+
+               VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
+               break;
+            }
             case Iex_Load:
             {
                IRExpr *addr = e->Iex.Load.addr;
+               ULong address;
                // Case 1: Address is RdTmp
                if (addr->tag == Iex_RdTmp) {
                   UInt atmp    = addr->Iex.RdTmp.tmp;
                   tl_assert( atmp < TI_MAX );
-                  ULong address = tv[atmp];
+                  address = tv[atmp];
+
                   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
                      H_VAR
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
@@ -3197,15 +3295,19 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                } else {
                // Case 2: Address is Constant
                   if ( is_tainted(ltmp) ) {
-                     ULong address = extract_IRConst64(addr->Iex.Const.con);
+                     address = extract_IRConst64(addr->Iex.Const.con);
                      H_VAR
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
                   }
                }
                break;
             }
+            default:
+               break;
          }
       }
+      default:
+         break;
    }
    VG_(printf)("\n");
 }
@@ -3225,7 +3327,7 @@ void TNT_(emit_insn) (
 
    // Check if we're emitting SMT2
    if ( TNT_(clo_smt2) ) {
-      do_smt2(clone);
+      do_smt2(clone, value, taint);
       return;
    }
 

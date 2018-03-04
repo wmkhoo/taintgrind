@@ -6276,8 +6276,10 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
                           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
 
-   fn    = &TNT_(h64_get);
-   nm    = "TNT_(h64_get)";
+   fn    = &TNT_(emit_insn);
+   nm    = "TNT_(emit_insn)";
+   //fn    = &TNT_(h64_get);
+   //nm    = "TNT_(h64_get)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
