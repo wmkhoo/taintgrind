@@ -3174,6 +3174,14 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                G_SMT2(smt2_get);
                break;
             }
+            case Iex_Unop:
+            {
+               IRExpr *arg = e->Iex.Unop.arg;
+
+               if (arg->tag == Iex_RdTmp)
+                  G_SMT2(smt2_unop_t);
+               break;
+            }
             case Iex_Load:
             {
                IRExpr *addr = e->Iex.Load.addr;
@@ -3186,10 +3194,14 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                break;
             }
             default:
+               ppIRExpr(e);
+               tl_assert(0 && "smt2: not implemented");
                break;
          }
       }
       default:
+         ppIRStmt(clone);
+         tl_assert(0 && "smt2: not implemented");
          break;
    }
 }
@@ -3271,6 +3283,15 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                check_reg( reg );
 
                VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
+               break;
+            }
+            case Iex_Unop:
+            {
+               if (!taint) break;
+               IRExpr* arg = e->Iex.Unop.arg;
+               UInt rtmp = arg->Iex.RdTmp.tmp;
+               tl_assert( rtmp < TI_MAX );
+               VG_(printf)( "t%d_%d <- t%d_%d", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
                break;
             }
             case Iex_Load:

@@ -6398,14 +6398,17 @@ IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* arg )
                  convert_Value( mce, IRExpr_RdTmp( tmp ) ),
                  convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
 
-   if ( arg->tag == Iex_Const ) {
-         fn    = &TNT_(h64_unop_c);
-         nm    = "TNT_(h64_unop_c)";
-   } else if ( arg->tag == Iex_RdTmp ) {
-         fn    = &TNT_(h64_unop_t);
-         nm    = "TNT_(h64_unop_t)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP");
+   fn    = &TNT_(emit_insn);
+   nm    = "TNT_(emit_insn)";
+
+   //if ( arg->tag == Iex_Const ) {
+   //      fn    = &TNT_(h64_unop_c);
+   //      nm    = "TNT_(h64_unop_c)";
+   //} else if ( arg->tag == Iex_RdTmp ) {
+   //      fn    = &TNT_(h64_unop_t);
+   //      nm    = "TNT_(h64_unop_t)";
+   //}else
+   //   VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
