@@ -107,6 +107,7 @@ void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
 //VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
+VG_REGPARM(3) void TNT_(emit_insn) ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_exit_c)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_next_t)   ( IRExpr *, UWord, UWord );
@@ -118,8 +119,6 @@ VG_REGPARM(3) void TNT_(h64_load_t)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_load_c)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_get)      ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_geti)     ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_put_t)    ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_put_c)    ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_puti_tt)  ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_puti_tc)  ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(h64_puti_ct)  ( IRStmt *, UWord, UWord );
