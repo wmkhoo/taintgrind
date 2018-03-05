@@ -7,12 +7,12 @@ int get_sign(int x) {
 int main(int argc, char **argv)
 {
     // Turns on printing
-    TNT_START_PRINT();
+    //TNT_START_PRINT();
     int a = 1000;
     // Defines int a as tainted
     TNT_MAKE_MEM_TAINTED_NAMED(&a,4, "myint");
     int s = get_sign(a);
     // Turns off printing
-    TNT_STOP_PRINT();
+    //TNT_STOP_PRINT();
     return s;
 }
