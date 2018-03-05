@@ -999,27 +999,27 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
 
 // The IRStmt types
 IRDirty* create_dirty_PUT   ( MCEnv* mce, IRStmt *clone, IRExpr* data );
-IRDirty* create_dirty_PUTI  ( MCEnv* mce, IRStmt* clone, IRExpr *ix, IRExpr* data );
-IRDirty* create_dirty_STORE ( MCEnv* mce, IRStmt *clone, IRExpr* addr, IRExpr* data );
+IRDirty* create_dirty_PUTI  ( MCEnv* mce, IRStmt* clone, IRExpr* data );
+IRDirty* create_dirty_STORE ( MCEnv* mce, IRStmt *clone, IRExpr* data );
 IRDirty* create_dirty_CAS   ( MCEnv* mce, IRCAS* details );
 IRDirty* create_dirty_DIRTY ( MCEnv* mce, IRDirty* details );
 IRDirty* create_dirty_EXIT  ( MCEnv* mce, IRStmt *clone, IRExpr* guard );
 IRDirty* create_dirty_NEXT  ( MCEnv* mce, IRExpr* next );
 
 // The IRExpr types with the destination tmp, dst, as an additional argument
-IRDirty* create_dirty_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* data );
-IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp );
-IRDirty* create_dirty_GET   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
-IRDirty* create_dirty_GETI  ( MCEnv* mce, IRStmt *clone, IRTemp dst );
-IRDirty* create_dirty_RDTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
-IRDirty* create_dirty_QOP   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
-IRDirty* create_dirty_TRIOP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
-IRDirty* create_dirty_BINOP ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg1, IRExpr* arg2 );
-IRDirty* create_dirty_UNOP  ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg );
-IRDirty* create_dirty_LOAD  ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* addr );
-IRDirty* create_dirty_CCALL ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee );
-IRDirty* create_dirty_ITE   ( MCEnv* mce, IRStmt *clone, IRTemp tmp, 
-                              IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse );
+IRDirty* create_dirty_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp );
+//IRDirty* create_dirty_GET   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty* create_dirty_GETI  ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty* create_dirty_RDTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty* create_dirty_QOP   ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty* create_dirty_TRIOP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
+//IRDirty* create_dirty_BINOP ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg1, IRExpr* arg2 );
+//IRDirty* create_dirty_UNOP  ( MCEnv* mce, IRStmt *clone, IRTemp dst, IRExpr* arg );
+//IRDirty* create_dirty_LOAD  ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* addr );
+//IRDirty* create_dirty_CCALL ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee );
+//IRDirty* create_dirty_ITE   ( MCEnv* mce, IRStmt *clone, IRTemp tmp, 
+//                              IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse );
 IRDirty* create_dirty_from_dirty( IRDirty* di_old );
 
 /* Check the supplied **original** atom for undefinedness, and emit
@@ -1219,7 +1219,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone,
    tl_assert(isOriginalAtom(mce,ix));
 
    // Taintgrind:
-   di2 = create_dirty_PUTI( mce, clone, ix, atom );
+   di2 = create_dirty_PUTI( mce, clone, atom );
    complainIfTainted(mce, ix, di2);
 
    // Taintgrind: Let's keep the vbits regardless
@@ -4594,15 +4594,12 @@ void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr )
    IRDirty* di2;
 
    stmt( 'C', mce, IRStmt_WrTmp( tmp, expr ) );
-
    assign( 'V', mce, findShadowTmpV( mce, tmp ), expr2vbits( mce, expr ) );
 
-   if( expr->tag != Iex_Const ){
-      di2 = create_dirty_WRTMP( mce, clone, tmp, expr );
+   di2 = create_dirty_WRTMP( mce, clone, tmp );
 
-      if( di2 != NULL )
-         complainIfTainted( mce, IRExpr_RdTmp( tmp ), di2 );
-   }
+   if( di2 != NULL )
+      complainIfTainted( mce, IRExpr_RdTmp( tmp ), di2 );
 }
 
 /*------------------------------------------------------------*/
@@ -4724,7 +4721,7 @@ void do_shadow_Store ( MCEnv* mce,
    // Taintgrind: What to do in the vdata case?
    //        vdata cases (CAS, Dirty) are handled by their resp. shadow routines
    if( data && clone ){
-      di2 = create_dirty_STORE( mce, clone, addr, data );
+      di2 = create_dirty_STORE( mce, clone, data );
       if ( di2 ) complainIfTainted( mce, addr, di2 );
    }
 
@@ -5934,8 +5931,7 @@ IRDirty* create_dirty_PUT( MCEnv* mce, IRStmt *clone, IRExpr* data ){
 }
 
 
-IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone,
-                            IRExpr *ix, IRExpr* data ){
+IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone, IRExpr* data ){
 // ppIRExpr output: PUTI(<descr.base:descr.nElems:descr.elemTy>)[ix, bias] = data
    Int          nargs = 3;
    const HChar* nm;
@@ -5946,24 +5942,26 @@ IRDirty* create_dirty_PUTI( MCEnv* mce, IRStmt *clone,
                           convert_Value( mce, data ),
                           convert_Value( mce, atom2vbits( mce, data ) ) );
 
-   if ( ix->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
-      fn    = &TNT_(h64_puti_tt);
-      nm    = "TNT_(h64_puti_tt)";
-   } else if ( ix->tag == Iex_RdTmp && data->tag == Iex_Const ) {
-      fn    = &TNT_(h64_puti_tc);
-      nm    = "TNT_(h64_puti_tc)";
-   } else if ( ix->tag == Iex_Const && data->tag == Iex_RdTmp ) {
-      fn    = &TNT_(h64_puti_ct);
-      nm    = "TNT_(h64_puti_ct)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown type");
+   fn    = &TNT_(emit_insn);
+   nm    = "TNT_(emit_insn)";
+
+   //if ( ix->tag == Iex_RdTmp && data->tag == Iex_RdTmp ) {
+   //   fn    = &TNT_(h64_puti_tt);
+   //   nm    = "TNT_(h64_puti_tt)";
+   //} else if ( ix->tag == Iex_RdTmp && data->tag == Iex_Const ) {
+   //   fn    = &TNT_(h64_puti_tc);
+   //   nm    = "TNT_(h64_puti_tc)";
+   //} else if ( ix->tag == Iex_Const && data->tag == Iex_RdTmp ) {
+   //   fn    = &TNT_(h64_puti_ct);
+   //   nm    = "TNT_(h64_puti_ct)";
+   //}else
+   //   VG_(tool_panic)("tnt_translate.c: create_dirty_PUTI: Unknown type");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
 
-IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone,
-                             IRExpr* addr, IRExpr* data ){
+IRDirty* create_dirty_STORE( MCEnv* mce, IRStmt *clone, IRExpr* data ){
 //         ppIRExpr output: ST<end>(<addr>) = <data>
    Int          nargs = 3;
    const HChar* nm;
@@ -6170,14 +6168,17 @@ IRDirty* create_dirty_EXIT( MCEnv* mce, IRStmt *clone, IRExpr* guard ){
                           convert_Value( mce, guard ),
                           convert_Value( mce, atom2vbits( mce, guard ) ) );
 
-   if(guard->tag == Iex_Const){
-      fn    = &TNT_(h64_exit_c);
-      nm    = "TNT_(h64_exit_c)";
-   }else if(guard->tag == Iex_RdTmp){
-      fn    = &TNT_(h64_exit_t);
-      nm    = "TNT_(h64_exit_t)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT");
+   fn    = &TNT_(emit_insn);
+   nm    = "TNT_(emit_insn)";
+
+   //if(guard->tag == Iex_Const){
+   //   fn    = &TNT_(h64_exit_c);
+   //   nm    = "TNT_(h64_exit_c)";
+   //}else if(guard->tag == Iex_RdTmp){
+   //   fn    = &TNT_(h64_exit_t);
+   //   nm    = "TNT_(h64_exit_t)";
+   //}else
+   //   VG_(tool_panic)("tnt_translate.c: create_dirty_EXIT");
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
@@ -6189,84 +6190,21 @@ IRDirty* create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
    void*    fn;
    IRExpr** args;
 
-   // We need to track all BBs, for var run-time taint and values
-   //if( next->tag == Iex_Const )       return NULL;
+   // If next is a constant, there is no useful run-time/taint info, skip
+   if( next->tag == Iex_Const )       return NULL;
    IRExpr *clone = deepMallocIRExpr(next);
 
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
                           convert_Value( mce, next ),
                           convert_Value( mce, atom2vbits( mce, next ) ) );
 
-   if(next->tag == Iex_Const){
-      fn    = &TNT_(h64_next_c);
-      nm    = "TNT_(h64_next_c)";
-   }else if(next->tag == Iex_RdTmp){
-      fn    = &TNT_(h64_next_t);
-      nm    = "TNT_(h64_next_t)";
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_NEXT");
+   fn    = &TNT_(h64_next);
+   nm    = "TNT_(h64_next)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
 }
 
-IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* e ){
-
-   switch( e->tag ){
-      case Iex_Get:
-         return create_dirty_GET( mce, clone, tmp );
-      case Iex_GetI:
-         return create_dirty_GETI( mce, clone, tmp );
-      case Iex_RdTmp:
-         return create_dirty_RDTMP( mce, clone, tmp );
-      case Iex_Qop:
-         return create_dirty_QOP( mce, clone, tmp );
-     case Iex_Triop:
-        return create_dirty_TRIOP( mce, clone, tmp );
-      case Iex_Binop:
-         return create_dirty_BINOP( mce, clone, tmp, e->Iex.Binop.arg1, e->Iex.Binop.arg2 );
-      case Iex_Unop:
-         return create_dirty_UNOP( mce, clone, tmp, e->Iex.Unop.arg );
-      case Iex_Load:
-         return create_dirty_LOAD( mce, clone, tmp, e->Iex.Load.addr );
-      case Iex_CCall:
-         return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee );
-      case Iex_ITE:
-         return create_dirty_ITE( mce, clone, tmp, e->Iex.ITE.cond, e->Iex.ITE.iftrue,
-                                  e->Iex.ITE.iffalse );
-      default:
-         VG_(printf)("\n");
-         ppIRExpr(e);
-         VG_(printf)("\n");
-         VG_(tool_panic)("tnt_translate.c: create_dirty_WRTMP: Unhandled expression");
-   }
-}
-
-IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp )
-{
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-
-   fn    = &TNT_(h64_wrtmp_c);
-   nm    = "TNT_(h64_wrtmp_c)";
-
-   if ( mce->hWordTy == Ity_I32 ) {
-      args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                       mkU32( 0 ) );
-   } else if ( mce->hWordTy == Ity_I64 ){
-      args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                       mkU64( 0 ) );
-   }else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_WRTMP_const: Unknown platform");
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-// ppIRStmt output: t<tmp> = GET(<offset>:<ty>)
+IRDirty* create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
    Int      nargs = 3;
    const HChar*   nm;
    void*    fn;
@@ -6278,225 +6216,298 @@ IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
 
    fn    = &TNT_(emit_insn);
    nm    = "TNT_(emit_insn)";
-   //fn    = &TNT_(h64_get);
-   //nm    = "TNT_(h64_get)";
 
    return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//   switch( e->tag ){
+//      case Iex_Get:
+//         return create_dirty_GET( mce, clone, tmp );
+//      case Iex_GetI:
+//         return create_dirty_GETI( mce, clone, tmp );
+//      case Iex_RdTmp:
+//         return create_dirty_RDTMP( mce, clone, tmp );
+//      case Iex_Qop:
+//         return create_dirty_QOP( mce, clone, tmp );
+//     case Iex_Triop:
+//        return create_dirty_TRIOP( mce, clone, tmp );
+//      case Iex_Binop:
+//         return create_dirty_BINOP( mce, clone, tmp, e->Iex.Binop.arg1, e->Iex.Binop.arg2 );
+//      case Iex_Unop:
+//         return create_dirty_UNOP( mce, clone, tmp, e->Iex.Unop.arg );
+//      case Iex_Load:
+//         return create_dirty_LOAD( mce, clone, tmp, e->Iex.Load.addr );
+//      case Iex_CCall:
+//         return create_dirty_CCALL( mce, clone, tmp, e->Iex.CCall.cee );
+//      case Iex_ITE:
+//         return create_dirty_ITE( mce, clone, tmp, e->Iex.ITE.cond, e->Iex.ITE.iftrue,
+//                                  e->Iex.ITE.iffalse );
+//      default:
+//         VG_(printf)("\n");
+//         ppIRExpr(e);
+//         VG_(printf)("\n");
+//         VG_(tool_panic)("tnt_translate.c: create_dirty_WRTMP: Unhandled expression");
+//   }
 }
 
-IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-// ppIRStmt output:  t<tmp> = GETI(<base>)[<ix>, <bias>]
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
+//IRDirty *create_dirty_WRTMP_const( MCEnv *mce, IRStmt *clone, IRTemp tmp )
+//{
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   fn    = &TNT_(h64_wrtmp_c);
+//   nm    = "TNT_(h64_wrtmp_c)";
+//
+//   if ( mce->hWordTy == Ity_I32 ) {
+//      args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//                       mkU32( 0 ) );
+//   } else if ( mce->hWordTy == Ity_I64 ){
+//      args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//                       convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//                       mkU64( 0 ) );
+//   }else
+//      VG_(tool_panic)("tnt_translate.c: create_dirty_WRTMP_const: Unknown platform");
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
 
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn    = &TNT_(h64_geti);
-   nm    = "TNT_(h64_geti)";
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-
-IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-// ppIRStmt output:  t<tmp> = t<data>
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn    = &TNT_(h64_rdtmp);
-   nm    = "TNT_(h64_rdtmp)";
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-// ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3, arg4 )
-   Int          nargs = 3;
-   const HChar* nm;
-   void*        fn;
-   IRExpr**     args;
-   
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn       = &TNT_(h64_qop);
-   nm       = "TNT_(h64_qop)";
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-// ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3 )
-   Int          nargs = 3;
-   const HChar* nm;
-   void*        fn;
-   IRExpr**     args;
-   
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn       = &TNT_(h64_triop);
-   nm       = "TNT_(h64_triop)";
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-
-IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone,
-                             IRTemp tmp,
-                             IRExpr* arg1, IRExpr* arg2 ){
-// ppIRStmt output:  t<tmp> = op( arg1, arg2 )
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-   
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
-      fn = &TNT_(h64_binop_tc);
-      nm = "TNT_(h64_binop_tc)";
-   } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
-      fn = &TNT_(h64_binop_ct);
-      nm = "TNT_(h64_binop_ct)";
-   } else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
-      fn = &TNT_(h64_binop_cc);
-      nm = "TNT_(h64_binop_cc)";
-   } else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
-      fn = &TNT_(h64_binop_tt);
-      nm = "TNT_(h64_binop_tt)";
-   } else {
-      VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
-   }
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-
-IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* arg ){
-// ppIRStmt output:  t<tmp> = op( arg )
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-   
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn    = &TNT_(emit_insn);
-   nm    = "TNT_(emit_insn)";
-
-   //if ( arg->tag == Iex_Const ) {
-   //      fn    = &TNT_(h64_unop_c);
-   //      nm    = "TNT_(h64_unop_c)";
-   //} else if ( arg->tag == Iex_RdTmp ) {
-   //      fn    = &TNT_(h64_unop_t);
-   //      nm    = "TNT_(h64_unop_t)";
-   //}else
-   //   VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP");
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-
-IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr *addr ){
-//         ppIRExpr output: tmp = LD<end>:<ty>(<addr>), eg. t0 = LDle:I32(t1)
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   fn    = &TNT_(emit_insn);
-   nm    = "TNT_(emit_insn)";
-
-   //if ( addr->tag == Iex_RdTmp ) {
-   //   fn    = &TNT_(h64_load_t);
-   //   nm    = "TNT_(h64_load_t)";
-   //} else {
-   //   fn    = &TNT_(h64_load_c);
-   //   nm    = "TNT_(h64_load_c)";
-   //}
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
-
-
-IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee ){
-// ppIRStmt output: t<tmp> = CCALL <callee>:<retty>(<args>)
-   Int          nargs = 3;
-   const HChar* nm = "";
-   void*        fn = (void *)0;
-   IRExpr**     di_args;
-
-   di_args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   if ( VG_(strcmp)(cee->name, "x86g_calculate_condition") == 0 ) {
-      fn    = &TNT_(h64_amd64g_calculate_condition);
-      nm    = "TNT_(h64_amd64g_calculate_condition)";
-   } else if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
-      fn    = &TNT_(h64_amd64g_calculate_condition);
-      nm    = "TNT_(h64_amd64g_calculate_condition)";
-   } else {
-      fn    = &TNT_(h64_ccall);
-      nm    = "TNT_(h64_ccall)";
-   }
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
-}
-
-
-IRDirty* create_dirty_ITE( MCEnv* mce, IRStmt *clone, IRTemp tmp,
-                           IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse ){
-// ppIRStmt output: t<tmp> = ITE <cond> (<iftrue>, <iffalse>)
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-
-   tl_assert( cond->tag != Iex_Const );
-
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
-
-   if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
-      fn    = &TNT_(h64_ite_tc);
-      nm    = "TNT_(h64_ite_tc)";
-   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
-      fn    = &TNT_(h64_ite_ct);
-      nm    = "TNT_(h64_ite_ct)";
-   } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
-      fn    = &TNT_(h64_ite_tt);
-      nm    = "TNT_(h64_ite_tt)";
-   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_Const ) {
-      fn    = &TNT_(h64_ite_cc);
-      nm    = "TNT_(h64_ite_cc)";
-   } else
-      VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 64-bit mode");
-
-   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
-}
+//IRDirty* create_dirty_GET( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output: t<tmp> = GET(<offset>:<ty>)
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
+//
+//   fn    = &TNT_(emit_insn);
+//   nm    = "TNT_(emit_insn)";
+//   //fn    = &TNT_(h64_get);
+//   //nm    = "TNT_(h64_get)";
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//IRDirty* create_dirty_GETI( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = GETI(<base>)[<ix>, <bias>]
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn    = &TNT_(h64_geti);
+//   nm    = "TNT_(h64_geti)";
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//
+//IRDirty* create_dirty_RDTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = t<data>
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn    = &TNT_(emit_insn);
+//   nm    = "TNT_(emit_insn)";
+//
+//   //fn    = &TNT_(h64_rdtmp);
+//   //nm    = "TNT_(h64_rdtmp)";
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//IRDirty* create_dirty_QOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3, arg4 )
+//   Int          nargs = 3;
+//   const HChar* nm;
+//   void*        fn;
+//   IRExpr**     args;
+//   
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn       = &TNT_(h64_qop);
+//   nm       = "TNT_(h64_qop)";
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//IRDirty* create_dirty_TRIOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = op( arg1, arg2, arg3 )
+//   Int          nargs = 3;
+//   const HChar* nm;
+//   void*        fn;
+//   IRExpr**     args;
+//   
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn       = &TNT_(h64_triop);
+//   nm       = "TNT_(h64_triop)";
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//
+//IRDirty* create_dirty_BINOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = op( arg1, arg2 )
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//   
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn    = &TNT_(emit_insn);
+//   nm    = "TNT_(emit_insn)";
+//
+//   //if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_Const ) {
+//   //   fn = &TNT_(h64_binop_tc);
+//   //   nm = "TNT_(h64_binop_tc)";
+//   //} else if ( arg1->tag == Iex_Const && arg2->tag == Iex_RdTmp ) {
+//   //   fn = &TNT_(h64_binop_ct);
+//   //   nm = "TNT_(h64_binop_ct)";
+//   //} else if ( arg1->tag == Iex_Const && arg2->tag == Iex_Const ) {
+//   //   fn = &TNT_(h64_binop_cc);
+//   //   nm = "TNT_(h64_binop_cc)";
+//   //} else if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
+//   //   fn = &TNT_(h64_binop_tt);
+//   //   nm = "TNT_(h64_binop_tt)";
+//   //} else {
+//   //   VG_(tool_panic)("tnt_translate.c: create_dirty_BINOP");
+//   //}
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//
+//IRDirty* create_dirty_UNOP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
+//// ppIRStmt output:  t<tmp> = op( arg )
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//   
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//                 convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//                 convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn    = &TNT_(emit_insn);
+//   nm    = "TNT_(emit_insn)";
+//
+//   //if ( arg->tag == Iex_Const ) {
+//   //      fn    = &TNT_(h64_unop_c);
+//   //      nm    = "TNT_(h64_unop_c)";
+//   //} else if ( arg->tag == Iex_RdTmp ) {
+//   //      fn    = &TNT_(h64_unop_t);
+//   //      nm    = "TNT_(h64_unop_t)";
+//   //}else
+//   //   VG_(tool_panic)("tnt_translate.c: create_dirty_UNOP");
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//
+//IRDirty* create_dirty_LOAD( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr *addr ){
+////         ppIRExpr output: tmp = LD<end>:<ty>(<addr>), eg. t0 = LDle:I32(t1)
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   fn    = &TNT_(emit_insn);
+//   nm    = "TNT_(emit_insn)";
+//
+//   //if ( addr->tag == Iex_RdTmp ) {
+//   //   fn    = &TNT_(h64_load_t);
+//   //   nm    = "TNT_(h64_load_t)";
+//   //} else {
+//   //   fn    = &TNT_(h64_load_c);
+//   //   nm    = "TNT_(h64_load_c)";
+//   //}
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
+//
+//
+//IRDirty* create_dirty_CCALL( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRCallee* cee ){
+//// ppIRStmt output: t<tmp> = CCALL <callee>:<retty>(<args>)
+//   Int          nargs = 3;
+//   const HChar* nm = "";
+//   void*        fn = (void *)0;
+//   IRExpr**     di_args;
+//
+//   di_args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//              convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//              convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   if ( VG_(strcmp)(cee->name, "x86g_calculate_condition") == 0 ) {
+//      fn    = &TNT_(h64_amd64g_calculate_condition);
+//      nm    = "TNT_(h64_amd64g_calculate_condition)";
+//   } else if ( VG_(strcmp)(cee->name, "amd64g_calculate_condition") == 0 ) {
+//      fn    = &TNT_(h64_amd64g_calculate_condition);
+//      nm    = "TNT_(h64_amd64g_calculate_condition)";
+//   } else {
+//      fn    = &TNT_(h64_ccall);
+//      nm    = "TNT_(h64_ccall)";
+//   }
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), di_args );
+//}
+//
+//
+//IRDirty* create_dirty_ITE( MCEnv* mce, IRStmt *clone, IRTemp tmp,
+//                           IRExpr* cond, IRExpr* iftrue, IRExpr* iffalse ){
+//// ppIRStmt output: t<tmp> = ITE <cond> (<iftrue>, <iffalse>)
+//   Int      nargs = 3;
+//   const HChar*   nm;
+//   void*    fn;
+//   IRExpr** args;
+//
+//   tl_assert( cond->tag != Iex_Const );
+//
+//   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
+//           convert_Value( mce, IRExpr_RdTmp( tmp ) ),
+//           convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp( tmp ) ) ) );
+//
+//   if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_Const ) {
+//      fn    = &TNT_(h64_ite_tc);
+//      nm    = "TNT_(h64_ite_tc)";
+//   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_RdTmp ) {
+//      fn    = &TNT_(h64_ite_ct);
+//      nm    = "TNT_(h64_ite_ct)";
+//   } else if ( iftrue->tag == Iex_RdTmp && iffalse->tag == Iex_RdTmp ) {
+//      fn    = &TNT_(h64_ite_tt);
+//      nm    = "TNT_(h64_ite_tt)";
+//   } else if ( iftrue->tag == Iex_Const && iffalse->tag == Iex_Const ) {
+//      fn    = &TNT_(h64_ite_cc);
+//      nm    = "TNT_(h64_ite_cc)";
+//   } else
+//      VG_(tool_panic)("tnt_translate.c: create_dirty_ITE: Unknown 64-bit mode");
+//
+//   return unsafeIRDirty_0_N ( nargs/*regparms*/, nm, VG_(fnptr_to_fnentry)( fn ), args );
+//}
 
 IRDirty* create_dirty_from_dirty( IRDirty* di_old ){
    Int      nargs = 0;
