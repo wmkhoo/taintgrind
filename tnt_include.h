@@ -106,38 +106,9 @@ void TNT_(make_mem_tainted_named)( Addr a, SizeT len, const HChar *varname );
 void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
-//VG_REGPARM(3) void TNT_(h32_x86g_calculate_condition)    ( IRStmt *, UInt, UInt );
+// Emits instructions
 VG_REGPARM(3) void TNT_(emit_insn) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_exit_c)   ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(emit_next) ( IRExpr *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_store_tt) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_store_tc) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_store_ct) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_load_t)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_load_c)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_get)      ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_geti)     ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_puti_tt)  ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_puti_tc)  ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_puti_ct)  ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_wrtmp_c)  ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_unop_t)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_unop_c)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_binop_tc) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_binop_ct) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_binop_tt) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_binop_cc) ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_triop)    ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_qop)      ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_rdtmp)    ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_ite_tc)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_ite_ct)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_ite_tt)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_ite_cc)   ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_ccall)    ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, UWord, UWord );
-//VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, UWord, UWord );
 
 /* Strings used by tnt_translate, printed by tnt_main */
 extern const char *IRType_string[];
@@ -355,7 +326,7 @@ extern UInt callgate_nesting_depth;
 extern const char* syscallnames[];
 
 /* Utility functions */
-extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc);
+extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize);
 extern void TNT_(get_fnname)(ThreadId tid, const HChar** buf);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
@@ -363,14 +334,18 @@ extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_r
 /* SMT2 functions */
 #define TI_MAX 2100 
 #define RI_MAX 960 
+#define VARNAMESIZE 1024 
+// These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-extern UInt  *ti;
+UInt  *ti;
 // Tmp variable values
-extern ULong *tv;
-// Reg variable indices
-extern UInt  *ri;
+ULong *tv;
+// Reg variable indices; values are obtained in real-time
+UInt  *ri;
 // Tmp variable Types/Widths
-extern UInt  *tt;
+UInt  *tt;
+// Stores the variable name derived from describe_data()
+HChar *varname;
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)

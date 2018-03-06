@@ -151,11 +151,7 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 }
 
 // -Start- Forward declarations for Taintgrind
-Int  ctoi( HChar c );
-Int  ctoi_test( HChar c );
-Int  atoi( HChar *s );
 void check_reg( UInt reg );
-Int get_and_check_tvar( HChar *tmp );
 void infer_client_binary_name(UInt pc);
 void bookkeeping(IRStmt *clone, UWord value, UWord taint);
 Int exit_early (IRStmt *clone, UWord taint);
@@ -163,8 +159,7 @@ Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
 void print_info_flow(IRStmt *clone, UWord taint);
 void print_info_flow_tmp(IRExpr *e);
-UInt get_puti_reg(IRStmt *clone);
-UInt get_geti_reg(IRExpr *e);
+UInt get_geti_puti_reg(IRRegArray *descr, IRExpr *ix, Int bias);
 // -End- Forward declarations for Taintgrind
 
 static void update_SM_counts(SecMap* oldSM, SecMap* newSM); //285
@@ -1487,7 +1482,7 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )
    }
 }
 
-void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *varname )
+void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *var )
 {
    PROF_EVENT(42, "TNT_(make_mem_tainted)");
 //   DEBUG("TNT_(make_mem_undefined)(%p, %lu)\n", a, len);
@@ -1501,7 +1496,7 @@ void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *varname )
       UInt i = 0;
       for ( ; i<len; i++ )
       {
-         VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", varname, i);
+         VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", var, i);
          VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
          VG_(printf)("(assert (= %s%d a%lx))\n", varname, i, a+i);
       }
@@ -2400,115 +2395,10 @@ void TNT_(helperc_STOREV8) ( Addr a, UWord vbits8 )
 #endif
 }
 
-Int ctoi_test( HChar c ){
-   switch(c){
-   case '0':
-   case '1':
-   case '2':
-   case '3':
-   case '4':
-   case '5':
-   case '6':
-   case '7':
-   case '8':
-   case '9':
-   case 'a':
-   case 'A':
-   case 'b':
-   case 'B':
-   case 'c':
-   case 'C':
-   case 'd':
-   case 'D':
-   case 'e':
-   case 'E':
-   case 'f':
-   case 'F':
-      return 1;
-   default:
-      return 0;
-   }
-}
-
-Int ctoi( HChar c ){
-   tl_assert( ctoi_test(c) );
-
-   switch(c){
-   case '0':
-      return 0;
-   case '1':
-      return 1;
-   case '2':
-      return 2;
-   case '3':
-      return 3;
-   case '4':
-      return 4;
-   case '5':
-      return 5;
-   case '6':
-      return 6;
-   case '7':
-      return 7;
-   case '8':
-      return 8;
-   case '9':
-      return 9;
-   case 'a':
-   case 'A':
-      return 0xa;
-   case 'b':
-   case 'B':
-      return 0xb;
-   case 'c':
-   case 'C':
-      return 0xc;
-   case 'd':
-   case 'D':
-      return 0xd;
-   case 'e':
-   case 'E':
-      return 0xe;
-   case 'f':
-   case 'F':
-      return 0xf;
-   default: {
-      tl_assert(0);
-      break;
-   }
-   }
-   return -1; // unreachable
-}
-
-Int atoi( HChar *s ){
-   Int result = 0;
-   Int multiplier = 1;
-   Int i;
-
-   for( i = VG_(strlen)(s)-1; i>=0; i-- ){
-      tl_assert( ctoi_test( s[i] ) );
-      result += multiplier * ctoi(s[i]);
-      // Assume decimal
-      multiplier *= 10;
-   }
-
-   return result;
-}
 
 /*-----------------------------------------------
    Helper functions for taint information flows
 -------------------------------------------------*/
-
-// These arrays are initialised to 0 in TNT_(clo_post_init)
-// Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-UInt  *ti;
-// Tmp variable values
-ULong *tv;
-// Reg variable indices; values are obtained in real-time
-UInt  *ri;
-
-// Stores the variable name derived from describe_data()
-HChar *varname;
 
 ////////////////////////////////
 // Start of SOAAP-related data
@@ -2539,13 +2429,6 @@ void check_reg( UInt reg ){
    }
 }
 
-Int get_and_check_tvar( HChar *tmp ){
-
-   Int tmpnum = atoi( tmp );
-   tl_assert( tmpnum < TI_MAX );
-   return tmpnum;
-}
-
 void infer_client_binary_name(UInt pc) {
 
    if (client_binary_name == NULL) {
@@ -2559,84 +2442,14 @@ void infer_client_binary_name(UInt pc) {
 
 }
 
+/**** Emit functions ****/
 // If stdout is not a tty, don't highlight text
 int istty = 0;
-
-/**** 32-bit helpers ****/
 
 // macros
 #define KRED "\e[31m"
 #define KMAG "\e[35m"
 #define KNRM "\e[0m"
-
-#define H64_PC \
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar aTmp[128]; \
-   infer_client_binary_name(pc); \
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
-
-#define H64_PC_OP \
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() ); \
-   HChar aTmp1[128], aTmp2[128]; \
-   infer_client_binary_name(pc); \
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
-
-#define H_VAR \
-   ThreadId tid = VG_(get_running_tid()); \
-   enum VariableType type = 0; \
-   enum VariableLocation var_loc; \
-   TNT_(describe_data)(address, varname, 1024, &type, &var_loc); \
-   TNT_(check_var_access)(tid, varname, VAR_WRITE, type, var_loc);
-
-#define H_EXIT_EARLY \
-   if(!TNT_(do_print) && taint)  TNT_(do_print) = 1; \
-   if(!TNT_(do_print))  return; \
-   if(!(TNT_(clo_tainted_ins_only) && taint) && TNT_(clo_tainted_ins_only)) return;
-
-#define H_EXIT_EARLY_LDST \
-   if(!TNT_(do_print) && taint)  TNT_(do_print) = 1; \
-   if(!TNT_(do_print))  return; \
-   if(!(TNT_(clo_tainted_ins_only) && (taint | is_tainted(atmp))) && TNT_(clo_tainted_ins_only)) return;
-
-#define H_WRTMP_BOOKKEEPING \
-   UInt ltmp = clone->Ist.WrTmp.tmp; \
-   if ( ltmp >= TI_MAX ) \
-      VG_(printf)("ltmp %d\n", ltmp); \
-   tl_assert( ltmp < TI_MAX ); \
-   ti[ltmp]++; \
-   if ( taint ) \
-      ti[ltmp] |= 0x80000000; \
-   else \
-      ti[ltmp] &= 0x7fffffff; \
-   tv[ltmp] = value;
-
-#define H64_PRINT \
-   if (sizeof(UWord) == 4) \
-      VG_(printf)("%s | %s | 0x%x | 0x%x | ", fnname, aTmp, (UInt)value, (UInt)taint); \
-   else \
-      VG_(printf)("%s | %s | 0x%llx | 0x%llx | ", fnname, aTmp, (ULong)value, (ULong)taint);
-
-#define H64_PRINT_OP \
-   VG_(printf)("%s | %s", fnname, aTmp1); \
-   ppIROp(op); \
-   if (sizeof(UWord) == 4) \
-      VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, (UInt)value, (UInt)taint); \
-   else \
-      VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, (ULong)value, (ULong)taint);
-
-#define H64_PRINTC \
-   if (sizeof(UWord) == 4) \
-      VG_(printf)("%s%s%s | %s | 0x%x | 0x%x | ", KMAG, fnname, KNRM, aTmp, (UInt)value, (UInt)taint); \
-   else \
-      VG_(printf)("%s%s%s | %s | 0x%llx | 0x%llx | ", KMAG, fnname, KNRM, aTmp, (ULong)value, (ULong)taint);
-
-#define H64_PRINTC_OP \
-   VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp1); \
-   ppIROp(op); \
-   if (sizeof(UWord) == 4) \
-      VG_(printf)("%s | 0x%x | 0x%x | ", aTmp2, (UInt)value, (UInt)taint); \
-   else \
-      VG_(printf)("%s | 0x%llx | 0x%llx | ", aTmp2, (ULong)value, (ULong)taint);
 
 #define G_SMT2( fn ) \
    VG_(printf)("; " #fn " \n"); \
@@ -2646,477 +2459,18 @@ int istty = 0;
    VG_(printf)("; " #fn " \n"); \
    TNT_(fn)(clone, value, taint);
 
-#define H_SMT2( fn ) \
-   if ( TNT_(clo_smt2) ) \
-   { \
-      VG_(printf)("; " #fn " \n"); \
-      TNT_(fn)(clone); \
-      return; \
-   }
-
-#define H_SMT2_LOAD( fn ) \
-   if ( TNT_(clo_smt2) ) \
-   { \
-      VG_(printf)("; " #fn " \n"); \
-      TNT_(fn)(clone, value, taint); \
-      return; \
-   }
-
-#define H_SMT2_not_implemented(fn) \
-   if ( TNT_(clo_smt2) ) \
-   { \
-      VG_(printf)("smt2: %s not implemented yet", fn); \
-      tl_assert(0); \
-   }
-#if 0
-// ltmp = x86g_calculate_condition(
-//           UInt/*X86Condcode*/ cond, 
-//           UInt cc_op, 
-//           UInt cc_dep1, UInt cc_dep2, UInt cc_ndep 
-//        );
-VG_REGPARM(3)
-void TNT_(h32_x86g_calculate_condition) (
-   IRStmt *clone, 
-   UInt value, 
-   UInt taint ) {
-
-   H_WRTMP_BOOKKEEPING
-
-   if( TNT_(clo_critical_ins_only) ) return;
-
-   H_EXIT_EARLY
-   H_SMT2(smt2_x86g_calculate_condition);
-   H64_PC
-
-   IRExpr *ccall = clone->Ist.WrTmp.data;
-
-   if ( istty && is_tainted(ltmp) )
-   {
-      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
-                    KRED,
-                    ltmp, _ti(ltmp),
-                    KNRM);
-
-      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
-      ppIRExpr( ccall );
-      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
-   } else {
-      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
-      VG_(printf)("%s | %s", fnname, aTmp);
-      ppIRExpr( ccall );
-      VG_(printf)(" | 0x%x | 0x%x | ", value, taint);
-   }
-
-   // Information flow
-   if ( is_tainted(ltmp) ) {
-      // We have 2 arguments, arg[2] and arg[3], i.e. like binop
-      IRExpr *arg1 = ccall->Iex.CCall.args[2];
-      IRExpr *arg2 = ccall->Iex.CCall.args[3];
-
-      // Case 1: Both args are tmps
-      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
-         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-
-         if ( is_tainted(rtmp1) && is_tainted(rtmp2) ) {
-            VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
-                                   rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-         } else if ( is_tainted(rtmp1) ) {
-            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                               rtmp1, _ti(rtmp1) );
-         } else {
-            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                               rtmp2, _ti(rtmp2) );
-         }
-      
-      // Case 2: arg1 is a tmp. And it *must* be tainted because ltmp is.
-      } else if ( arg1->tag == Iex_RdTmp ) {
-         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-      
-         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                            rtmp1, _ti(rtmp1) );
-      // Case 3: arg2 is a tmp
-      } else {
-         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-      
-         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-                                            rtmp2, _ti(rtmp2) );
-      }
-   } else
-      VG_(printf)("\n");
-}
-#endif
-/**** 64-bit helpers ****/
-
-//// IF <gtmp> GOTO <jk> addr
-//VG_REGPARM(3)
-//void TNT_(h64_exit_t) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_exit);
-//   H64_PC
-//
-//   IRExpr *guard = clone->Ist.Exit.guard;
-//   UInt gtmp     = guard->Iex.RdTmp.tmp;
-//   IRConst *dst  = clone->Ist.Exit.dst;
-//   ULong addr    = extract_IRConst64(dst);
-//
-//   tl_assert( gtmp < TI_MAX );
-//
-//   if ( istty && is_tainted(gtmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "IF %st%d_%d%s GOTO 0x%llx", KRED, gtmp, _ti(gtmp), KNRM, addr );
-//      H64_PRINTC 
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "IF t%d_%d GOTO 0x%llx", gtmp, _ti(gtmp), addr );
-//      H64_PRINT 
-//   }
-//
-//
-//   if ( is_tainted(gtmp) )
-//      VG_(printf)( "t%d_%d\n", gtmp, _ti(gtmp) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//// IF <gtmp> GOTO <jk> addr
-//VG_REGPARM(3)
-//void TNT_(h64_exit_c) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   // End of BB ??
-//}
-
-// JMP tmp
-VG_REGPARM(3)
-void TNT_(emit_next) (
-   IRExpr *clone, 
-   UWord value, 
-   UWord taint ) {
-
-   // Check if we exit early
-   if ( exit_early_data(clone, taint) ) return;
-
-   // Check if we're emitting SMT2
-   if ( TNT_(clo_smt2) )           return;
-
-   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
-
-   // Print address & function name
-   if ( istty && taint ) VG_(printf)("%s", KMAG);
-   VG_(printf)("%s", fnname);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-
-   // Print the VEX IRStmt
-   VG_(printf)(" | JMP ");
-   ppIRExpr(clone);
-   VG_(printf)(" | ");
-
-   // Print run-time and taint values
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
-   else                    VG_(printf)("0x%llx", (ULong)value);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
-
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
-   else                    VG_(printf)("0x%llx", (ULong)taint);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
-
-   // Print information flow
-   UInt next = clone->Iex.RdTmp.tmp;
-   if ( is_tainted(next) )
-      VG_(printf)( "t%d_%d", next, _ti(next));
-   VG_(printf)("\n");
-}
-
-//// JMP const 
-//VG_REGPARM(3)
-//void TNT_(h64_next_c) (
-//   IRExpr *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_EXIT_EARLY
-//   H64_PC
-//   if (sizeof(UWord) == 4)
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%x", (UInt)value );
-//   else
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "JMP 0x%llx", (ULong)value );
-//   H64_PRINT
-//   VG_(printf)("\n");
-//   // End of BB
-//}
-
-//// STORE atmp = dtmp
-//VG_REGPARM(3)
-//void TNT_(h64_store_tt) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   IRExpr *addr = clone->Ist.Store.addr;
-//   IRExpr *data = clone->Ist.Store.data;
-//   UInt atmp = addr->Iex.RdTmp.tmp;
-//   UInt dtmp = data->Iex.RdTmp.tmp;
-//
-//   tl_assert( atmp < TI_MAX );
-//   tl_assert( dtmp < TI_MAX );
-//
-//   H_EXIT_EARLY_LDST
-//   H_SMT2(smt2_store_tt);
-//   H64_PC
-//
-//   ULong address = tv[atmp];
-//
-//   if ( istty && is_tainted(dtmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = %st%d_%d%s",
-//                                  atmp, _ti(atmp),
-//                                  KRED,
-//                                  dtmp, _ti(dtmp),
-//                                  KNRM );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = t%d_%d",
-//                                  atmp, _ti(atmp),
-//                                  dtmp, _ti(dtmp) );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(dtmp) && is_tainted(atmp) ) {
-//      H_VAR
-//      VG_(printf)( "%s <- t%d_%d", varname, dtmp, _ti(dtmp) );
-//      VG_(printf)( "; %s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-//   } else if ( is_tainted(dtmp) ) {
-//      H_VAR
-//      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-//   } else if ( is_tainted(atmp) ) {
-//      H_VAR
-//      VG_(printf)( "%s <*- t%d_%d\n", varname, atmp, _ti(atmp) );
-//   } else
-//      VG_(printf)("\n");
-//}
-//
-//// STORE atmp = c
-//VG_REGPARM(3)
-//void TNT_(h64_store_tc) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   IRExpr *addr = clone->Ist.Store.addr;
-//   IRExpr *data = clone->Ist.Store.data;
-//   UInt atmp    = addr->Iex.RdTmp.tmp;
-//   ULong c      = extract_IRConst64(data->Iex.Const.con);
-//
-//   tl_assert( atmp < TI_MAX );
-//
-//   H_EXIT_EARLY_LDST
-//   H_SMT2(smt2_store_tc);
-//   H64_PC
-//
-//   ULong address = tv[atmp];
-//
-//   VG_(snprintf)( aTmp, sizeof(aTmp), "STORE t%d_%d = 0x%llx", atmp, _ti(atmp), c );
-//   H64_PRINT
-//
-//   // Information flow
-//   if ( is_tainted(atmp) ) {
-//      H_VAR
-//      VG_(printf)( "%s <-*- t%d_%d\n", varname, atmp, _ti(atmp) );
-//   } else
-//      VG_(printf)("\n");
-//}
-//
-//// STORE c = dtmp
-//VG_REGPARM(3)
-//void TNT_(h64_store_ct) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_store_ct);
-//   H64_PC
-//
-//   IRExpr *addr = clone->Ist.Store.addr;
-//   IRExpr *data = clone->Ist.Store.data;
-//   ULong c      = extract_IRConst64(addr->Iex.Const.con);
-//   UInt dtmp    = data->Iex.RdTmp.tmp;
-//
-//   tl_assert( dtmp < TI_MAX );
-//
-//   ULong address = c;
-//
-//   if ( istty && is_tainted(dtmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%llx = %st%d_%d%s", c, KRED, dtmp, _ti(dtmp), KNRM );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "STORE 0x%llx = t%d_%d", c, dtmp, _ti(dtmp) );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(dtmp) ) {
-//      H_VAR
-//      VG_(printf)( "%s <- t%d_%d\n", varname, dtmp, _ti(dtmp) );
-//   } else
-//      VG_(printf)("\n");
-//}
-//
-//// ltmp = LOAD <ty> atmp
-//VG_REGPARM(3)
-//void TNT_(h64_load_t) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-//   IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
-//   UInt atmp    = addr->Iex.RdTmp.tmp;
-//
-//   tl_assert( atmp < TI_MAX );
-//
-//   H_EXIT_EARLY_LDST
-//   H_SMT2_LOAD(smt2_load_t_64);
-//   H64_PC
-//
-//   ULong address = tv[atmp];
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s t%d_%d", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], atmp, _ti(atmp) );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s t%d_%d", ltmp, _ti(ltmp), IRType_string[ty], atmp, _ti(atmp) );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
-//      H_VAR
-//      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
-//      VG_(printf)( "; t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
-//   } else if ( is_tainted(ltmp) ) {
-//      H_VAR
-//      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-//   } else if ( is_tainted(atmp) )
-//      VG_(printf)( "t%d_%d <*- t%d_%d\n", ltmp, _ti(ltmp), atmp, _ti(atmp) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//// ltmp = LOAD <ty> const
-//VG_REGPARM(3)
-//void TNT_(h64_load_c) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   H_EXIT_EARLY
-//   H_SMT2_LOAD(smt2_load_c_64)
-//   H64_PC
-//
-//   UInt ty      = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-//   IRExpr* addr = clone->Ist.WrTmp.data->Iex.Load.addr;
-//   ULong c      = extract_IRConst64(addr->Iex.Const.con);
-//
-//   ULong address = c;
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = LOAD %s 0x%llx", KRED, ltmp, _ti(ltmp), KNRM, IRType_string[ty], c );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = LOAD %s 0x%llx", ltmp, _ti(ltmp), IRType_string[ty], c );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) ) {
-//      H_VAR
-//      VG_(printf)( "t%d_%d <- %s\n", ltmp, _ti(ltmp), varname);
-//   } else
-//      VG_(printf)("\n");
-//}
-
-//VG_REGPARM(3)
-//void TNT_(h64_get) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_get);
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.WrTmp.data;
-//   UInt ty      = data->Iex.Get.ty - Ity_INVALID;
-//   UInt reg     = data->Iex.Get.offset;
-//
-//   check_reg( reg );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "%st%d_%d%s = r%d_%d %s",
-//                           KRED,
-//                           ltmp, _ti(ltmp),
-//                           KNRM,
-//                           reg, ri[reg], IRType_string[ty&0xff] );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "t%d_%d = r%d_%d %s",
-//                           ltmp, _ti(ltmp),
-//                           reg, ri[reg], IRType_string[ty&0xff] );
-//      H64_PRINT
-//   }
-//
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- r%d_%d\n", ltmp, _ti(ltmp), reg, ri[reg] );
-//   else
-//      VG_(printf)("\n");
-//}
-
-//VG_REGPARM(3)
-//void TNT_(h64_geti) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//}
-
 
 // Calculate the actual offset for GetI/PutI since we know run-time values
 // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
 // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
-UInt get_puti_reg(IRStmt *clone) {
-   IRRegArray *descr = clone->Ist.PutI.details->descr;
-   IRExpr *ix        = clone->Ist.PutI.details->ix;
-   Int bias          = clone->Ist.PutI.details->bias;
+UInt get_geti_puti_reg( IRRegArray *descr,
+                        IRExpr *ix,
+                        Int bias ) {
    IRType ty         = descr->elemTy;
    Int nElems        = descr->nElems;
 
    UInt ix_value;
+
    if ( ix->tag == Iex_RdTmp ) {
       UInt ix_tmp = ix->Iex.RdTmp.tmp;
       tl_assert( ix_tmp < TI_MAX );
@@ -3126,35 +2480,10 @@ UInt get_puti_reg(IRStmt *clone) {
       ix_value = extract_IRConst64(ix->Iex.Const.con);
    }
 
-   UInt array_index  = (ix_value + bias) % nElems;
+   UInt array_index = (ix_value + bias) % nElems;
 
-   UInt reg          = descr->base + array_index * sizeofIRType(ty);
-   check_reg( reg );
-   return reg;
-}
-
-
-UInt get_geti_reg(IRExpr *e) {
-   IRRegArray *descr = e->Iex.GetI.descr;
-   IRExpr *ix        = e->Iex.GetI.ix;
-   Int bias          = e->Iex.GetI.bias;
-   IRType ty         = descr->elemTy;
-   Int nElems        = descr->nElems;
-
-   UInt ix_value;
-   if ( ix->tag == Iex_RdTmp ) {
-      UInt ix_tmp = ix->Iex.RdTmp.tmp;
-      tl_assert( ix_tmp < TI_MAX );
-      ix_value = tv[ix_tmp];
-   } else {
-      tl_assert( ix->tag == Iex_Const );
-      ix_value = extract_IRConst64(ix->Iex.Const.con);
-   }
-
-   UInt array_index  = (ix_value + bias) % nElems;
-
-   UInt reg          = descr->base + array_index * sizeofIRType(ty);
-   check_reg( reg );
+   UInt reg = descr->base + array_index * sizeofIRType(ty);
+   check_reg(reg);
    return reg;
 }
 
@@ -3172,7 +2501,9 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
       }
       case Ist_PutI:
       {
-         UInt reg = get_puti_reg(clone);
+         UInt reg = get_geti_puti_reg(clone->Ist.PutI.details->descr,
+                                      clone->Ist.PutI.details->ix,
+                                      clone->Ist.PutI.details->bias);
          check_reg( reg );
          ri[reg]++;
          break;
@@ -3321,6 +2652,20 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                G_SMT2_LOAD(smt2_load);
                break;
             }
+            case Iex_ITE:
+            {
+               IRExpr *iftrue = e->Iex.ITE.iftrue;
+               IRExpr *iffalse = e->Iex.ITE.iffalse;
+
+               if (iftrue->tag == Iex_RdTmp &&
+                   iffalse->tag == Iex_RdTmp ) {
+                  G_SMT2(smt2_ite_tt);
+               } else {
+                  ppIRExpr(e);
+                  tl_assert(0 && "smt2: ite not implemented");
+               }
+               break;
+            }
             default:
                ppIRExpr(e);
                tl_assert(0 && "smt2: not implemented");
@@ -3365,7 +2710,9 @@ void print_info_flow(IRStmt *clone, UWord taint) {
       {
          if (!taint) break;
          // Since it's tainted, data must be RdTmp
-         UInt reg = get_puti_reg(clone);
+         UInt reg = get_geti_puti_reg(clone->Ist.PutI.details->descr,
+                                      clone->Ist.PutI.details->ix,
+                                      clone->Ist.PutI.details->bias);
          VG_(printf)("r%d_%d <-", reg, ri[reg]);
          print_info_flow_tmp(clone->Ist.PutI.details->data);
          print_info_flow_tmp(clone->Ist.PutI.details->ix);
@@ -3376,33 +2723,31 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          IRExpr *addr = clone->Ist.Store.addr;
          IRExpr *data = clone->Ist.Store.data;
          ULong address;
+
          // Case 1: Address is RdTmp
          if (addr->tag == Iex_RdTmp) {
             UInt atmp    = addr->Iex.RdTmp.tmp;
             tl_assert( atmp < TI_MAX );
             address = tv[atmp];
+            TNT_(describe_data)(address, varname, VARNAMESIZE);
 
             if (data->tag == Iex_RdTmp) {
                UInt dtmp    = data->Iex.RdTmp.tmp;
 
                if ( is_tainted(dtmp) && is_tainted(atmp) ) {
-                  H_VAR
                   VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data);
                   VG_(printf)( "; %s <*-", varname );
                   print_info_flow_tmp(addr);
                } else if ( is_tainted(dtmp) ) {
-                  H_VAR
                   VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data);
                } else if ( is_tainted(atmp) ) {
-                  H_VAR
                   VG_(printf)( "%s <*-", varname );
                   print_info_flow_tmp(addr);
                }
             } else {
                if ( is_tainted(atmp) ) {
-                  H_VAR
                   VG_(printf)( "%s <*-", varname );
                   print_info_flow_tmp(addr);
                }
@@ -3411,11 +2756,11 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          // Case 2: Address is Const
             UInt dtmp    = data->Iex.RdTmp.tmp;
             address = extract_IRConst64(addr->Iex.Const.con);
+            TNT_(describe_data)(address, varname, VARNAMESIZE);
 
             tl_assert( dtmp < TI_MAX );
 
             if ( is_tainted(dtmp) ) {
-               H_VAR
                VG_(printf)( "%s <-", varname );
                print_info_flow_tmp(data);
             }
@@ -3462,7 +2807,9 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             {
                if (!taint) break;
 
-               UInt reg = get_geti_reg(e);
+               UInt reg = get_geti_puti_reg(e->Iex.GetI.descr,
+                                            e->Iex.GetI.ix,
+                                            e->Iex.GetI.bias);
 
                VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
                print_info_flow_tmp(e->Iex.GetI.ix);
@@ -3472,9 +2819,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             {
                if (!taint) break;
                VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
-               UInt tmp = e->Iex.RdTmp.tmp;
-               tl_assert( tmp < TI_MAX );
-               VG_(printf)("t%d_%d", tmp, _ti(tmp));
+               print_info_flow_tmp(e);
                break;
             }
             case Iex_Unop:
@@ -3520,14 +2865,13 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                   UInt atmp    = addr->Iex.RdTmp.tmp;
                   tl_assert( atmp < TI_MAX );
                   address = tv[atmp];
+                  TNT_(describe_data)(address, varname, VARNAMESIZE);
 
                   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
-                     H_VAR
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
                      VG_(printf)( "; t%d_%d <*-", ltmp, _ti(ltmp) );
                      print_info_flow_tmp(addr);
                   } else if ( is_tainted(ltmp) ) {
-                     H_VAR
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
                   } else if ( is_tainted(atmp) ) {
                      VG_(printf)( "t%d_%d <*-", ltmp, _ti(ltmp) );
@@ -3537,7 +2881,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                // Case 2: Address is Constant
                   if ( is_tainted(ltmp) ) {
                      address = extract_IRConst64(addr->Iex.Const.con);
-                     H_VAR
+                     TNT_(describe_data)(address, varname, VARNAMESIZE);
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
                   }
                }
@@ -3573,6 +2917,9 @@ void print_info_flow(IRStmt *clone, UWord taint) {
 
 
 // Emits the instruction with run-time and taint info
+// clone is passed from tnt_translate's create_dirty_DATA/WRTMP
+// value is the run-time value of the IRStmt-specific IRExpr
+// taint is the taint value of the IRStmt-specific IRExpr
 VG_REGPARM(3)
 void TNT_(emit_insn) (
    IRStmt *clone, 
@@ -3620,875 +2967,55 @@ void TNT_(emit_insn) (
    print_info_flow(clone, taint);
 }
 
-//// reg = const
-//VG_REGPARM(3)
-//void TNT_(h64_put_c) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//   // Reg bookkeeping
-//   UInt reg     = clone->Ist.Put.offset;
-//   check_reg( reg );
-//   ri[reg]++;
-//
-//   if ( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.Put.data;
-//   ULong c      = extract_IRConst(data->Iex.Const.con);
-//
-//   VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = 0x%llx", reg, ri[reg], c);
-//   H64_PRINT
-//
-//   VG_(printf)("\n");
-//}
 
-//// reg = tmp
-//VG_REGPARM(3)
-//void TNT_(h64_puti_tt) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//   // Calculate the actual offset
-//   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
-//   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
-//   IRRegArray *descr = clone->Ist.PutI.details->descr;
-//   IRExpr *ix        = clone->Ist.PutI.details->ix;
-//   Int bias          = clone->Ist.PutI.details->bias;
-//   IRType ty         = descr->elemTy;
-//   Int nElems        = descr->nElems;
-//
-//   UInt ix_tmp       = ix->Iex.RdTmp.tmp;
-//
-//   tl_assert( ix_tmp < TI_MAX );
-//
-//   UInt ix_value     = tv[ix_tmp];
-//   UInt array_index  = (ix_value + bias) % nElems;
-//
-//   // Reg bookkeeping
-//   UInt reg          = descr->base + array_index * sizeofIRType(ty);
-//   check_reg( reg );
-//   ri[reg]++;
-//
-//   if ( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_puti_tt");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.PutI.details->data;
-//   UInt tmp     = data->Iex.RdTmp.tmp;
-//
-//   tl_assert( tmp < TI_MAX );
-//
-//   if ( istty && is_tainted(tmp) )
-//   {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s", reg, ri[reg],
-//                                            KRED,
-//                                            tmp, _ti(tmp),
-//                                            KNRM );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
-//                                            tmp, _ti(tmp) );
-//      H64_PRINT
-//   }
-//
-//   if ( is_tainted(tmp) )
-//      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//// reg = const
-//VG_REGPARM(3)
-//void TNT_(h64_puti_tc) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//   // Calculate the actual offset
-//   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
-//   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
-//   IRRegArray *descr = clone->Ist.PutI.details->descr;
-//   IRExpr *ix        = clone->Ist.PutI.details->ix;
-//   Int bias          = clone->Ist.PutI.details->bias;
-//   IRType ty         = descr->elemTy;
-//   Int nElems        = descr->nElems;
-//
-//   UInt ix_tmp       = ix->Iex.RdTmp.tmp;
-//
-//   tl_assert( ix_tmp < TI_MAX );
-//
-//   UInt ix_value     = tv[ix_tmp];
-//   UInt array_index  = (ix_value + bias) % nElems;
-//
-//   // Reg bookkeeping
-//   UInt reg          = descr->base + array_index * sizeofIRType(ty);
-//   check_reg( reg );
-//   ri[reg]++;
-//
-//   if ( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_puti_tc");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.PutI.details->data;
-//   ULong c      = extract_IRConst(data->Iex.Const.con);
-//
-//   VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = 0x%llx", reg, ri[reg], c);
-//   H64_PRINT
-//
-//   VG_(printf)("\n");
-//}
-//
-//
-//// reg = tmp
-//VG_REGPARM(3)
-//void TNT_(h64_puti_ct) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//   // Calculate the actual offset
-//   // The description "(96:8xF64)[t39,-7]" describes an array of 8 F64-typed values, the guest-state-offset of the first being 96. This array is being indexed at (t39 - 7) % 8.
-//   // For t39 = 0, array_index = (0 - 7) % 8 = 1, offset = 96 + sizeof(F64)
-//   IRRegArray *descr = clone->Ist.PutI.details->descr;
-//   IRExpr *ix        = clone->Ist.PutI.details->ix;
-//   Int bias          = clone->Ist.PutI.details->bias;
-//   IRType ty         = descr->elemTy;
-//   Int nElems        = descr->nElems;
-//   ULong ix_value    = extract_IRConst(ix->Iex.Const.con);
-//   UInt array_index  = (ix_value + bias) % nElems;
-//
-//   // Reg bookkeeping
-//   UInt reg          = descr->base + array_index * sizeofIRType(ty);
-//   check_reg( reg );
-//   ri[reg]++;
-//
-//   if ( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_puti_ct");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.PutI.details->data;
-//   UInt tmp     = data->Iex.RdTmp.tmp;
-//
-//   tl_assert( tmp < TI_MAX );
-//
-//   if ( istty && is_tainted(tmp) )
-//   {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = %st%d_%d%s", reg, ri[reg],
-//                                            KRED,
-//                                            tmp, _ti(tmp),
-//                                            KNRM );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)(aTmp, sizeof(aTmp), "r%d_%d = t%d_%d", reg, ri[reg],
-//                                            tmp, _ti(tmp) );
-//      H64_PRINT
-//   }
-//
-//   if ( is_tainted(tmp) )
-//      VG_(printf)("r%d_%d <- t%d_%d\n", reg, ri[reg], tmp, _ti(tmp));
-//   else
-//      VG_(printf)("\n");
-//}
+// Emits the jump instruction
+// e.g. "JMP <tmp>"
+// It needs its own emit function as next is an IRExpr, not IRStmt
+VG_REGPARM(3)
+void TNT_(emit_next) (
+   IRExpr *clone, 
+   UWord value, 
+   UWord taint ) {
 
+   // Check if we exit early
+   if ( exit_early_data(clone, taint) ) return;
 
-//// ltmp = <op> ...
-//VG_REGPARM(3)
-//void TNT_(h64_wrtmp_c) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if (sizeof(UWord) == 4)
-//      VG_(printf)("%x %x\n", (UInt)value, (UInt)taint);
-//   else
-//      VG_(printf)("%llx %llx\n", (ULong)value, (ULong)taint);
-//}
+   // Check if we're emitting SMT2
+   if ( TNT_(clo_smt2) )           return;
 
-//// ltmp = <op> rtmp
-//VG_REGPARM(3)
-//void TNT_(h64_unop_t) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_unop_t);
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
-//   IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
-//   UInt rtmp = arg->Iex.RdTmp.tmp;
-//
-//   tl_assert( rtmp < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
-//                    rtmp, _ti(rtmp) );
-//      H64_PRINTC_OP
-//   } else {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                    ltmp, _ti(ltmp) );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d",
-//                    rtmp, _ti(rtmp) );
-//      H64_PRINT_OP
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//// ltmp = <op> const
-//VG_REGPARM(3)
-//void TNT_(h64_unop_c) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Unop.op;
-//   IRExpr* arg = clone->Ist.WrTmp.data->Iex.Unop.arg;
-//   ULong c = extract_IRConst( arg->Iex.Const.con );
-//
-//   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                 ltmp, _ti(ltmp) );
-//   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx", c );
-//   H64_PRINT_OP
-//
-//   // No information flow
-//   VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = <op> rtmp1 const
-//VG_REGPARM(3)
-//void TNT_(h64_binop_tc) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_binop_tc);
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
-//   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
-//   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
-//   UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-//   
-//   ULong c = extract_IRConst64(arg2->Iex.Const.con);
-//   
-//   tl_assert( rtmp1 < TI_MAX );
-//   
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%llx",
-//                    rtmp1, _ti(rtmp1), c );
-//      H64_PRINTC_OP
-//   } else {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                    ltmp, _ti(ltmp) );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d 0x%llx",
-//                    rtmp1, _ti(rtmp1), c );
-//      H64_PRINT_OP
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = <op> const rtmp2
-//VG_REGPARM(3)
-//void TNT_(h64_binop_ct) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_binop_ct);
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
-//   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
-//   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
-//   ULong c = extract_IRConst64(arg1->Iex.Const.con);
-//   UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-//
-//   tl_assert( rtmp2 < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx t%d_%d",
-//                    c, rtmp2, _ti(rtmp2) );
-//      H64_PRINTC_OP
-//   } else {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                    ltmp, _ti(ltmp) );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx t%d_%d",
-//                    c, rtmp2, _ti(rtmp2) );
-//      H64_PRINT_OP
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = <op> rtmp1 rtmp2
-//VG_REGPARM(3)
-//void TNT_(h64_binop_tt) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//   
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_binop_tt);
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
-//   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
-//   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
-//   UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-//   UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-//   
-//   tl_assert( rtmp1 < TI_MAX );
-//   tl_assert( rtmp2 < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) ) 
-//   {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
-//                    rtmp1, _ti(rtmp1),
-//                    rtmp2, _ti(rtmp2) );
-//      H64_PRINTC_OP
-//   } else {
-//      VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                    ltmp, _ti(ltmp) );
-//      VG_(snprintf)( aTmp2, sizeof(aTmp2), " t%d_%d t%d_%d",
-//                    rtmp1, _ti(rtmp1),
-//                    rtmp2, _ti(rtmp2) );
-//      H64_PRINT_OP
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(rtmp1) && !is_tainted(rtmp2) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
-//   else if ( !is_tainted(rtmp1) && is_tainted(rtmp2) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
-//   else if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
-//      VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = <op> const1 const2
-//VG_REGPARM(3)
-//void TNT_(h64_binop_cc) (
-//   IRStmt *clone,
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H64_PC_OP
-//
-//   IROp op = clone->Ist.WrTmp.data->Iex.Binop.op;
-//   IRExpr* arg1 = clone->Ist.WrTmp.data->Iex.Binop.arg1;
-//   IRExpr* arg2 = clone->Ist.WrTmp.data->Iex.Binop.arg2;
-//   ULong c1 = extract_IRConst( arg1->Iex.Const.con );
-//   ULong c2 = extract_IRConst( arg2->Iex.Const.con );
-//
-//   VG_(snprintf)( aTmp1, sizeof(aTmp1), "t%d_%d = ",
-//                 ltmp, _ti(ltmp) );
-//   VG_(snprintf)( aTmp2, sizeof(aTmp2), " 0x%llx 0x%llx",
-//                 c1, c2 );
-//   H64_PRINT_OP
-//
-//   // No information flow
-//   VG_(printf)("\n");
-//}
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
 
+   // Print address & function name
+   if ( istty && taint ) VG_(printf)("%s", KMAG);
+   VG_(printf)("%s", fnname);
+   if ( istty && taint ) VG_(printf)("%s", KNRM);
 
-//// ltmp = <op> rtmp1, rtmp2, rtmp3
-//VG_REGPARM(3)
-//void TNT_(h64_triop) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if ( taint ) {
-//      VG_(printf)( "triop tainted\n" );
-//   }
-//}
-//
-//
-//// ltmp = <op> rtmp1, rtmp2, rtmp3, rtmp4
-//VG_REGPARM(3)
-//void TNT_(h64_qop) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if ( taint ) {
-//      VG_(printf)( "qop tainted\n" );
-//   }
-//}
+   // Print the VEX IRStmt
+   VG_(printf)(" | JMP ");
+   ppIRExpr(clone);
+   VG_(printf)(" | ");
 
+   // Print run-time and taint values
+   if ( istty && taint ) VG_(printf)("%s", KRED);
+   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
+   else                    VG_(printf)("0x%llx", (ULong)value);
+   if ( istty && taint ) VG_(printf)("%s", KNRM);
+   VG_(printf)(" | ");
 
-//VG_REGPARM(3)
-//void TNT_(h64_rdtmp) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_rdtmp);
-//   H64_PC
-//
-//   UInt rtmp = clone->Ist.WrTmp.data->Iex.RdTmp.tmp;
-//
-//   tl_assert( rtmp < TI_MAX );
-//
-//   // Sanity check for the WrTmp book-keeping,
-//   // since RdTmp is essentially a no-op
-//   //if ( value != tv[rtmp] )
-//   //   VG_(printf)("value 0x%llx != tv[rtmp] 0x%llx\n", value, tv[rtmp] );
-//   tl_assert( value == tv[rtmp] );
-//
-//   VG_(printf)("%s", fnname);
-//   ppIRStmt(clone);
-//   if (sizeof(UWord) == 4)
-//      VG_(printf)("0x%x | 0x%x | ", (UInt)value, (UInt)taint);
-//   else
-//      VG_(printf)("0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
-//   //if ( istty && is_tainted(ltmp) )
-//   //{
-//   //   VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d",
-//   //                             KRED,
-//   //                             ltmp, _ti(ltmp),
-//   //                             KNRM,
-//   //                             rtmp, _ti(rtmp) );
-//   //   H64_PRINTC
-//   //} else {
-//   //   VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d", ltmp, _ti(ltmp),
-//   //                                          rtmp, _ti(rtmp) );
-//   //   H64_PRINT
-//   //}
-//
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)("t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp));
-//   else
-//      VG_(printf)("\n");
-//}
+   if ( istty && taint ) VG_(printf)("%s", KRED);
+   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
+   else                    VG_(printf)("0x%llx", (ULong)taint);
+   if ( istty && taint ) VG_(printf)("%s", KNRM);
+   VG_(printf)(" | ");
 
-
-//// ltmp = ctmp? rtmp1 : const
-//VG_REGPARM(3)
-//void TNT_(h64_ite_tc) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_ite_tc");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.WrTmp.data;
-//   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
-//   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
-//   ULong c      = extract_IRConst64(data->Iex.ITE.iffalse->Iex.Const.con);
-//
-//   tl_assert( ctmp  < TI_MAX );
-//   tl_assert( rtmp1 < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : 0x%llx",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM,
-//                    ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : 0x%llx",
-//                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), rtmp1, _ti(rtmp1), c );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = ctmp? const : rtmp2
-//VG_REGPARM(3)
-//void TNT_(h64_ite_ct) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_ite_ct");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.WrTmp.data;
-//   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
-//   ULong c      = extract_IRConst64(data->Iex.ITE.iftrue->Iex.Const.con);
-//   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
-//
-//   tl_assert( ctmp  < TI_MAX );
-//   tl_assert( rtmp2 < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? 0x%llx : t%d_%d",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM,
-//                    ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%llx : t%d_%d",
-//                    ltmp, _ti(ltmp), ctmp, _ti(ctmp), c, rtmp2, _ti(rtmp2) );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = ctmp? rtmp1 : rtmp2
-//VG_REGPARM(3)
-//void TNT_(h64_ite_tt) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2(smt2_ite_tt);
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.WrTmp.data;
-//   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
-//   UInt rtmp1   = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
-//   UInt rtmp2   = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
-//
-//   tl_assert( ltmp  < TI_MAX );
-//   tl_assert( rtmp1 < TI_MAX );
-//   tl_assert( rtmp2 < TI_MAX );
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = t%d_%d ? t%d_%d : t%d_%d",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM,
-//                    ctmp, _ti(ctmp),
-//                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-//      H64_PRINTC
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? t%d_%d : t%d_%d",
-//                    ltmp, _ti(ltmp), ctmp, _ti(ctmp),
-//                    rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-//      H64_PRINT
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(rtmp1) && is_tainted(rtmp2) )
-//      VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-//   else if ( is_tainted(rtmp1) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1) );
-//   else if ( is_tainted(rtmp2) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp), rtmp2, _ti(rtmp2) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = ctmp? const1 : const2
-//VG_REGPARM(3)
-//void TNT_(h64_ite_cc) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_ite_cc");
-//   H64_PC
-//
-//   IRExpr *data = clone->Ist.WrTmp.data;
-//   UInt ctmp    = data->Iex.ITE.cond->Iex.RdTmp.tmp;
-//   ULong c1     = extract_IRConst64(data->Iex.ITE.iftrue->Iex.Const.con);
-//   ULong c2     = extract_IRConst64(data->Iex.ITE.iffalse->Iex.Const.con);
-//
-//   tl_assert( ctmp  < TI_MAX );
-//   if ( (ti[ctmp] & 0x80000000) == 0 ) return;
-//
-//   VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = t%d_%d ? 0x%llx : 0x%llx",
-//                 ltmp, _ti(ltmp), ctmp, _ti(ctmp), c1, c2 );
-//   H64_PRINT
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) )
-//      VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-//                                         ctmp, _ti(ctmp) );
-//   else
-//      VG_(printf)("\n");
-//}
-//
-//
-//// ltmp = callee( arg[0], ... )
-//VG_REGPARM(3)
-//void TNT_(h64_ccall) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//
-//   IRExpr *ccall = clone->Ist.WrTmp.data;
-// 
-//  if (TNT_(clo_smt2)) {
-//      IRCallee *cee = ccall->Iex.CCall.cee;
-//      VG_(printf)("h64_ccall: Unsupported %s\n", cee->name);
-//      tl_assert(0);
-//   }
-//
-//   H64_PC
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM);
-//
-//      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
-//      ppIRExpr( ccall );
-//
-//      if (sizeof(UWord) == 4)
-//         VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
-//      else
-//         VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
-//      VG_(printf)("%s | %s", fnname, aTmp);
-//      ppIRExpr( ccall );
-//
-//      if (sizeof(UWord) == 4)
-//         VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
-//      else
-//         VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
-//   }
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) ) {
-//      VG_(printf)(" (Not supported)\n");
-//   } else
-//      VG_(printf)("\n");
-//}
-
-
-// ltmp = amd64g_calculate_condition(
-//           ULong/*AMD64Condcode*/ cond, 
-//           ULong cc_op, 
-//           ULong cc_dep1, ULong cc_dep2, ULong cc_ndep 
-//        );
-//VG_REGPARM(3)
-//void TNT_(h64_amd64g_calculate_condition) (
-//   IRStmt *clone, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   H_WRTMP_BOOKKEEPING
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   if (sizeof(UWord) == 4) {
-//      H_SMT2(smt2_x86g_calculate_condition);
-//   } else {
-//      H_SMT2(smt2_amd64g_calculate_condition);
-//   }
-//   H64_PC
-//
-//   IRExpr *ccall = clone->Ist.WrTmp.data;
-//
-//   if ( istty && is_tainted(ltmp) )
-//   {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "%st%d_%d%s = ",
-//                    KRED,
-//                    ltmp, _ti(ltmp),
-//                    KNRM);
-//
-//      VG_(printf)("%s%s%s | %s", KMAG, fnname, KNRM, aTmp);
-//   } else {
-//      VG_(snprintf)( aTmp, sizeof(aTmp), "t%d_%d = ", ltmp, _ti(ltmp) );
-//      VG_(printf)("%s | %s", fnname, aTmp);
-//   }
-//
-//   ppIRExpr( ccall );
-//
-//   if (sizeof(UWord) == 4)
-//      VG_(printf)(" | 0x%x | 0x%x | ", (UInt)value, (UInt)taint);
-//   else
-//      VG_(printf)(" | 0x%llx | 0x%llx | ", (ULong)value, (ULong)taint);
-//
-//   // Information flow
-//   if ( is_tainted(ltmp) ) {
-//      // We have 2 arguments, arg[2] and arg[3], i.e. like binop
-//      IRExpr *arg1 = ccall->Iex.CCall.args[2];
-//      IRExpr *arg2 = ccall->Iex.CCall.args[3];
-//
-//      // Case 1: Both args are tmps
-//      if ( arg1->tag == Iex_RdTmp && arg2->tag == Iex_RdTmp ) {
-//         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-//         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-//
-//         if ( is_tainted(rtmp1) && is_tainted(rtmp2) ) {
-//            VG_(printf)( "t%d_%d <- t%d_%d, t%d_%d\n", ltmp, _ti(ltmp),
-//                                   rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) );
-//         } else if ( is_tainted(rtmp1) ) {
-//            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-//                                               rtmp1, _ti(rtmp1) );
-//         } else {
-//            VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-//                                               rtmp2, _ti(rtmp2) );
-//         }
-//      
-//      // Case 2: arg1 is a tmp. And it *must* be tainted because ltmp is.
-//      } else if ( arg1->tag == Iex_RdTmp ) {
-//         UInt rtmp1 = arg1->Iex.RdTmp.tmp;
-//      
-//         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-//                                            rtmp1, _ti(rtmp1) );
-//      // Case 3: arg2 is a tmp
-//      } else {
-//         UInt rtmp2 = arg2->Iex.RdTmp.tmp;
-//      
-//         VG_(printf)( "t%d_%d <- t%d_%d\n", ltmp, _ti(ltmp),
-//                                            rtmp2, _ti(rtmp2) );
-//      }
-//   } else
-//      VG_(printf)("\n");
-//}
-
-
-//// No decoding necessary. Just print the string
-//VG_REGPARM(3)
-//void TNT_(h64_none) ( 
-//   HChar *str, 
-//   UWord value, 
-//   UWord taint ) {
-//
-//   if( TNT_(clo_critical_ins_only) ) return;
-//
-//   H_EXIT_EARLY
-//   H_SMT2_not_implemented("h64_none");
-//   H64_PC
-//
-//   VG_(snprintf)( aTmp, sizeof(aTmp), "%s", str);
-//   H64_PRINT
-//
-//   // No information flow info
-//   VG_(printf)("\n");
-//}
-/*-- End of 64-bit helpers --*/
+   // Print information flow
+   UInt next = clone->Iex.RdTmp.tmp;
+   if ( is_tainted(next) )
+      VG_(printf)( "t%d_%d", next, _ti(next));
+   VG_(printf)("\n");
+}
+/*-- End of emit functions --*/
 
 /*------------------------------------------------------------*/
 /*--- utility function for finding local/global variable   ---*/
@@ -4575,7 +3102,7 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
    //VG_(printf)("Addr: %x, Var: %s\n", addr, varnamebuf);
 }
 
-void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum VariableType* type, enum VariableLocation* loc) {
+void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
         // get_datasym_and_offset seems to cause memory errors
 #if 0
         const HChar *cvarname;
@@ -4656,7 +3183,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize, enum Variab
 	      VG_(deleteXA)( descr2 );
 	   }
 
-	   *type = Local;
+	   //*type = Local;
 	}
 //	else {
 //           VG_(sprintf)( varnamebuf, "%lx_unknownobj", addr );
@@ -4975,15 +3502,11 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
    Taintgrind args
 */
 
-// Defined in tnt_include.h
-//#define MAX_PATH 256
 //static Char   TNT_(default_file_filter)[]      = "";
 HChar         TNT_(clo_file_filter)[MAX_PATH]  ;
 Int           TNT_(clo_taint_start)            = 0;
 Int           TNT_(clo_taint_len)              = 0x800000;
 Bool          TNT_(clo_taint_all)              = False;
-//Int           TNT_(clo_after_kbb)              = 0;
-//Int           TNT_(clo_before_kbb)             = -1;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = False;
 Bool          TNT_(clo_taint_network)          = False;
@@ -5005,8 +3528,6 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
    else if VG_BHEX_CLO(arg, "--taint-start", TNT_(clo_taint_start), 0x0000, 0x8000000) {}
    else if VG_BHEX_CLO(arg, "--taint-len", TNT_(clo_taint_len), 0x0000, 0x800000) {}
    else if VG_BOOL_CLO(arg, "--taint-all", TNT_(clo_taint_all)) {}
-   //else if VG_BINT_CLO(arg, "--after-kbb", TNT_(clo_after_kbb), 0, 1000000) {}
-   //else if VG_BINT_CLO(arg, "--before-kbb", TNT_(clo_before_kbb), 0, 1000000) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--taint-network", TNT_(clo_taint_network)) {}
@@ -5027,8 +3548,6 @@ static void tnt_print_usage(void) {
 "    --taint-start=[0,800000]    starting byte to taint (in hex) [0]\n"
 "    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]\n"
 "    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]\n"
-//"    --after-kbb=[0,1000000]     start instrumentation after # of BBs, in thousands [0]\n"
-//"    --before-kbb=[0,1000000]    stop instrumentation after # of BBs, in thousands [-1]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
 "    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
@@ -5104,7 +3623,7 @@ static void tnt_post_clo_init(void)
    tv = (ULong *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(ULong));
    tt = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
    ri = (UInt *)VG_(malloc)("clo_post_init", RI_MAX*sizeof(UInt));
-   varname = (HChar *)VG_(malloc)("H_VAR", 1024*sizeof(HChar));
+   varname = (HChar *)VG_(malloc)("H_VAR", VARNAMESIZE*sizeof(HChar));
 
    // Initialise temporary variables/reg SSA index array
    Int i;
@@ -5153,7 +3672,7 @@ static void tnt_pre_clo_init(void)
    VG_(details_version)         (NULL);
    VG_(details_description)     ("the taint analysis tool");
    VG_(details_copyright_author)(
-      "Copyright (C) 2010-2014, and GNU GPL'd, by Wei Ming Khoo.");
+      "Copyright (C) 2010-2018, and GNU GPL'd, by Wei Ming Khoo.");
    VG_(details_bug_reports_to)  ("weimzz@gmail.com");
 
    VG_(basic_tool_funcs)        (tnt_post_clo_init,
