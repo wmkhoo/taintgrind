@@ -110,7 +110,7 @@ void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 VG_REGPARM(3) void TNT_(emit_insn) ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_exit_t)   ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_exit_c)   ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_next)     ( IRExpr *, UWord, UWord );
+VG_REGPARM(3) void TNT_(emit_next) ( IRExpr *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_store_tt) ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_store_tc) ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_store_ct) ( IRStmt *, UWord, UWord );
@@ -136,8 +136,8 @@ VG_REGPARM(3) void TNT_(h64_next)     ( IRExpr *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_ite_tt)   ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_ite_cc)   ( IRStmt *, UWord, UWord );
 //VG_REGPARM(3) void TNT_(h64_ccall)    ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, UWord, UWord );
+//VG_REGPARM(3) void TNT_(h64_amd64g_calculate_condition)    ( IRStmt *, UWord, UWord );
+//VG_REGPARM(3) void TNT_(h64_none)     ( HChar *, UWord, UWord );
 
 /* Strings used by tnt_translate, printed by tnt_main */
 extern const char *IRType_string[];
