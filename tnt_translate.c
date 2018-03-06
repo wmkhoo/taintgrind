@@ -5882,6 +5882,8 @@ static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
 }
 
 
+// Creates a dirty call to emit instruction's run-time and taint values
+// For IRStmts, e.g. Put, PutI, Store
 void create_dirty_DATA( MCEnv* mce, IRStmt *clone, IRExpr* data ){
    Int          nargs = 3;
    const HChar* nm;
@@ -5901,6 +5903,7 @@ void create_dirty_DATA( MCEnv* mce, IRStmt *clone, IRExpr* data ){
 }
 
 
+// Creates a dirty call to emit next instruction's run-time and taint values
 void create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 // ppIRStmt output:  jmp <next>
    Int      nargs = 3;
@@ -5925,6 +5928,8 @@ void create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 }
 
 
+// Creates a dirty call to emit instruction's run-time and taint values
+// For WrTmp IRExprs, e.g. Get, GetI, Load
 void create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
    Int      nargs = 3;
    const HChar*   nm;
@@ -5961,39 +5966,6 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
    MCEnv   mce;
    IRSB*   sb_out;
 
-   // For get_ThreadState
-//   ThreadId tid = closure->tid;
-//   ThreadState *ts;
-
-   // For get_StackTrace
-#if 0
-   Int n_ips;
-   Addr ips[1];
-#endif
-#if 0
-   // Check if instrumentation is turned on
-   // i.e. have we read tainted bytes from a file?
-   numBBs++;
-   if( numBBs % 1000 == 0 ) {
-      numBBs = 0;
-      numKBBs++;
-      //VG_(printf)("kBBs read: %d ", numKBBs);
-   }
-
-   if( TNT_(clo_after_kbb) != 0 && numKBBs < TNT_(clo_after_kbb) ){
-      //if( numBBs % 1000 == 0 )
-      //   VG_(printf)("Off\n");
-      return sb_in;
-   }
-   if( TNT_(clo_before_kbb) != -1 && numKBBs > TNT_(clo_before_kbb) ){
-      //if( numBBs % 1000 == 0 )
-      //   VG_(printf)("Off\n");
-      return sb_in;
-   }
-   //if( numBBs % 1000 == 0 )
-   //   VG_(printf)("On\n");
-#endif
-
    if (gWordTy != hWordTy) {
       /* We don't currently support this case. */
       VG_(tool_panic)("host/guest word size mismatch");
@@ -6008,65 +5980,6 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
    tl_assert(sizeof(UInt)   == 4);
    tl_assert(sizeof(Int)    == 4);
 
-
-   // Print Register Contents
-   // VEXThreadState struct reproduced from VEX/pub/libvex_guest_x86.h
-/*
-typedef
-   struct {
-      UInt  guest_EAX;          0
-      UInt  guest_ECX;          4
-      UInt  guest_EDX;          8
-      UInt  guest_EBX;         12
-      UInt  guest_ESP;         16
-      UInt  guest_EBP;         20
-      UInt  guest_ESI;         24
-      UInt  guest_EDI;         28
-
-         4-word thunk used to calculate O S Z A C P flags.
-      UInt  guest_CC_OP;       32
-      UInt  guest_CC_DEP1;
-      UInt  guest_CC_DEP2;
-      UInt  guest_CC_NDEP;     44
-         The D flag is stored here, encoded as either -1 or +1
-      UInt  guest_DFLAG;       48
-         Bit 21 (ID) of eflags stored here, as either 0 or 1.
-      UInt  guest_IDFLAG;      52
-         Bit 18 (AC) of eflags stored here, as either 0 or 1.
-      UInt  guest_ACFLAG;      56
-
-         EIP
-      UInt  guest_EIP;         60
-      ...
-   }
-   VexGuestX86State;
-*/
-
-//   ts =  VG_(get_ThreadState) ( tid );
-
-#if 0
-   if(verboze){
-      VG_(printf)( "Thread %d Context:\n", tid );
-      VG_(printf)( "      0=0x%08x %01x 32=0x%08x %01x\n", ts->arch.vex.guest_EAX, get_vabits2(ts->arch.vex.guest_EAX), ts->arch.vex.guest_CC_OP, get_vabits2(ts->arch.vex.guest_CC_OP) );
-      VG_(printf)( "      4=0x%08x %01x 36=0x%08x %01x\n", ts->arch.vex.guest_ECX, get_vabits2(ts->arch.vex.guest_ECX), ts->arch.vex.guest_CC_DEP1, get_vabits2(ts->arch.vex.guest_CC_DEP1) );
-      VG_(printf)( "      8=0x%08x %01x 40=0x%08x %01x\n", ts->arch.vex.guest_EDX, get_vabits2(ts->arch.vex.guest_EDX), ts->arch.vex.guest_CC_DEP2, get_vabits2(ts->arch.vex.guest_CC_DEP2) );
-      VG_(printf)( "     12=0x%08x %01x 44=0x%08x %01x\n", ts->arch.vex.guest_EBX, get_vabits2(ts->arch.vex.guest_EBX), ts->arch.vex.guest_CC_NDEP, get_vabits2(ts->arch.vex.guest_CC_NDEP) );
-      VG_(printf)( "     16=0x%08x %01x 48=0x%08x %01x\n", ts->arch.vex.guest_ESP, get_vabits2(ts->arch.vex.guest_ESP), ts->arch.vex.guest_DFLAG, get_vabits2(ts->arch.vex.guest_DFLAG) );
-      VG_(printf)( "     20=0x%08x %01x 52=0x%08x %01x\n", ts->arch.vex.guest_EBP, get_vabits2(ts->arch.vex.guest_EBP), ts->arch.vex.guest_IDFLAG, get_vabits2(ts->arch.vex.guest_IDFLAG) );
-      VG_(printf)( "     24=0x%08x %01x 56=0x%08x %01x\n", ts->arch.vex.guest_ESI, get_vabits2(ts->arch.vex.guest_ESI), ts->arch.vex.guest_ACFLAG, get_vabits2(ts->arch.vex.guest_ACFLAG) );
-      VG_(printf)( "     28=0x%08x %01x 60=0x%08x %01x\n", ts->arch.vex.guest_EDI, get_vabits2(ts->arch.vex.guest_EDI), ts->arch.vex.guest_EIP, get_vabits2(ts->arch.vex.guest_EIP) );
-   }
-
-   // Print Stack Trace
-   if(0){
-      n_ips = VG_(get_StackTrace)( tid, ips, 1,
-                                   NULL/*array to dump SP values in*/,
-                                   NULL/*array to dump FP values in*/,
-                                   0/*first_ip_delta*/ );
-      VG_(printf)( "     EIP=0x%08x\n", (Int)ips[0] );
-   }
-#endif
-   //VG_(printf)( "%d\n", sb_in->tyenv->types_used );
 
    /* Set up SB */
    sb_out = deepCopyIRSBExceptStmts(sb_in);
