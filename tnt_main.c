@@ -3270,6 +3270,11 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
          }
          break;
       }
+      case Ist_Store:
+      {
+         G_SMT2(smt2_store);
+         break;
+      }
       case Ist_WrTmp:
       {
          IRExpr *e = clone->Ist.WrTmp.data;
@@ -3313,15 +3318,7 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
             }
             case Iex_Load:
             {
-               IRExpr *addr = e->Iex.Load.addr;
-
-               if (addr->tag == Iex_RdTmp) {
-                  if (sizeof(UWord) == 4) { G_SMT2_LOAD(smt2_load_t_32); }
-                  else                    { G_SMT2_LOAD(smt2_load_t_64); }
-               } else {
-                  if (sizeof(UWord) == 4) { G_SMT2_LOAD(smt2_load_c_32); }
-                  else                    { G_SMT2_LOAD(smt2_load_c_64); }
-               }
+               G_SMT2_LOAD(smt2_load);
                break;
             }
             default:
@@ -3329,6 +3326,7 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                tl_assert(0 && "smt2: not implemented");
                break;
          }
+         break;
       }
       default:
          ppIRStmt(clone);

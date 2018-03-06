@@ -223,75 +223,34 @@ static void tnt_smt2_load_ltmp_64 ( UInt ltmp, UInt ty, ULong address, ULong val
 
 
 // ltmp = LOAD <ty> const 
-void TNT_(smt2_load_c_32) ( IRStmt *clone, UInt value, UInt taint )
+void TNT_(smt2_load) ( IRStmt *clone, UWord value, UWord taint )
 {
 
    UInt ltmp     = clone->Ist.WrTmp.tmp;
    UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
    IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
-   ULong address = extract_IRConst(addr->Iex.Const.con);
+   UWord address;
 
-   if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp_32 ( ltmp, ty, address, value, taint );
+   if (addr->tag == Iex_RdTmp) {
+      UInt atmp     = addr->Iex.RdTmp.tmp;
+      address = tv[atmp];
 
-   tt[ltmp] = SMT2_ty[ty];
-}
+      if ( is_tainted(atmp) )
+         tnt_smt2_loadstore_atmp ( atmp, address );
+   } else {
+      address = extract_IRConst(addr->Iex.Const.con);
+   }
 
-
-// ltmp = LOAD <ty> const 
-void TNT_(smt2_load_c_64) ( IRStmt *clone, ULong value, ULong taint )
-{
-
-   UInt ltmp     = clone->Ist.WrTmp.tmp;
-   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
-   ULong address = extract_IRConst(addr->Iex.Const.con);
-
-   if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp_64 ( ltmp, ty, address, value, taint );
+   if ( is_tainted(ltmp) ) {
+      if (sizeof(UWord) == 4)
+         tnt_smt2_load_ltmp_32 ( ltmp, ty, address, value, taint );
+      else if (sizeof(UWord) == 8)
+         tnt_smt2_load_ltmp_64 ( ltmp, ty, address, value, taint );
+   }
 
    tt[ltmp] = SMT2_ty[ty];
 }
 
-
-// ltmp = LOAD <ty> atmp
-void TNT_(smt2_load_t_32) ( IRStmt *clone, UInt value, UInt taint )
-{
-
-   UInt ltmp     = clone->Ist.WrTmp.tmp;
-   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
-   UInt atmp     = addr->Iex.RdTmp.tmp;
-   ULong address = tv[atmp];
-
-   if ( is_tainted(atmp) )
-      tnt_smt2_loadstore_atmp ( atmp, address );
-
-   if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp_32 ( ltmp, ty, address, value, taint );
-
-   tt[ltmp] = SMT2_ty[ty];
-}
-
-
-// ltmp = LOAD <ty> atmp
-void TNT_(smt2_load_t_64) ( IRStmt *clone, ULong value, ULong taint )
-{
-
-   UInt ltmp     = clone->Ist.WrTmp.tmp;
-   UInt ty       = clone->Ist.WrTmp.data->Iex.Load.ty - Ity_INVALID;
-   IRExpr* addr  = clone->Ist.WrTmp.data->Iex.Load.addr;
-   UInt atmp     = addr->Iex.RdTmp.tmp;
-   ULong address = tv[atmp];
-
-   if ( is_tainted(atmp) )
-      tnt_smt2_loadstore_atmp ( atmp, address );
-
-   if ( is_tainted(ltmp) )
-      tnt_smt2_load_ltmp_64 ( ltmp, ty, address, value, taint );
-
-   tt[ltmp] = SMT2_ty[ty];
-}
 
 static void tnt_smt2_store_dtmp( UInt dtmp, ULong address )
 {
@@ -306,48 +265,31 @@ static void tnt_smt2_store_dtmp( UInt dtmp, ULong address )
    }
 }
 
-// STORE const = dtmp
-void TNT_(smt2_store_ct) ( IRStmt *clone )
+
+// STORE addr = data
+void TNT_(smt2_store) ( IRStmt *clone )
 {
 
    IRExpr *addr = clone->Ist.Store.addr;
    IRExpr *data = clone->Ist.Store.data;
-   UInt dtmp    = data->Iex.RdTmp.tmp;
-   ULong address = extract_IRConst(addr->Iex.Const.con);
+   UWord address;
 
-   if ( is_tainted(dtmp) )
-      tnt_smt2_store_dtmp ( dtmp, address );
-}
+   if (addr->tag == Iex_RdTmp) {
+      UInt atmp    = addr->Iex.RdTmp.tmp;
+      address = tv[atmp];
 
-// STORE atmp = const
-void TNT_(smt2_store_tc) ( IRStmt *clone )
-{
+      if ( is_tainted(atmp) )
+         tnt_smt2_loadstore_atmp ( atmp, address );
+   } else {
+      address = extract_IRConst(addr->Iex.Const.con);
+   }
 
-   IRExpr *addr = clone->Ist.Store.addr;
-   //IRExpr *data = clone->Ist.Store.data;
-   UInt atmp    = addr->Iex.RdTmp.tmp;
-   //UInt dtmp    = data->Iex.RdTmp.tmp;
-   ULong address = tv[atmp];
+   if (data->tag == Iex_RdTmp) {
+      UInt dtmp    = data->Iex.RdTmp.tmp;
 
-   if ( is_tainted(atmp) )
-      tnt_smt2_loadstore_atmp ( atmp, address );
-}
-
-// STORE atmp = dtmp
-void TNT_(smt2_store_tt) ( IRStmt *clone )
-{
-
-   IRExpr *addr = clone->Ist.Store.addr;
-   IRExpr *data = clone->Ist.Store.data;
-   UInt atmp    = addr->Iex.RdTmp.tmp;
-   UInt dtmp    = data->Iex.RdTmp.tmp;
-   ULong address = tv[atmp];
-
-   if ( is_tainted(atmp) )
-      tnt_smt2_loadstore_atmp ( atmp, address );
-
-   if ( is_tainted(dtmp) )
-      tnt_smt2_store_dtmp ( dtmp, address );
+      if ( is_tainted(dtmp) )
+         tnt_smt2_store_dtmp ( dtmp, address );
+   }
 }
 
 #define smt2_sign_extend(a, b) \

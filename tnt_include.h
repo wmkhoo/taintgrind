@@ -377,13 +377,8 @@ extern UInt  *tt;
 
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
-extern void TNT_(smt2_load_c_32)   ( IRStmt *, UInt, UInt );
-extern void TNT_(smt2_load_t_32)   ( IRStmt *, UInt, UInt );
-extern void TNT_(smt2_load_c_64)   ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_load_t_64)   ( IRStmt *, ULong, ULong );
-extern void TNT_(smt2_store_ct) ( IRStmt * );
-extern void TNT_(smt2_store_tc) ( IRStmt * );
-extern void TNT_(smt2_store_tt) ( IRStmt * );
+extern void TNT_(smt2_load)     ( IRStmt *, UWord, UWord );
+extern void TNT_(smt2_store)    ( IRStmt * );
 extern void TNT_(smt2_unop_t)   ( IRStmt * );
 extern void TNT_(smt2_binop_tc) ( IRStmt * );
 extern void TNT_(smt2_binop_ct) ( IRStmt * );
