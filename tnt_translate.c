@@ -997,14 +997,11 @@ ULong extract_IRConst64( IRConst* con );
 // Convert to Dirty helper arg type IRExpr*
 static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
 
-// For IRStmt types: Put, PutI, Dirty
+// For all IRStmt types except JMP Next
 void create_dirty_DATA  ( MCEnv* mce, IRStmt *clone, IRExpr* data );
 
 // For IRExpr determining the next control flow block
 void create_dirty_NEXT  ( MCEnv* mce, IRExpr* next );
-
-// For IRExpr types with the destination tmp
-void create_dirty_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp dst );
 
 /* Check the supplied **original** atom for undefinedness, and emit
    a complaint if so.  Once that happens, mark it as defined.  This is
@@ -4578,7 +4575,7 @@ void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr )
    stmt( 'C', mce, IRStmt_WrTmp( tmp, expr ) );
    assign( 'V', mce, findShadowTmpV( mce, tmp ), expr2vbits( mce, expr ) );
 
-   create_dirty_WRTMP( mce, clone, tmp );
+   create_dirty_DATA( mce, clone, IRExpr_RdTmp(tmp) );
 }
 
 /*------------------------------------------------------------*/
@@ -5118,7 +5115,8 @@ void do_shadow_Dirty ( MCEnv* mce, IRStmt* clone, IRDirty* d )
    }
 
    // Taintgrind: Check for taint
-   create_dirty_WRTMP( mce, clone, d->tmp );
+   if (d->tmp != IRTemp_INVALID)
+      create_dirty_DATA( mce, clone, IRExpr_RdTmp(d->tmp) );
 }
 
 /* We have an ABI hint telling us that [base .. base+len-1] is to
@@ -5921,29 +5919,6 @@ void create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 
    fn    = &TNT_(emit_next);
    nm    = "TNT_(emit_next)";
-
-   IRDirty* d = unsafeIRDirty_0_N ( nargs, nm, VG_(fnptr_to_fnentry)(fn), args );
-   setHelperAnns( mce, d );
-   stmt( 'V', mce, IRStmt_Dirty(d));
-}
-
-
-// Creates a dirty call to emit instruction's run-time and taint values
-// For WrTmp IRExprs, e.g. Get, GetI, Load
-void create_dirty_WRTMP( MCEnv* mce, IRStmt *clone, IRTemp tmp ){
-   Int      nargs = 3;
-   const HChar*   nm;
-   void*    fn;
-   IRExpr** args;
-
-   if (tmp == IRTemp_INVALID) return;
-
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                          convert_Value( mce, IRExpr_RdTmp( tmp ) ),
-                          convert_Value( mce, atom2vbits( mce, IRExpr_RdTmp(tmp) ) ) );
-
-   fn    = &TNT_(emit_insn);
-   nm    = "TNT_(emit_insn)";
 
    IRDirty* d = unsafeIRDirty_0_N ( nargs, nm, VG_(fnptr_to_fnentry)(fn), args );
    setHelperAnns( mce, d );
