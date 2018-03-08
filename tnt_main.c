@@ -157,8 +157,10 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint);
 Int exit_early (IRStmt *clone, UWord taint);
 Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
+void print_insn_type(IRStmt *clone);
 void print_info_flow(IRStmt *clone, UWord taint);
 void print_info_flow_tmp(IRExpr *e);
+void print_info_flow_tmp_indirect(IRExpr *e);
 UInt get_geti_puti_reg(IRRegArray *descr, IRExpr *ix, Int bias);
 // -End- Forward declarations for Taintgrind
 
@@ -2681,6 +2683,66 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
 }
 
 
+// Prints insn type for log2dot.py to parse
+void print_insn_type(IRStmt *clone) {
+   switch (clone->tag) {
+      case Ist_Put:
+         VG_(printf)("Put");
+         break;
+      case Ist_PutI:
+         VG_(printf)("PutI");
+         break;
+      case Ist_WrTmp:
+      {
+         IRExpr *data = clone->Ist.WrTmp.data;
+         switch (data->tag) {
+            case Iex_Get:
+               VG_(printf)("Get");
+               break;
+            case Iex_GetI:
+               VG_(printf)("GetI");
+               break;
+            case Iex_RdTmp:
+               VG_(printf)("RdTmp");
+               break;
+            case Iex_Qop:
+               ppIROp(data->Iex.Qop.details->op);
+               break;
+            case Iex_Triop:
+               ppIROp(data->Iex.Triop.details->op);
+               break;
+            case Iex_Binop:
+               ppIROp(data->Iex.Binop.op);
+               break;
+            case Iex_Unop:
+               ppIROp(data->Iex.Unop.op);
+               break;
+            case Iex_Load:
+               VG_(printf)("Load");
+               break;
+            case Iex_ITE:
+               VG_(printf)("ITE");
+               break;
+            case Iex_CCall:
+               VG_(printf)("%s", data->Iex.CCall.cee->name);
+               break;
+            default:
+               break;
+         }
+         break;
+      }
+      case Ist_Store:
+         VG_(printf)("Store");
+         break;
+      case Ist_Dirty:
+         VG_(printf)("%s", clone->Ist.Dirty.details->cee->name);
+         break;
+      default:
+         break;
+   }
+}
+
+
 // Prints a tmp variable in the form t<valgrind_index>_<taintgrind_index>
 // e.g. t1_2
 void print_info_flow_tmp(IRExpr *e) {
@@ -2694,7 +2756,25 @@ void print_info_flow_tmp(IRExpr *e) {
 }
 
 
+// Prints a tmp variable in the form (t<valgrind_index>_<taintgrind_index>)
+// e.g. (t1_2)
+void print_info_flow_tmp_indirect(IRExpr *e) {
+   if (e->tag != Iex_RdTmp)  return;
+
+   UInt tmp = e->Iex.RdTmp.tmp;
+   tl_assert( tmp < TI_MAX );
+
+   if ( is_tainted(tmp) )
+      VG_(printf)(" (t%d_%d)", tmp, _ti(tmp));
+}
+
+
 // Prints information flow (only if insn is tainted)
+// Format is: <taint dest> <- <taint source1> (<taint source2>) ...
+// 2 types of taint sources:
+// 1. Direct taint sources, e.g. t4_2. No curly brackets.
+// 2. Indirect taint sources, e.g. (t4_2). With curly brackets
+//    Load/Store addresses are examples of indirect sources
 void print_info_flow(IRStmt *clone, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
@@ -2715,7 +2795,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                                       clone->Ist.PutI.details->bias);
          VG_(printf)("r%d_%d <-", reg, ri[reg]);
          print_info_flow_tmp(clone->Ist.PutI.details->data);
-         print_info_flow_tmp(clone->Ist.PutI.details->ix);
+         print_info_flow_tmp_indirect(clone->Ist.PutI.details->ix);
          break;
       }
       case Ist_Store:
@@ -2737,19 +2817,18 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                if ( is_tainted(dtmp) && is_tainted(atmp) ) {
                   VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data);
-                  VG_(printf)( "; %s <*-", varname );
-                  print_info_flow_tmp(addr);
+                  print_info_flow_tmp_indirect(addr);
                } else if ( is_tainted(dtmp) ) {
                   VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data);
                } else if ( is_tainted(atmp) ) {
-                  VG_(printf)( "%s <*-", varname );
-                  print_info_flow_tmp(addr);
+                  VG_(printf)( "%s <-", varname );
+                  print_info_flow_tmp_indirect(addr);
                }
             } else {
                if ( is_tainted(atmp) ) {
-                  VG_(printf)( "%s <*-", varname );
-                  print_info_flow_tmp(addr);
+                  VG_(printf)( "%s <-", varname );
+                  print_info_flow_tmp_indirect(addr);
                }
             }
          } else {
@@ -2869,13 +2948,12 @@ void print_info_flow(IRStmt *clone, UWord taint) {
 
                   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
-                     VG_(printf)( "; t%d_%d <*-", ltmp, _ti(ltmp) );
-                     print_info_flow_tmp(addr);
+                     print_info_flow_tmp_indirect(addr);
                   } else if ( is_tainted(ltmp) ) {
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
                   } else if ( is_tainted(atmp) ) {
-                     VG_(printf)( "t%d_%d <*-", ltmp, _ti(ltmp) );
-                     print_info_flow_tmp(addr);
+                     VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+                     print_info_flow_tmp_indirect(addr);
                   }
                } else {
                // Case 2: Address is Constant
@@ -2950,6 +3028,10 @@ void TNT_(emit_insn) (
    ppIRStmt(clone);
    VG_(printf)(" | ");
 
+   // Print VEX IRStmt type for log2dot.py
+   print_insn_type(clone);
+   VG_(printf)(" | ");
+
    // Print run-time and taint values
    if ( istty && taint ) VG_(printf)("%s", KRED);
    if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
@@ -2995,6 +3077,9 @@ void TNT_(emit_next) (
    VG_(printf)(" | JMP ");
    ppIRExpr(clone);
    VG_(printf)(" | ");
+
+   // Print VEX IRStmt type for log2dot.py
+   VG_(printf)(" Jmp | ");
 
    // Print run-time and taint values
    if ( istty && taint ) VG_(printf)("%s", KRED);
