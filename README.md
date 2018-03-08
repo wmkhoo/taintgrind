@@ -66,7 +66,7 @@ At the moment, critical instructions include loads, stores, conditional jumps an
 The last two options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
 Run without any parameters, taintgrind will not taint anything and the program output should be printed.
 
-See [Detecting a classic buffer overflow](wiki/Detecting-a-classic-buffer-overflow)
+See [Detecting a classic buffer overflow](https://github.com/wmkhoo/taintgrind/wiki/Detecting-a-classic-buffer-overflow)
 
 
 Sample output
