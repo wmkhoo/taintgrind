@@ -2793,6 +2793,7 @@ void print_insn_type(IRStmt *clone, UWord value, UWord taint) {
    if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
    else                    VG_(printf)("0x%llx", (ULong)value);
    if ( istty && taint ) VG_(printf)("%s", KNRM);
+   VG_(printf)(" | ");
 }
 
 
@@ -3083,7 +3084,7 @@ void TNT_(emit_insn) (
 
    // Print VEX IRStmt and type for log2dot.py
    print_insn_type(clone, value, taint);
-   VG_(printf)(" | ");
+   //VG_(printf)(" | ");
 
    //if ( istty && taint ) VG_(printf)("%s", KRED);
    //if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
@@ -3123,7 +3124,7 @@ void TNT_(emit_insn1) (
 
    // Print VEX IRStmt and type for log2dot.py
    print_insn_type(clone, 0, taint);
-   VG_(printf)(" | ");
+   //VG_(printf)(" | ");
 
    // Print run-time value
    // We don't know this, so print ???

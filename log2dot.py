@@ -60,7 +60,23 @@ edges = []
 nodes = {}
 
 for line in data:
-    (addr,insn,insnty,val,tnt,flow) = line.rstrip().split(" | ")
+    addr = ""
+    insn = ""
+    insnty = ""
+    val = ""
+    flow = ""
+
+    a = line.rstrip().split(" | ")
+
+    if len(a) == 5:
+        (addr,insn,insnty,val,flow) = line.rstrip().split(" | ")
+    elif len(a) == 4:
+        (addr,insnty,val,flow) = line.rstrip().split(" | ")
+    elif len(a) == 2:
+        (addr,flow) = line.rstrip().split(" | ")
+    else:
+        print "%d" % (len(a))
+        sys.exit(0)
 
     # If there is taint flow
     if len(flow) >= 4:
@@ -87,15 +103,20 @@ for line in data:
                 # If both address and data to this Load/Store are tainted,
                 # Colour it red
                 nodes[sink] = "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty)
-            else:
+            elif val and insnty:
                 nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty)
+            else:
+                nodes[sink] = "%s [label=\"%s\"]" % (vname,sink)
         elif "Jmp" in insnty:
             vname = sanitise_var(flow)
             # If jump target is tainted, colour it red
             nodes[flow] = "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty)
-        else:
+        elif val and insnty:
             vname = sanitise_var(flow)
             nodes[flow] = "%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty)
+        else:
+            vname = sanitise_var(flow)
+            nodes[flow] = "%s [label=\"%s\"]" % (vname,flow)
 
 
 # Pass 3: Collect the nodes into subgraphs,
@@ -103,7 +124,7 @@ for line in data:
 subgraph = {}
 
 for line in data:
-    (addr,insn,insnty,val,tnt,flow) = line.rstrip().split(" | ")
+    flow = line.rstrip().split(" | ")[-1]
 
     # If there is taint flow
     if len(flow) >= 4:
