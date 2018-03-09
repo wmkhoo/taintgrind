@@ -631,64 +631,64 @@ static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
    tl_assert(isShadowAtom(mce,vbits));
    src_ty = typeOfIRExpr(mce->sb->tyenv, vbits);
 
-   /* Fast-track some common cases */
-   if (src_ty == Ity_I32 && dst_ty == Ity_I32)
-      return assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+   ///* Fast-track some common cases */
+   //if (src_ty == Ity_I32 && dst_ty == Ity_I32)
+   //   return assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
 
-   if (src_ty == Ity_I64 && dst_ty == Ity_I64)
-      return assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
+   //if (src_ty == Ity_I64 && dst_ty == Ity_I64)
+   //   return assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
 
-   if (src_ty == Ity_I32 && dst_ty == Ity_I64) {
-      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-      return assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-   }
+   //if (src_ty == Ity_I32 && dst_ty == Ity_I64) {
+   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+   //   return assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+   //}
 
-   if (src_ty == Ity_I32 && dst_ty == Ity_V128) {
-      /* PCast the arg, then clone it 4 times. */
-      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-      tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-      return assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
-   }
+   //if (src_ty == Ity_I32 && dst_ty == Ity_V128) {
+   //   /* PCast the arg, then clone it 4 times. */
+   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+   //   tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+   //   return assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
+   //}
 
-   if (src_ty == Ity_I32 && dst_ty == Ity_V256) {
-      /* PCast the arg, then clone it 8 times. */
-      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-      tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-      tmp = assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
-      return assignNew('V', mce, Ity_V256, binop(Iop_V128HLtoV256, tmp, tmp));
-   }
+   //if (src_ty == Ity_I32 && dst_ty == Ity_V256) {
+   //   /* PCast the arg, then clone it 8 times. */
+   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+   //   tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+   //   tmp = assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
+   //   return assignNew('V', mce, Ity_V256, binop(Iop_V128HLtoV256, tmp, tmp));
+   //}
 
-   if (src_ty == Ity_I64 && dst_ty == Ity_I32) {
-      /* PCast the arg.  This gives all 0s or all 1s.  Then throw away
-         the top half. */
-      IRAtom* tmp = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
-      return assignNew('V', mce, Ity_I32, unop(Iop_64to32, tmp));
-   }
+   //if (src_ty == Ity_I64 && dst_ty == Ity_I32) {
+   //   /* PCast the arg.  This gives all 0s or all 1s.  Then throw away
+   //      the top half. */
+   //   IRAtom* tmp = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
+   //   return assignNew('V', mce, Ity_I32, unop(Iop_64to32, tmp));
+   //}
 
-   if (src_ty == Ity_V128 && dst_ty == Ity_I64) {
-      /* Use InterleaveHI64x2 to copy the top half of the vector into
-         the bottom half.  Then we can UifU it with the original, throw
-         away the upper half of the result, and PCast-I64-to-I64
-         the lower half. */
-      // Generates vbits[127:64] : vbits[127:64]
-      IRAtom* hi64hi64
-         = assignNew('V', mce, Ity_V128,
-                     binop(Iop_InterleaveHI64x2, vbits, vbits));
-      // Generates
-      //   UifU(vbits[127:64],vbits[127:64]) : UifU(vbits[127:64],vbits[63:0])
-      //   == vbits[127:64] : UifU(vbits[127:64],vbits[63:0])
-      IRAtom* lohi64
-         = mkUifUV128(mce, hi64hi64, vbits);
-      // Generates UifU(vbits[127:64],vbits[63:0])
-      IRAtom* lo64
-         = assignNew('V', mce, Ity_I64, unop(Iop_V128to64, lohi64));
-      // Generates
-      //   PCast-to-I64( UifU(vbits[127:64], vbits[63:0] )
-      //   == PCast-to-I64( vbits[127:0] )
-      IRAtom* res
-         = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, lo64));
-      return res;
-   }
+   //if (src_ty == Ity_V128 && dst_ty == Ity_I64) {
+   //   /* Use InterleaveHI64x2 to copy the top half of the vector into
+   //      the bottom half.  Then we can UifU it with the original, throw
+   //      away the upper half of the result, and PCast-I64-to-I64
+   //      the lower half. */
+   //   // Generates vbits[127:64] : vbits[127:64]
+   //   IRAtom* hi64hi64
+   //      = assignNew('V', mce, Ity_V128,
+   //                  binop(Iop_InterleaveHI64x2, vbits, vbits));
+   //   // Generates
+   //   //   UifU(vbits[127:64],vbits[127:64]) : UifU(vbits[127:64],vbits[63:0])
+   //   //   == vbits[127:64] : UifU(vbits[127:64],vbits[63:0])
+   //   IRAtom* lohi64
+   //      = mkUifUV128(mce, hi64hi64, vbits);
+   //   // Generates UifU(vbits[127:64],vbits[63:0])
+   //   IRAtom* lo64
+   //      = assignNew('V', mce, Ity_I64, unop(Iop_V128to64, lohi64));
+   //   // Generates
+   //   //   PCast-to-I64( UifU(vbits[127:64], vbits[63:0] )
+   //   //   == PCast-to-I64( vbits[127:0] )
+   //   IRAtom* res
+   //      = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, lo64));
+   //   return res;
+   //}
 
    /* Else do it the slow way .. */
    /* First of all, collapse vbits down to a single bit. */
@@ -728,6 +728,21 @@ static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
          IRAtom* tmp4 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp2, tmp3));
          tmp1         = assignNew('V', mce, Ity_I1,
                                        unop(Iop_CmpNEZ64, tmp4));
+         break;
+      }
+      case Ity_V256: {
+         /* Chop it in half, OR the halves together, and compare that
+          * with zero.
+          */
+         IRAtom* tmp2 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_0, vbits));
+         IRAtom* tmp3 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_1, vbits));
+         IRAtom* tmp4 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp2, tmp3));
+         IRAtom* tmp5 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_2, vbits));
+         IRAtom* tmp6 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_3, vbits));
+         IRAtom* tmp7 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp5, tmp6));
+         IRAtom* tmp8 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp4, tmp7));
+         tmp1         = assignNew('V', mce, Ity_I1,
+                                       unop(Iop_CmpNEZ64, tmp8));
          break;
       }
       default:
@@ -990,15 +1005,11 @@ static void setHelperAnns ( MCEnv* mce, IRDirty* di ) {
 }
 
 // Taintgrind: Forward decls
-Int extract_IRAtom( IRAtom* atom );
 Int extract_IRConst( IRConst* con );
 ULong extract_IRConst64( IRConst* con );
 
-// Convert to Dirty helper arg type IRExpr*
-static IRExpr* convert_Value( MCEnv* mce, IRAtom* atom );
-
 // For all IRStmt types except JMP Next
-void create_dirty_DATA  ( MCEnv* mce, IRStmt *clone, IRExpr* data );
+void create_dirty_EMIT  ( MCEnv* mce, IRStmt *clone, IRExpr* data );
 
 // For IRExpr determining the next control flow block
 void create_dirty_NEXT  ( MCEnv* mce, IRExpr* next );
@@ -1167,7 +1178,7 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
       if( atom ){
          // Check if clone is NULL
          tl_assert(clone);
-         create_dirty_DATA( mce, clone, atom );
+         create_dirty_EMIT( mce, clone, atom );
       }
 //   }
 }
@@ -1201,7 +1212,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone,
    tl_assert(isOriginalAtom(mce,ix));
 
    // Taintgrind:
-   create_dirty_DATA( mce, clone, atom );
+   create_dirty_EMIT( mce, clone, atom );
 
    // Taintgrind: Let's keep the vbits regardless
 //   if (isAlwaysDefd(mce, descr->base, arrSize)) {
@@ -4575,7 +4586,7 @@ void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr )
    stmt( 'C', mce, IRStmt_WrTmp( tmp, expr ) );
    assign( 'V', mce, findShadowTmpV( mce, tmp ), expr2vbits( mce, expr ) );
 
-   create_dirty_DATA( mce, clone, IRExpr_RdTmp(tmp) );
+   create_dirty_EMIT( mce, clone, IRExpr_RdTmp(tmp) );
 }
 
 /*------------------------------------------------------------*/
@@ -4603,12 +4614,16 @@ IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom )
             return assignNew('V', mce, tyH, unop(Iop_16Uto32, vatom));
          case Ity_I8:
             return assignNew('V', mce, tyH, unop(Iop_8Uto32, vatom));
+         case Ity_I1:
+            return assignNew('V', mce, tyH, unop(Iop_1Uto32, vatom));
          default:
             goto unhandled;
       }
    } else
    if (tyH == Ity_I64) {
       switch (ty) {
+         case Ity_I64:
+            return vatom;
          case Ity_I32:
             return assignNew('V', mce, tyH, unop(Iop_32Uto64, vatom));
          case Ity_I16:
@@ -4617,6 +4632,9 @@ IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom )
          case Ity_I8:
             return assignNew('V', mce, tyH, unop(Iop_32Uto64,
                    assignNew('V', mce, Ity_I32, unop(Iop_8Uto32, vatom))));
+         case Ity_I1:
+            return assignNew('V', mce, tyH, unop(Iop_32Uto64,
+                   assignNew('V', mce, Ity_I32, unop(Iop_1Uto32, vatom))));
          default:
             goto unhandled;
       }
@@ -4625,7 +4643,58 @@ IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom )
    }
   unhandled:
    VG_(printf)("\nty = "); ppIRType(ty); VG_(printf)("\n");
+   VG_(printf)("\ntyH = "); ppIRType(tyH); VG_(printf)("\n");
    VG_(tool_panic)("zwidenToHostWord");
+}
+
+/* Widen a value to the host word size. */
+
+static
+IRExpr* zwidenToHostWordC ( MCEnv* mce, IRAtom* atom )
+{
+   IRType ty, tyH;
+
+   ty  = typeOfIRExpr(mce->sb->tyenv, atom);
+   tyH = mce->hWordTy;
+
+   if (tyH == Ity_I32) {
+      switch (ty) {
+         case Ity_I32:
+            return atom;
+         case Ity_I16:
+            return assignNew('C', mce, tyH, unop(Iop_16Uto32, atom));
+         case Ity_I8:
+            return assignNew('C', mce, tyH, unop(Iop_8Uto32, atom));
+         case Ity_I1:
+            return assignNew('C', mce, tyH, unop(Iop_1Uto32, atom));
+         default:
+            goto unhandled;
+      }
+   } else
+   if (tyH == Ity_I64) {
+      switch (ty) {
+         case Ity_I64:
+            return atom;
+         case Ity_I32:
+            return assignNew('C', mce, tyH, unop(Iop_32Uto64, atom));
+         case Ity_I16:
+            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
+                   assignNew('C', mce, Ity_I32, unop(Iop_16Uto32, atom))));
+         case Ity_I8:
+            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
+                   assignNew('C', mce, Ity_I32, unop(Iop_8Uto32, atom))));
+         case Ity_I1:
+            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
+                   assignNew('C', mce, Ity_I32, unop(Iop_1Uto32, atom))));
+         default:
+            goto unhandled;
+      }
+   } else {
+      goto unhandled;
+   }
+  unhandled:
+   VG_(printf)("\nty = "); ppIRType(ty); VG_(printf)("\n");
+   VG_(tool_panic)("zwidenToHostWordC");
 }
 
 
@@ -4698,7 +4767,7 @@ void do_shadow_Store ( MCEnv* mce,
    if( data ){
       // Check if clone is NULL, if so create an IRStmt
       if (!clone)  clone = IRStmt_Store(end, addr, data);
-      create_dirty_DATA( mce, clone, data );
+      create_dirty_EMIT( mce, clone, data );
    }
 
    /* Now decide which helper function to call to write the data V
@@ -5116,7 +5185,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRStmt* clone, IRDirty* d )
 
    // Taintgrind: Check for taint
    if (d->tmp != IRTemp_INVALID)
-      create_dirty_DATA( mce, clone, IRExpr_RdTmp(d->tmp) );
+      create_dirty_EMIT( mce, clone, IRExpr_RdTmp(d->tmp) );
 }
 
 /* We have an ABI hint telling us that [base .. base+len-1] is to
@@ -5755,17 +5824,6 @@ static Bool checkForBogusLiterals ( /*FLAT*/ IRStmt* st )
   passed from TNT_(instrument) to its subroutines to 
   complainIfTainted as an extra argument.
 -----------------------------------------------------------*/
-Int extract_IRAtom( IRAtom* atom ){
-//   tl_assert(isIRAtom(atom));
-
-   if(atom->tag == Iex_RdTmp)
-      return atom->Iex.RdTmp.tmp;
-   else if(atom->tag == Iex_Const)
-      return extract_IRConst( atom->Iex.Const.con );
-   else
-      // Taintgrind: Shouldn't reach here
-      tl_assert(0);
-}
 
 Int extract_IRConst( IRConst* con ){
    switch(con->tag){
@@ -5815,89 +5873,103 @@ ULong extract_IRConst64( IRConst* con ){
    }
 }
 
-static IRExpr* convert_Value( MCEnv* mce, IRAtom* value ){
-   IRType ty = typeOfIRExpr(mce->sb->tyenv, value);
-   IRType tyH = mce->hWordTy;
-
-   if(tyH == Ity_I32){
-      switch( ty ){
-      case Ity_I1:
-         return assignNew( 'C', mce, tyH, unop(Iop_1Uto32, value) );
-      case Ity_I8:
-         return assignNew( 'C', mce, tyH, unop(Iop_8Uto32, value) );
-      case Ity_I16:
-         return assignNew( 'C', mce, tyH, unop(Iop_16Uto32, value) );
-      case Ity_I32:
-         return value;
-      case Ity_I64:
-         return assignNew( 'C', mce, tyH, unop(Iop_64to32, value) );
-      case Ity_F32:
-         return assignNew( 'C', mce, tyH, unop(Iop_ReinterpF32asI32, value) );
-//         return assignNew( 'C', mce, Ity_I32, unop(Iop_F64toI32,
-//                      assignNew( 'C', mce, Ity_I32, unop(Iop_F32toF64, value) ) ) );
-      case Ity_F64:
-         return assignNew( 'C', mce, tyH, unop(Iop_64to32, 
-            assignNew( 'C', mce, Ity_I64, unop(Iop_ReinterpF64asI64, value) ) ) );
-//         return assignNew( 'C', mce, Ity_I32, unop(Iop_F64toI32U, value) );
-      case Ity_V128:
-         return assignNew( 'C', mce, tyH, unop(Iop_V128to32, value) );
-      default:
-         ppIRType(ty);
-         VG_(tool_panic)("tnt_translate.c: convert_Value");
-      }
-   }else if(tyH == Ity_I64){
-      switch( ty ){
-      case Ity_I1:
-         return assignNew( 'C', mce, tyH, unop(Iop_1Uto64, value) );
-      case Ity_I8:
-         return assignNew( 'C', mce, tyH, unop(Iop_8Uto64, value) );
-      case Ity_I16:
-         return assignNew( 'C', mce, tyH, unop(Iop_16Uto64, value) );
-      case Ity_I32:
-         return assignNew( 'C', mce, tyH, unop(Iop_32Uto64, value) );
-      case Ity_I64:
-         return value;
-      case Ity_I128:
-         return assignNew( 'C', mce, tyH, unop(Iop_128to64, value) );
-      case Ity_F32:
-         return assignNew( 'C', mce, tyH, unop(Iop_ReinterpF64asI64, 
-              assignNew( 'C', mce, Ity_F64, unop(Iop_F32toF64, value) ) ) );
-      case Ity_F64:
-         return assignNew( 'C', mce, tyH, unop(Iop_ReinterpF64asI64, value) );
-      case Ity_V128:
-         return assignNew( 'C', mce, tyH, unop(Iop_V128to64, value) );
-      case Ity_V256:
-         // Warning: Only copies the least significant 64 bits, so there's info lost
-         return assignNew( 'C', mce, tyH, unop(Iop_V256to64_0, value) );
-      default:
-         ppIRType(ty);
-         VG_(tool_panic)("tnt_translate.c: convert_Value");
-      }
-   }else{
-         ppIRType(tyH);
-         VG_(tool_panic)("tnt_translate.c: convert_Value");
-   }
-}
-
 
 // Creates a dirty call to emit instruction's run-time and taint values
-// For IRStmts, e.g. Put, PutI, Store
-void create_dirty_DATA( MCEnv* mce, IRStmt *clone, IRExpr* data ){
-   Int          nargs = 3;
-   const HChar* nm;
-   void*        fn;
-   IRExpr**     args;
+// Modified from do_shadow_Store
+void create_dirty_EMIT ( MCEnv* mce,
+                         IRStmt *c,
+                         IRExpr *data )
+{
+   IRType   ty, tyAddr;
+   void*    helper = NULL;
+   const HChar*   hname = NULL;
 
-   args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                          convert_Value( mce, data ),
-                          convert_Value( mce, atom2vbits( mce, data ) ) );
+   IRAtom *clone = mkIRExpr_HWord((HWord)c);
+   IRAtom *vdata = atom2vbits( mce, data );
 
-   fn    = &TNT_(emit_insn);
-   nm    = "TNT_(emit_insn)";
+   tyAddr = mce->hWordTy;
+   tl_assert( tyAddr == Ity_I32 || tyAddr == Ity_I64 );
+   tl_assert(isShadowAtom(mce,vdata));
 
-   IRDirty* d = unsafeIRDirty_0_N ( nargs, nm, VG_(fnptr_to_fnentry)(fn), args );
-   setHelperAnns( mce, d );
-   stmt( 'V', mce, IRStmt_Dirty(d));
+   ty = typeOfIRExpr(mce->sb->tyenv, vdata);
+
+   /* Now decide which helper function to call */
+   switch (ty) {
+      case Ity_V256:
+      case Ity_V128:
+      case Ity_I128:
+      {
+         helper = &TNT_(emit_insn1);
+         hname  = "TNT_(emit_insn1)";
+
+         IRDirty *di;
+   
+         di = unsafeIRDirty_0_N(
+                 1/*regparms*/,
+                 hname, VG_(fnptr_to_fnentry)( helper ),
+                 mkIRExprVec_2( clone, mkPCastTo(mce, tyAddr, vdata) )
+              );
+         setHelperAnns( mce, di );
+         stmt( 'V', mce, IRStmt_Dirty(di) );
+         break;
+      }
+      // Deal with I64 as a special case
+      // If host is 32 bit, skip run-time value, cast taint to I1
+      // If host is 64 bit, pass run-time and taint values
+      case Ity_I64:
+      {
+         IRDirty *di;
+
+         if (tyAddr == Ity_I32) {
+            helper = &TNT_(emit_insn1);
+            hname  = "TNT_(emit_insn1)";
+   
+            di = unsafeIRDirty_0_N(
+                    1/*regparms*/,
+                    hname, VG_(fnptr_to_fnentry)( helper ),
+                    mkIRExprVec_2( clone, mkPCastTo(mce, tyAddr, vdata) )
+                 );
+         } else {
+            helper = &TNT_(emit_insn);
+            hname  = "TNT_(emit_insn)";
+   
+            di = unsafeIRDirty_0_N(
+                    1/*regparms*/,
+                    hname, VG_(fnptr_to_fnentry)( helper ),
+                    mkIRExprVec_3( clone,
+                                   zwidenToHostWordC( mce, data ),
+                                   zwidenToHostWord( mce, vdata ))
+                 );
+         }
+         setHelperAnns( mce, di );
+         stmt( 'V', mce, IRStmt_Dirty(di) );
+         break;
+      }
+      case Ity_I32:
+      case Ity_I16:
+      case Ity_I8:
+      case Ity_I1:
+      {
+         helper = &TNT_(emit_insn);
+         hname  = "TNT_(emit_insn)";
+
+         IRDirty *di;
+   
+         di = unsafeIRDirty_0_N(
+                 1/*regparms*/,
+                 hname, VG_(fnptr_to_fnentry)( helper ),
+                 mkIRExprVec_3( clone,
+                                zwidenToHostWordC( mce, data ),
+                                zwidenToHostWord( mce, vdata ))
+              );
+         setHelperAnns( mce, di );
+         stmt( 'V', mce, IRStmt_Dirty(di) );
+         break;
+      }
+      default:
+         ppIRType(ty);
+         VG_(tool_panic)("tnt_translate.c: create_dirty_EMIT");
+   }
 }
 
 
@@ -5914,8 +5986,8 @@ void create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
    IRExpr *clone = deepMallocIRExpr(next);
 
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
-                          convert_Value( mce, next ),
-                          convert_Value( mce, atom2vbits( mce, next ) ) );
+                          next,
+                          atom2vbits( mce, next ) );
 
    fn    = &TNT_(emit_next);
    nm    = "TNT_(emit_next)";
@@ -6169,7 +6241,7 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
             break;
 
          case Ist_Exit: // Conditional jumps, if(t<guard>) goto {Boring} <addr>:I32
-            create_dirty_DATA( &mce, clone, st->Ist.Exit.guard );
+            create_dirty_EMIT( &mce, clone, st->Ist.Exit.guard );
             break;
 
          case Ist_IMark:

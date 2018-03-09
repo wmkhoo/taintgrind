@@ -157,7 +157,7 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint);
 Int exit_early (IRStmt *clone, UWord taint);
 Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
-void print_insn_type(IRStmt *clone);
+void print_insn_type(IRStmt *clone, UWord value, UWord taint);
 void print_info_flow(IRStmt *clone, UWord taint);
 void print_info_flow_tmp(IRExpr *e, Int print_leading_space);
 void print_info_flow_tmp_indirect(IRExpr *e);
@@ -2684,27 +2684,19 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
 
 
 // Prints insn type for log2dot.py to parse
-void print_insn_type(IRStmt *clone) {
+void print_insn_type(IRStmt *clone, UWord value, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
-         VG_(printf)("Put");
-         break;
       case Ist_PutI:
-         VG_(printf)("PutI");
-         break;
+         return;
       case Ist_WrTmp:
       {
          IRExpr *data = clone->Ist.WrTmp.data;
          switch (data->tag) {
             case Iex_Get:
-               VG_(printf)("Get");
-               break;
             case Iex_GetI:
-               VG_(printf)("GetI");
-               break;
             case Iex_RdTmp:
-               VG_(printf)("RdTmp");
-               break;
+               return;
             case Iex_Qop:
                ppIROp(data->Iex.Qop.details->op);
                break;
@@ -2715,34 +2707,92 @@ void print_insn_type(IRStmt *clone) {
                ppIROp(data->Iex.Binop.op);
                break;
             case Iex_Unop:
+            {
+               UInt op = data->Iex.Unop.op;
+               switch (op) {
+                  case Iop_1Sto8:     
+                  case Iop_1Sto16:    
+                  case Iop_1Sto32:    
+                  case Iop_1Sto64:    
+                  case Iop_1Uto8:     
+                  case Iop_1Uto32:    
+                  case Iop_1Uto64:    
+                  case Iop_8Sto16:    
+                  case Iop_8Sto32:    
+                  case Iop_8Sto64:    
+                  case Iop_8Uto16:    
+                  case Iop_8Uto32:    
+                  case Iop_8Uto64:    
+                  case Iop_16to8:     
+                  case Iop_16HIto8:   
+                  case Iop_16Sto32:   
+                  case Iop_16Sto64:   
+                  case Iop_16Uto32:   
+                  case Iop_16Uto64:   
+                  case Iop_32to1:     
+                  case Iop_32to8:     
+                  case Iop_32to16:    
+                  case Iop_32HIto16:  
+                  case Iop_32Sto64:   
+                  case Iop_32Uto64:   
+                  case Iop_64to1:     
+                  case Iop_64to8:     
+                  case Iop_64to16:    
+                  case Iop_64to32:    
+                  case Iop_64HIto32:  
+                  case Iop_128to64:   
+                  case Iop_128HIto64: 
+                     return;
+                  default:  break;
+               }
                ppIROp(data->Iex.Unop.op);
                break;
+            }
             case Iex_Load:
+               ppIRStmt(clone);
+               VG_(printf)(" | ");
                VG_(printf)("Load");
                break;
             case Iex_ITE:
+               ppIRStmt(clone);
+               VG_(printf)(" | ");
                VG_(printf)("ITE");
                break;
             case Iex_CCall:
+               ppIRStmt(clone);
+               VG_(printf)(" | ");
                VG_(printf)("%s", data->Iex.CCall.cee->name);
                break;
             default:
-               break;
+               return;
          }
          break;
       }
       case Ist_Store:
+         ppIRStmt(clone);
+         VG_(printf)(" | ");
          VG_(printf)("Store");
          break;
       case Ist_Dirty:
+         ppIRStmt(clone);
+         VG_(printf)(" | ");
          VG_(printf)("%s", clone->Ist.Dirty.details->cee->name);
          break;
       case Ist_Exit:
+         ppIRStmt(clone);
+         VG_(printf)(" | ");
          VG_(printf)("IfGoto");
          break;
       default:
-         break;
+         return;
    }
+
+   // Print run-time and taint values
+   VG_(printf)(" | ");
+   if ( istty && taint ) VG_(printf)("%s", KRED);
+   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
+   else                    VG_(printf)("0x%llx", (ULong)value);
+   if ( istty && taint ) VG_(printf)("%s", KNRM);
 }
 
 
@@ -3002,10 +3052,10 @@ void print_info_flow(IRStmt *clone, UWord taint) {
 
 
 // Emits the instruction with run-time and taint info
-// clone is passed from tnt_translate's create_dirty_DATA/WRTMP
+// clone is passed from tnt_translate's create_dirty_EMIT
 // value is the run-time value of the IRStmt-specific IRExpr
 // taint is the taint value of the IRStmt-specific IRExpr
-VG_REGPARM(3)
+VG_REGPARM(1)
 void TNT_(emit_insn) (
    IRStmt *clone, 
    UWord value, 
@@ -3029,31 +3079,62 @@ void TNT_(emit_insn) (
    if ( istty && taint ) VG_(printf)("%s", KMAG);
    VG_(printf)("%s", fnname);
    if ( istty && taint ) VG_(printf)("%s", KNRM);
-
-   // Print the VEX IRStmt
-   VG_(printf)(" | ");
-   ppIRStmt(clone);
    VG_(printf)(" | ");
 
-   // Print VEX IRStmt type for log2dot.py
-   print_insn_type(clone);
+   // Print VEX IRStmt and type for log2dot.py
+   print_insn_type(clone, value, taint);
    VG_(printf)(" | ");
 
-   // Print run-time and taint values
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
-   else                    VG_(printf)("0x%llx", (ULong)value);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
-
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
-   else                    VG_(printf)("0x%llx", (ULong)taint);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
+   //if ( istty && taint ) VG_(printf)("%s", KRED);
+   //if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
+   //else                    VG_(printf)("0x%llx", (ULong)taint);
+   //if ( istty && taint ) VG_(printf)("%s", KNRM);
+   //VG_(printf)(" | ");
 
    // Print information flow
    print_info_flow(clone, taint);
+}
+
+
+// Same as emit_insn, but for larger ty's.
+// E.g. I128, V128, V256
+VG_REGPARM(1)
+void TNT_(emit_insn1) (
+   IRStmt *clone, 
+   UWord taint ) {
+
+   // Check if we exit early
+   if ( exit_early(clone, taint) ) return;
+
+   // TODO: Check if we're emitting SMT2
+   if ( TNT_(clo_smt2) ) {
+   //   do_smt2(clone, value, taint);
+      return;
+   }
+
+   ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
+   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
+
+   // Print address & function name
+   if ( istty && taint ) VG_(printf)("%s", KMAG);
+   VG_(printf)("%s", fnname);
+   if ( istty && taint ) VG_(printf)("%s", KNRM);
+   VG_(printf)(" | ");
+
+   // Print VEX IRStmt and type for log2dot.py
+   print_insn_type(clone, 0, taint);
+   VG_(printf)(" | ");
+
+   // Print run-time value
+   // We don't know this, so print ???
+   //if ( istty && taint ) VG_(printf)("%s", KRED);
+   //VG_(printf)("???");
+   //if ( istty && taint ) VG_(printf)("%s", KNRM);
+   //VG_(printf)(" | ");
+
+   // Print information flow
+   print_info_flow(clone, taint);
+
 }
 
 
@@ -3095,11 +3176,11 @@ void TNT_(emit_next) (
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
-   else                    VG_(printf)("0x%llx", (ULong)taint);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
+   //if ( istty && taint ) VG_(printf)("%s", KRED);
+   //if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
+   //else                    VG_(printf)("0x%llx", (ULong)taint);
+   //if ( istty && taint ) VG_(printf)("%s", KNRM);
+   //VG_(printf)(" | ");
 
    // Print information flow
    UInt next = clone->Iex.RdTmp.tmp;

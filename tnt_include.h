@@ -107,8 +107,9 @@ void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
 // Emits instructions
-VG_REGPARM(3) void TNT_(emit_insn) ( IRStmt *, UWord, UWord );
-VG_REGPARM(3) void TNT_(emit_next) ( IRExpr *, UWord, UWord );
+VG_REGPARM(1) void TNT_(emit_insn)  ( IRStmt *, UWord, UWord );
+VG_REGPARM(1) void TNT_(emit_insn1) ( IRStmt *, UWord );
+VG_REGPARM(3) void TNT_(emit_next)  ( IRExpr *, UWord, UWord );
 
 /* Strings used by tnt_translate, printed by tnt_main */
 extern const char *IRType_string[];
