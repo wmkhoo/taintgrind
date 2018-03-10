@@ -106,7 +106,7 @@ for line in data:
             elif val and insnty:
                 nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty)
             else:
-                nodes[sink] = "%s [label=\"%s\"]" % (vname,sink)
+                nodes[sink] = "%s [label=\"\"]" % (vname)
         elif "Jmp" in insnty:
             vname = sanitise_var(flow)
             # If jump target is tainted, colour it red
@@ -116,7 +116,7 @@ for line in data:
             nodes[flow] = "%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty)
         else:
             vname = sanitise_var(flow)
-            nodes[flow] = "%s [label=\"%s\"]" % (vname,flow)
+            nodes[flow] = "%s [label=\"\"]" % (vname)
 
 
 # Pass 3: Collect the nodes into subgraphs,
