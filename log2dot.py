@@ -21,6 +21,15 @@ def get_loc(line):
     return line.split()[1] 
 
 
+def add_node(g, label, loc):
+    if loc not in g:
+        g[loc] = ""
+
+    g[loc] += "    %s\n" % (label)
+
+    return g
+
+
 # array to store all lines
 data = []
 
@@ -56,8 +65,11 @@ for i in range(len(f)):
 
 
 # Pass 2: Construct the graph; define nodes and edges
+#         Collect the nodes into subgraphs,
+#         Grouped together by function
+subgraph = {}
 edges = []
-nodes = {}
+nodes = []
 
 for line in data:
     addr = ""
@@ -80,6 +92,9 @@ for line in data:
 
     # If there is taint flow
     if len(flow) >= 4:
+        # Get location/function of line
+        loc = get_loc(line)
+
         if "<-" in flow:
             (sink,sources) = flow.split(" <- ")
 
@@ -89,54 +104,48 @@ for line in data:
                     # Direct source
                     edges.append("%s -> %s" % (sanitise_var(source),sanitise_var(sink)))
                     if source not in nodes:
-                        nodes[source] = source
+                        nodes.append(source)
+                        subgraph = add_node(subgraph, "%s [label=\"%s\"]" % (sanitise_var(source), source), loc)
                 else:
                     # Indirect source, colour it red
                     source2 = source[1:-1]
                     edges.append("%s -> %s[color=\"red\"]" % (sanitise_var(source2),sanitise_var(sink)))
                     if source2 not in nodes:
-                        nodes[source2] = source2
+                        nodes.append(source2)
+                        subgraph = add_node(subgraph, "%s [label=\"%s\"]" % (sanitise_var(source2), source2), loc)
 
             vname = sanitise_var(sink)
 
             if (len(sources.split()) > 1) and ("Load" in insnty or "Store" in insnty):
                 # If both address and data to this Load/Store are tainted,
                 # Colour it red
-                nodes[sink] = "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty)
+                subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty), loc)
             elif val and insnty:
-                nodes[sink] = "%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty)
+                subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty), loc)
             else:
-                nodes[sink] = "%s [label=\"\"]" % (vname)
+                subgraph = add_node(subgraph, "%s [label=\"\"]" % (vname), loc)
+
+            if sink not in nodes:
+                nodes.append(sink)
         elif "Jmp" in insnty:
             vname = sanitise_var(flow)
             # If jump target is tainted, colour it red
-            nodes[flow] = "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty)
+            subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty), loc)
+
+            if flow not in nodes:
+                nodes.append(flow)
         elif val and insnty:
             vname = sanitise_var(flow)
-            nodes[flow] = "%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty)
+            subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty), loc)
+
+            if flow not in nodes:
+                nodes.append(flow)
         else:
             vname = sanitise_var(flow)
-            nodes[flow] = "%s [label=\"\"]" % (vname)
+            subgraph = add_node(subgraph, "%s [label=\"\"]" % (vname), loc)
 
-
-# Pass 3: Collect the nodes into subgraphs,
-# Grouped together by function
-subgraph = {}
-
-for line in data:
-    flow = line.rstrip().split(" | ")[-1]
-
-    # If there is taint flow
-    if len(flow) >= 4:
-        if "<-" in flow:
-            (sink,sources) = flow.split(" <- ")
-
-            loc = get_loc(line)
-
-            if loc not in subgraph:
-                subgraph[loc] = ""
-            subgraph[loc] += \
-                "    %s\n" % (nodes[sink])
+            if flow not in nodes:
+                nodes.append(flow)
 
 
 # Now we construct the graph
