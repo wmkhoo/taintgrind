@@ -65,11 +65,8 @@ for i in range(len(f)):
 
 
 # Pass 2: Construct the graph; define nodes and edges
-#         Collect the nodes into subgraphs,
-#         Grouped together by function
-subgraph = {}
 edges = []
-nodes = []
+nodes = {}
 
 for line in data:
     addr = ""
@@ -104,48 +101,81 @@ for line in data:
                     # Direct source
                     edges.append("%s -> %s" % (sanitise_var(source),sanitise_var(sink)))
                     if source not in nodes:
-                        nodes.append(source)
-                        subgraph = add_node(subgraph, "%s [label=\"%s\"]" % (sanitise_var(source), source), loc)
+                        nodes[source] = ("%s [label=\"%s\"]" % (sanitise_var(source), source), loc)
                 else:
                     # Indirect source, colour it red
                     source2 = source[1:-1]
                     edges.append("%s -> %s[color=\"red\"]" % (sanitise_var(source2),sanitise_var(sink)))
                     if source2 not in nodes:
-                        nodes.append(source2)
-                        subgraph = add_node(subgraph, "%s [label=\"%s\"]" % (sanitise_var(source2), source2), loc)
+                        nodes[source2] = ("%s [label=\"%s\"]" % (sanitise_var(source2), source2), loc)
 
             vname = sanitise_var(sink)
 
             if (len(sources.split()) > 1) and ("Load" in insnty or "Store" in insnty):
                 # If both address and data to this Load/Store are tainted,
                 # Colour it red
-                subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty), loc)
+                nodes[sink] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty), loc)
             elif val and insnty:
-                subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty), loc)
+                nodes[sink] = ("%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty), loc)
             else:
-                subgraph = add_node(subgraph, "%s [label=\"\"]" % (vname), loc)
+                nodes[sink] = ("%s [label=\"\" shape=point]" % (vname), loc)
 
-            if sink not in nodes:
-                nodes.append(sink)
         elif "Jmp" in insnty:
             vname = sanitise_var(flow)
             # If jump target is tainted, colour it red
-            subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty), loc)
-
-            if flow not in nodes:
-                nodes.append(flow)
+            nodes[flow] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty), loc)
         elif val and insnty:
             vname = sanitise_var(flow)
-            subgraph = add_node(subgraph, "%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty), loc)
-
-            if flow not in nodes:
-                nodes.append(flow)
+            nodes[flow] = ("%s [label=\"%s:%s (%s)\"]" % (vname,flow,val,insnty), loc)
         else:
             vname = sanitise_var(flow)
-            subgraph = add_node(subgraph, "%s [label=\"\"]" % (vname), loc)
+            nodes[flow] = ("%s [label=\"\" shape=point]" % (vname), loc)
 
-            if flow not in nodes:
-                nodes.append(flow)
+
+# Pass 3: Collect the nodes into subgraphs,
+#         Grouped together by function
+subgraph = {}
+
+for line in data:
+    addr = ""
+    insn = ""
+    insnty = ""
+    val = ""
+    flow = ""
+
+    a = line.rstrip().split(" | ")
+
+    if len(a) == 5:
+        (_,_,_,_,flow) = line.rstrip().split(" | ")
+    elif len(a) == 4:
+        (_,_,_,flow) = line.rstrip().split(" | ")
+    elif len(a) == 2:
+        (_,flow) = line.rstrip().split(" | ")
+    else:
+        print "%d" % (len(a))
+        sys.exit(0)
+
+    # If there is taint flow
+    if len(flow) >= 4:
+        # Get location/function of line
+        loc = get_loc(line)
+
+        if "<-" in flow:
+            (sink,sources) = flow.split(" <- ")
+
+            for source in sources.split():
+                # Add an edge for each source
+                if "(" not in source:
+                    # Direct source
+                    subgraph = add_node(subgraph, nodes[source][0], nodes[source][1])
+                else:
+                    # Indirect source, colour it red
+                    source2 = source[1:-1]
+                    subgraph = add_node(subgraph, nodes[source2][0], nodes[source2][1])
+
+            subgraph = add_node(subgraph, nodes[sink][0], nodes[sink][1])
+        else:
+            subgraph = add_node(subgraph, nodes[flow][0], nodes[flow][1])
 
 
 # Now we construct the graph
