@@ -4766,7 +4766,10 @@ void do_shadow_Store ( MCEnv* mce,
    //        vdata cases (CAS, Dirty) are handled by their resp. shadow routines
    if( data ){
       // Check if clone is NULL, if so create an IRStmt
-      if (!clone)  clone = IRStmt_Store(end, addr, data);
+      if (!clone) {
+         clone = deepMallocIRStmt(
+                    IRStmt_Store(end, addr, data) );
+      }
       create_dirty_EMIT( mce, clone, data );
    }
 
