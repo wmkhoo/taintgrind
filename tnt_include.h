@@ -111,14 +111,6 @@ VG_REGPARM(1) void TNT_(emit_insn)  ( IRStmt *, UWord, UWord );
 VG_REGPARM(1) void TNT_(emit_insn1) ( IRStmt *, UWord );
 VG_REGPARM(3) void TNT_(emit_next)  ( IRExpr *, UWord, UWord );
 
-/* Strings used by tnt_translate, printed by tnt_main */
-extern const char *IRType_string[];
-extern const char *IREndness_string[];
-extern const char *IRConst_string[];
-extern const char *IRExpr_string[];
-extern const char *IRStmt_string[];
-extern const char *IRJumpKind_string[];
-
 /* Functions defined in tnt_translate, used by tnt_main */
 extern Int extract_IRConst( IRConst* con );
 extern ULong extract_IRConst64( IRConst* con );
