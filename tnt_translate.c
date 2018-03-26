@@ -631,64 +631,64 @@ static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
    tl_assert(isShadowAtom(mce,vbits));
    src_ty = typeOfIRExpr(mce->sb->tyenv, vbits);
 
-   ///* Fast-track some common cases */
-   //if (src_ty == Ity_I32 && dst_ty == Ity_I32)
-   //   return assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+   /* Fast-track some common cases */
+   if (src_ty == Ity_I32 && dst_ty == Ity_I32)
+      return assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
 
-   //if (src_ty == Ity_I64 && dst_ty == Ity_I64)
-   //   return assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
+   if (src_ty == Ity_I64 && dst_ty == Ity_I64)
+      return assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
 
-   //if (src_ty == Ity_I32 && dst_ty == Ity_I64) {
-   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-   //   return assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-   //}
+   if (src_ty == Ity_I32 && dst_ty == Ity_I64) {
+      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+      return assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+   }
 
-   //if (src_ty == Ity_I32 && dst_ty == Ity_V128) {
-   //   /* PCast the arg, then clone it 4 times. */
-   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-   //   tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-   //   return assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
-   //}
+   if (src_ty == Ity_I32 && dst_ty == Ity_V128) {
+      /* PCast the arg, then clone it 4 times. */
+      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+      tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+      return assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
+   }
 
-   //if (src_ty == Ity_I32 && dst_ty == Ity_V256) {
-   //   /* PCast the arg, then clone it 8 times. */
-   //   IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
-   //   tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
-   //   tmp = assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
-   //   return assignNew('V', mce, Ity_V256, binop(Iop_V128HLtoV256, tmp, tmp));
-   //}
+   if (src_ty == Ity_I32 && dst_ty == Ity_V256) {
+      /* PCast the arg, then clone it 8 times. */
+      IRAtom* tmp = assignNew('V', mce, Ity_I32, unop(Iop_CmpwNEZ32, vbits));
+      tmp = assignNew('V', mce, Ity_I64, binop(Iop_32HLto64, tmp, tmp));
+      tmp = assignNew('V', mce, Ity_V128, binop(Iop_64HLtoV128, tmp, tmp));
+      return assignNew('V', mce, Ity_V256, binop(Iop_V128HLtoV256, tmp, tmp));
+   }
 
-   //if (src_ty == Ity_I64 && dst_ty == Ity_I32) {
-   //   /* PCast the arg.  This gives all 0s or all 1s.  Then throw away
-   //      the top half. */
-   //   IRAtom* tmp = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
-   //   return assignNew('V', mce, Ity_I32, unop(Iop_64to32, tmp));
-   //}
+   if (src_ty == Ity_I64 && dst_ty == Ity_I32) {
+      /* PCast the arg.  This gives all 0s or all 1s.  Then throw away
+         the top half. */
+      IRAtom* tmp = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, vbits));
+      return assignNew('V', mce, Ity_I32, unop(Iop_64to32, tmp));
+   }
 
-   //if (src_ty == Ity_V128 && dst_ty == Ity_I64) {
-   //   /* Use InterleaveHI64x2 to copy the top half of the vector into
-   //      the bottom half.  Then we can UifU it with the original, throw
-   //      away the upper half of the result, and PCast-I64-to-I64
-   //      the lower half. */
-   //   // Generates vbits[127:64] : vbits[127:64]
-   //   IRAtom* hi64hi64
-   //      = assignNew('V', mce, Ity_V128,
-   //                  binop(Iop_InterleaveHI64x2, vbits, vbits));
-   //   // Generates
-   //   //   UifU(vbits[127:64],vbits[127:64]) : UifU(vbits[127:64],vbits[63:0])
-   //   //   == vbits[127:64] : UifU(vbits[127:64],vbits[63:0])
-   //   IRAtom* lohi64
-   //      = mkUifUV128(mce, hi64hi64, vbits);
-   //   // Generates UifU(vbits[127:64],vbits[63:0])
-   //   IRAtom* lo64
-   //      = assignNew('V', mce, Ity_I64, unop(Iop_V128to64, lohi64));
-   //   // Generates
-   //   //   PCast-to-I64( UifU(vbits[127:64], vbits[63:0] )
-   //   //   == PCast-to-I64( vbits[127:0] )
-   //   IRAtom* res
-   //      = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, lo64));
-   //   return res;
-   //}
+   if (src_ty == Ity_V128 && dst_ty == Ity_I64) {
+      /* Use InterleaveHI64x2 to copy the top half of the vector into
+         the bottom half.  Then we can UifU it with the original, throw
+         away the upper half of the result, and PCast-I64-to-I64
+         the lower half. */
+      // Generates vbits[127:64] : vbits[127:64]
+      IRAtom* hi64hi64
+         = assignNew('V', mce, Ity_V128,
+                     binop(Iop_InterleaveHI64x2, vbits, vbits));
+      // Generates
+      //   UifU(vbits[127:64],vbits[127:64]) : UifU(vbits[127:64],vbits[63:0])
+      //   == vbits[127:64] : UifU(vbits[127:64],vbits[63:0])
+      IRAtom* lohi64
+         = mkUifUV128(mce, hi64hi64, vbits);
+      // Generates UifU(vbits[127:64],vbits[63:0])
+      IRAtom* lo64
+         = assignNew('V', mce, Ity_I64, unop(Iop_V128to64, lohi64));
+      // Generates
+      //   PCast-to-I64( UifU(vbits[127:64], vbits[63:0] )
+      //   == PCast-to-I64( vbits[127:0] )
+      IRAtom* res
+         = assignNew('V', mce, Ity_I64, unop(Iop_CmpwNEZ64, lo64));
+      return res;
+   }
 
    /* Else do it the slow way .. */
    /* First of all, collapse vbits down to a single bit. */
@@ -5894,13 +5894,20 @@ void create_dirty_EMIT ( MCEnv* mce,
    tl_assert( tyAddr == Ity_I32 || tyAddr == Ity_I64 );
    tl_assert(isShadowAtom(mce,vdata));
 
-   ty = typeOfIRExpr(mce->sb->tyenv, vdata);
+   ty = typeOfIRExpr(mce->sb->tyenv, data);
 
    /* Now decide which helper function to call */
    switch (ty) {
       case Ity_V256:
       case Ity_V128:
       case Ity_I128:
+      case Ity_F128:
+      case Ity_D128:
+      case Ity_D64:
+      case Ity_D32:
+      case Ity_F64:
+      case Ity_F32:
+      case Ity_F16:
       {
          helper = &TNT_(emit_insn1);
          hname  = "TNT_(emit_insn1)";
