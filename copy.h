@@ -79,7 +79,7 @@ IRStmt* mallocIRStmt_WrTmp(IRTemp tmp, IRExpr* data);
 IRStmt* mallocIRStmt_Store(IREndness end, IRExpr* addr, IRExpr* data);
 IRStmt* mallocIRStmt_Dirty(IRDirty* d);
 IRStmt* mallocIRStmt_MBE(IRMBusEvent event);
-IRStmt* mallocIRStmt_Exit(IRExpr* guard, IRJumpKind jk, IRConst* dst);
+IRStmt* mallocIRStmt_Exit(IRExpr* guard, IRJumpKind jk, IRConst* dst, Int offsIP);
 
 IRExpr** shallowMallocIRExprVec(IRExpr** vec);
 

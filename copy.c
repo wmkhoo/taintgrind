@@ -293,12 +293,13 @@ IRStmt* mallocIRStmt_MBE(IRMBusEvent event)
    s->Ist.MBE.event = event;
    return s;
 }
-IRStmt* mallocIRStmt_Exit(IRExpr* guard, IRJumpKind jk, IRConst* dst) {
+IRStmt* mallocIRStmt_Exit(IRExpr* guard, IRJumpKind jk, IRConst* dst, Int offsIP) {
    IRStmt* s         = VG_(malloc)("IRStmt", sizeof(IRStmt));
    s->tag            = Ist_Exit;
    s->Ist.Exit.guard = guard;
    s->Ist.Exit.jk    = jk;
    s->Ist.Exit.dst   = dst;
+   s->Ist.Exit.offsIP = offsIP;
    return s;
 }
 
@@ -450,7 +451,8 @@ IRStmt* deepMallocIRStmt(IRStmt* s)
       case Ist_Exit: 
          return mallocIRStmt_Exit(deepMallocIRExpr(s->Ist.Exit.guard),
                             s->Ist.Exit.jk,
-                            deepMallocIRConst(s->Ist.Exit.dst));
+                            deepMallocIRConst(s->Ist.Exit.dst),
+                            s->Ist.Exit.offsIP);
       default: 
          return NULL;
    }
