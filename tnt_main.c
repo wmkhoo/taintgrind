@@ -2496,7 +2496,7 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
       {
-         UInt reg = clone->Ist.Put.offset;
+         UInt reg = clone->Ist.Put.offset/(sizeof(UWord));
          check_reg( reg );
          ri[reg]++;
          break;
@@ -2505,7 +2505,8 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
       {
          UInt reg = get_geti_puti_reg(clone->Ist.PutI.details->descr,
                                       clone->Ist.PutI.details->ix,
-                                      clone->Ist.PutI.details->bias);
+                                      clone->Ist.PutI.details->bias)
+                    /(sizeof(UWord));
          check_reg( reg );
          ri[reg]++;
          break;
@@ -2839,7 +2840,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
       {
          if (!taint) break;
          // Since it's tainted, data must be RdTmp
-         UInt reg = clone->Ist.Put.offset;
+         UInt reg = clone->Ist.Put.offset/(sizeof(UWord));
          VG_(printf)("r%d_%d <-", reg, ri[reg]);
          print_info_flow_tmp(clone->Ist.Put.data, 1);
          break;
@@ -2850,7 +2851,8 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          // Since it's tainted, data must be RdTmp
          UInt reg = get_geti_puti_reg(clone->Ist.PutI.details->descr,
                                       clone->Ist.PutI.details->ix,
-                                      clone->Ist.PutI.details->bias);
+                                      clone->Ist.PutI.details->bias)
+                    /(sizeof(UWord));
          VG_(printf)("r%d_%d <-", reg, ri[reg]);
          print_info_flow_tmp(clone->Ist.PutI.details->data, 1);
          print_info_flow_tmp_indirect(clone->Ist.PutI.details->ix);
@@ -2934,7 +2936,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             {
                if (!taint) break;
 
-               UInt reg = e->Iex.Get.offset;
+               UInt reg = e->Iex.Get.offset/(sizeof(UWord));
                check_reg( reg );
 
                VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
@@ -2946,7 +2948,8 @@ void print_info_flow(IRStmt *clone, UWord taint) {
 
                UInt reg = get_geti_puti_reg(e->Iex.GetI.descr,
                                             e->Iex.GetI.ix,
-                                            e->Iex.GetI.bias);
+                                            e->Iex.GetI.bias)
+                          /(sizeof(UWord));
 
                VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
                print_info_flow_tmp(e->Iex.GetI.ix, 1);

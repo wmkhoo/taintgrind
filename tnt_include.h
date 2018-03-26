@@ -324,9 +324,9 @@ extern void TNT_(get_fnname)(ThreadId tid, const HChar** buf);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
 
-/* SMT2 functions */
+/* Arrays for keeping track of register/tmp SSA indices, values */
 #define TI_MAX 2100 
-#define RI_MAX 960 
+#define RI_MAX 240 
 #define VARNAMESIZE 1024 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
@@ -343,6 +343,7 @@ HChar *varname;
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
 
+/* SMT2 functions */
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
 extern void TNT_(smt2_load)     ( IRStmt *, UWord, UWord );
