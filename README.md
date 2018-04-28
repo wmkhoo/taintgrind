@@ -81,7 +81,7 @@ The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
 
 	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
 
-The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a).
+The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:12) and the variable name (a).
 Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t19\_9142 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target; for loads and stores, it is the data.
 Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 The 2 tainted if-statements should come up as
