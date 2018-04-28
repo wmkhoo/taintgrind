@@ -147,6 +147,7 @@ The first instruction indicates a byte (type I8, or int8\_t) is loaded from addr
 Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. Loads and stores have two possible useful run-time values: the address and the data being loaded/stored. We have simply chosen to print the data.
 Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 
+See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
 Notes
 -----
