@@ -58,12 +58,12 @@ A simple example is tests/sign32.c
 	{
 	    int a = 1000;
 	    // Defines int a as tainted
-	    TNT_MAKE_MEM_TAINTED_NAMED(&a,4,"myint");
+	    TNT_TAINT(&a,4,"myint");
 	    int s = get_sign(a);
 	    return s;
 	}
 
-The TNT_MAKE_MEM_TAINTED_NAMED client request taints a, which is 4 bytes in size.
+The TNT_TAINT client request taints a, which is 4 bytes in size.
 
 Compile with
 
@@ -75,13 +75,13 @@ Run with
 
 The first tainted instruction should be
 
-	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | t19_9142 <- a_1
+	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | t19_9142 <- a
 
 The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
 
 	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
 
-The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a_1).
+The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a).
 Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. For loads and stores, we have simply chosen to print the data.
 Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 The 2 tainted if-gotos should come up as
@@ -90,9 +90,6 @@ The 2 tainted if-gotos should come up as
 	0x80484B1: get_sign (sign32.c:4) | IF t6_14297 GOTO 0x80484b3 | 0x0 | 0x1 | t6_14297
 
 As expected, the conditions are both false, and are thus 0.
-Finally the return value of get\_sign should be
-
-	0x80484BA: get_sign (sign32.c:5) | r8_13565 = 0x1 | 0x1 | 0x0 | 
 	
 See [Detecting a classic buffer overflow](https://github.com/wmkhoo/taintgrind/wiki/Detecting-a-classic-buffer-overflow)
 
