@@ -8,7 +8,11 @@ def sanitise_var(varname):
 
     # dot will complain if var name starts with a number
     if re.match('^[0-9]',varname):
-        return 'g' + varname
+        varname = 'g' + varname
+
+    # dot will complain if var name contains a space
+    if ' ' in varname:
+        varname = varname.split(' ')[0]
     return varname
 
 
@@ -92,7 +96,7 @@ for line in data:
         # Get location/function of line
         loc = get_loc(line)
 
-        if "<-" in flow:
+        if " <- " in flow:
             (sink,sources) = flow.split(" <- ")
 
             for source in sources.split():
@@ -160,7 +164,7 @@ for line in data:
         # Get location/function of line
         loc = get_loc(line)
 
-        if "<-" in flow:
+        if " <- " in flow:
             (sink,sources) = flow.split(" <- ")
 
             for source in sources.split():
