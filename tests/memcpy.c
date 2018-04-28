@@ -10,7 +10,7 @@ int main() {
     totaintIn[1] = 'b';
     totaintIn[2] = 'c';
     totaintIn[3] = 0;
-    TNT_MAKE_MEM_TAINTED(totaintIn, 30);
+    TNT_TAINT(totaintIn, 30);
     memcpy( input, totaintIn, n );
     return 0;
 }

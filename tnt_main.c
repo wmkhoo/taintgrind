@@ -3642,15 +3642,15 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			callgate_nesting_depth--;
 			break;
 		}
-		case VG_USERREQ__TAINTGRIND_MAKE_MEM_TAINTED: {
+		case VG_USERREQ__TAINTGRIND_TAINT: {
                         TNT_(make_mem_tainted)(arg[1], arg[2]);
 			break;
 		}
-		case VG_USERREQ__TAINTGRIND_MAKE_MEM_TAINTED_NAMED: {
+		case VG_USERREQ__TAINTGRIND_TAINT_NAMED: {
                         TNT_(make_mem_tainted_named)(arg[1], arg[2], (const HChar *)arg[3]);
 			break;
 		}
-		case VG_USERREQ__TAINTGRIND_MAKE_MEM_UNTAINTED: {
+		case VG_USERREQ__TAINTGRIND_UNTAINT: {
 			TNT_(make_mem_untainted)(arg[1], arg[2]);
 			break;
 		}

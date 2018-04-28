@@ -10,7 +10,7 @@ int main(int argc, char **argv)
     //TNT_START_PRINT();
     short a = 1000;
     // Defines int a as tainted
-    TNT_MAKE_MEM_TAINTED(&a,2);
+    TNT_TAINT(&a,sizeof(a));
     int s = get_sign(a);
     // Turns off printing
     //TNT_STOP_PRINT();

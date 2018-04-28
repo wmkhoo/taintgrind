@@ -14,17 +14,9 @@ int get_sign(int x){
 }
 
 int main(int argc, char **argv){
-
 	int a = atoi(argv[1]);
-
-	// Turns on printing
-	TNT_START_PRINT();
-
 	//Defines int as tainted
-	TNT_MAKE_MEM_TAINTED_NAMED(&a,4,"myint");
+	TNT_TAINT(&a,sizeof(a));
 	int s = get_sign(a);
-
-	// Turns off printing
-	TNT_STOP_PRINT();
 	return s;
 }

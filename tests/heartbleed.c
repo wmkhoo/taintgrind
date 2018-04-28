@@ -89,7 +89,7 @@ dtls1_process_heartbeat(char *p)//SSL *s)
 int main () {
     char data[8] = {2,0,4,2,2,2,2,2};
 
-    TNT_MAKE_MEM_TAINTED(data, sizeof(data));
+    TNT_TAINT(data, sizeof(data));
     //TNT_START_PRINT();
 
     dtls1_process_heartbeat(data);
