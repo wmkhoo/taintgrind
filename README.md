@@ -48,22 +48,22 @@ A simple example
 
 A simple example is tests/sign32.c
 
-	#include "taintgrind.h"
-	int get_sign(int x) {
-	    if (x == 0) return 0;
-	    if (x < 0)  return -1;
-	    return 1;
-	}
-	int main(int argc, char **argv)
-	{
-	    int a = 1000;
-	    // Defines int a as tainted
-	    TNT_TAINT(&a,4,"myint");
-	    int s = get_sign(a);
-	    return s;
-	}
+	1  #include "taintgrind.h"
+	2  int get_sign(int x) {
+	3      if (x == 0) return 0;
+	4      if (x < 0)  return -1;
+	5      return 1;
+	6  }
+	7  int main(int argc, char **argv)
+	8  {
+	9      int a = 1000;
+	10     // Defines int a as tainted
+	11     TNT_TAINT(&a, sizeof(a));
+	12     int s = get_sign(a);
+	13     return s;
+	14 }
 
-The TNT_TAINT client request taints a, which is 4 bytes in size.
+The TNT_TAINT client request (defined in taintgrind.h) taints a.
 
 Compile with
 
@@ -71,23 +71,23 @@ Compile with
 
 Run with
 
-	[valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind ~/sign32
+	[../taintgrind] ../inst/bin/valgrind --tool=taintgrind tests/sign32
 
 The first tainted instruction should be
 
-	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | t19_9142 <- a
+	0x804855A: main (sign32.c:12) | t19_9142 = LDle:I32 t17_9300 | 0x3e8 | t19_9142 <- a
 
 The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
 
 	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
 
-The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a).
-Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. For loads and stores, we have simply chosen to print the data.
+The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a).
+Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t19\_9142 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target; for loads and stores, it is the data.
 Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
-The 2 tainted if-gotos should come up as
+The 2 tainted if-statements should come up as
 
-	0x80484A4: get_sign (sign32.c:3) | IF t28_3680 GOTO 0x80484a6 | 0x0 | 0x1 | t28_3680
-	0x80484B1: get_sign (sign32.c:4) | IF t6_14297 GOTO 0x80484b3 | 0x0 | 0x1 | t6_14297
+	0x80484A4: get_sign (sign32.c:3) | if(t28) { PUT(68) = 0x80484a6:I32.. } | 0x0 | t28_3680
+	0x80484B1: get_sign (sign32.c:4) | if(t6) { PUT(68) = 0x80484b3:I32.. | 0x0 | t6_14297
 
 As expected, the conditions are both false, and are thus 0.
 	
@@ -104,6 +104,11 @@ Create a Graphviz dot file with e.g.
 Visualise the graph with
 
 	> dot -Tpng sign32.dot -o sign32.png
+	
+Or, for larger graphs
+
+	> dot -Tsvg sign32.dot -o sign32.svg
+	
 ![Example taint graph](/images/sign32.png)
 
 
