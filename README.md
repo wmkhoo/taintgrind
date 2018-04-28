@@ -73,18 +73,17 @@ Run with
 
 	[valgrind-x.xx.x] ./inst/bin/valgrind --tool=taintgrind ~/sign32
 
-Should give the first instruction
-
-	0x8048507: main (sign32.c:10) | t12_9863 = r28_1696 I32 | 0xbeede088 | 0x0 |
-
-And the last instruction
-
-	0x804858B: main (sign32.c:16) | r16_8213 = 0x0 | 0x0 | 0x0 |
-
 The first tainted instruction should be
 
-	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | 0xffffffff | t19_9142 <- a_1
+	0x804855A: main (sign32.c:14) | t19_9142 = LOAD I32 t17_9300 | 0x3e8 | t19_9142 <- a_1
 
+The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
+
+	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
+
+The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (sign32.c:14) and the variable name (a_1).
+Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. For loads and stores, we have simply chosen to print the data.
+Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 The 2 tainted if-gotos should come up as
 
 	0x80484A4: get_sign (sign32.c:3) | IF t28_3680 GOTO 0x80484a6 | 0x0 | 0x1 | t28_3680
@@ -134,18 +133,6 @@ Run without any parameters, taintgrind will not taint anything and the program o
 Run Taintgrind with e.g.
 
 	> valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
-
-The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
-
-	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
-	0x8049A1B: lm_init (deflate.c:345) | t24_1 = LOAD I8 0x8097ae0 | 0x61 | t24_1 <- window
-
-The first instruction indicates a byte (type I8, or int8\_t) is loaded from address 0x8097ae0 into temporary variable t24\_1. Its run-time value is 0x61. The information flow indicates that taint is flowing from 0x8097ae0 (or window symbol) to t24\_1. An instruction with no tainted variables will not have information flow. With debugging information, taintgrind can list the source location (lm\_init at deflate.c:345) and the variable name (window).
-
-	0x8049A1B: lm_init (deflate.c:345) | t23_1 = 8Sto16 t24_1 | 0x61 | t23_1 <- t24_1
-
-Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t23\_1 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target. Loads and stores have two possible useful run-time values: the address and the data being loaded/stored. We have simply chosen to print the data.
-Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 
 See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
