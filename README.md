@@ -103,6 +103,7 @@ Create a Graphviz dot file with e.g.
 
 Visualise the graph with
 
+	> sudo apt install graphviz
 	> dot -Tpng sign32.dot -o sign32.png
 	
 Or, for larger graphs
