@@ -319,7 +319,7 @@ extern UInt callgate_nesting_depth;
 extern const char* syscallnames[];
 
 /* Utility functions */
-extern void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize);
+extern Int TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize);
 extern void TNT_(get_fnname)(ThreadId tid, const HChar** buf);
 extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);

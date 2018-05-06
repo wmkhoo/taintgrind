@@ -6,6 +6,14 @@ def sanitise_var(varname):
     # dot will complain if we have strange chars
     varname = varname.replace('[','_').replace(']','_')
 
+    # E.g. <address>_unknownobj -> a<address>
+    if "_unknownobj" in varname:
+        varname = 'a' + varname.split("_unknownobj")[0]
+
+    # E.g. <varname>:<address> -> a<address>
+    if ":" in varname:
+        varname = 'a' + varname.split(":")[1]
+
     # dot will complain if var name starts with a number
     if re.match('^[0-9]',varname):
         varname = 'g' + varname
@@ -25,11 +33,14 @@ def get_loc(line):
     return line.split()[1] 
 
 
+# g:     array to collect nodes by function
+# label: node label
+# loc:   function
 def add_node(g, label, loc):
     if loc not in g:
         g[loc] = ""
-
-    g[loc] += "    %s\n" % (label)
+    elif label not in g[loc]:
+        g[loc] += "    %s\n" % (label)
 
     return g
 

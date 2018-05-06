@@ -2869,25 +2869,29 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             UInt atmp    = addr->Iex.RdTmp.tmp;
             tl_assert( atmp < TI_MAX );
             address = tv[atmp];
-            TNT_(describe_data)(address, varname, VARNAMESIZE);
+            Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
 
             if (data->tag == Iex_RdTmp) {
                UInt dtmp    = data->Iex.RdTmp.tmp;
 
                if ( is_tainted(dtmp) && is_tainted(atmp) ) {
-                  VG_(printf)( "%s <-", varname );
+                  if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+                  else            VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data, 1);
                   print_info_flow_tmp_indirect(addr);
                } else if ( is_tainted(dtmp) ) {
-                  VG_(printf)( "%s <-", varname );
+                  if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+                  else            VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp(data, 1);
                } else if ( is_tainted(atmp) ) {
-                  VG_(printf)( "%s <-", varname );
+                  if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+                  else            VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp_indirect(addr);
                }
             } else {
                if ( is_tainted(atmp) ) {
-                  VG_(printf)( "%s <-", varname );
+                  if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+                  else            VG_(printf)( "%s <-", varname );
                   print_info_flow_tmp_indirect(addr);
                }
             }
@@ -2895,12 +2899,13 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          // Case 2: Address is Const
             UInt dtmp    = data->Iex.RdTmp.tmp;
             address = extract_IRConst64(addr->Iex.Const.con);
-            TNT_(describe_data)(address, varname, VARNAMESIZE);
+            Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
 
             tl_assert( dtmp < TI_MAX );
 
             if ( is_tainted(dtmp) ) {
-               VG_(printf)( "%s <-", varname );
+               if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+               else            VG_(printf)( "%s <-", varname );
                print_info_flow_tmp(data, 1);
             }
          }
@@ -3005,13 +3010,15 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                   UInt atmp    = addr->Iex.RdTmp.tmp;
                   tl_assert( atmp < TI_MAX );
                   address = tv[atmp];
-                  TNT_(describe_data)(address, varname, VARNAMESIZE);
+                  Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
 
                   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     if (success)    VG_(printf)( ":%llx", address);
                      print_info_flow_tmp_indirect(addr);
                   } else if ( is_tainted(ltmp) ) {
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     if (success)    VG_(printf)( ":%llx", address);
                   } else if ( is_tainted(atmp) ) {
                      VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
                      print_info_flow_tmp_indirect(addr);
@@ -3020,8 +3027,9 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                // Case 2: Address is Constant
                   if ( is_tainted(ltmp) ) {
                      address = extract_IRConst64(addr->Iex.Const.con);
-                     TNT_(describe_data)(address, varname, VARNAMESIZE);
+                     Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
                      VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     if (success)    VG_(printf)( ":%llx", address);
                   }
                }
                break;
@@ -3279,7 +3287,13 @@ static void processDescr1(XArray* descr1, HChar* varnamebuf, UInt bufsize)
    //VG_(printf)("Addr: %x, Var: %s\n", addr, varnamebuf);
 }
 
-void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
+
+// Attempts to get a meaningful variable name for a given address
+// In: addr
+// Out: varnamebuf
+// Returns: 1 if successful
+//          0 otherwise, varnamebuf is assigned "AAAAAA_unknownobj"
+Int TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
         // get_datasym_and_offset seems to cause memory errors
 #if 0
         const HChar *cvarname;
@@ -3304,14 +3318,14 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
            tl_assert(len < bufsize);
            VG_(strncpy)(varnamebuf, ai.Addr.DataSym.name, bufsize-1);
            varnamebuf[len] = '\0';
-           return;
+           return 1;
 
         } else if ( ai.tag == Addr_Variable )
         {
            //VG_(printf)("descr1 %s\n", VG_(indexXA)(ai.Addr.Variable.descr1,0) );
            //VG_(printf)("descr2 %s\n", VG_(indexXA)(ai.Addr.Variable.descr2,0) );
            processDescr1(ai.Addr.Variable.descr1, varnamebuf, bufsize);
-           return;
+           return 1;
         } else //if ( ai.tag == Addr_Stack )
         {
 	   // now let's try for local var
@@ -3401,6 +3415,7 @@ void TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
 //      //*loc = GlobalFromElsewhere;
 //	   }
 //	}
+   return 0;
 }
 
 
