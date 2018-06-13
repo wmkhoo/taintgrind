@@ -5,6 +5,7 @@ import re
 def sanitise_var(varname):
     # dot will complain if we have strange chars
     varname = varname.replace('[','_').replace(']','_')
+    varname = varname.replace('.','_').replace('.','_')
 
     # E.g. <address>_unknownobj -> a<address>
     if "_unknownobj" in varname:
