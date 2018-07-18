@@ -547,13 +547,11 @@ case "$ARCH_MAX-$VGCONF_OS" in
            valt_load_address_pri_inner="0x38000000"
 	else
            VGCONF_ARCH_PRI="amd64"
-           VGCONF_ARCH_SEC="x86"
+           VGCONF_ARCH_SEC=""
 	   VGCONF_PLATFORM_PRI_CAPS="AMD64_LINUX"
-	   VGCONF_PLATFORM_SEC_CAPS="X86_LINUX"
+	   VGCONF_PLATFORM_SEC_CAPS=""
            valt_load_address_pri_norml="0x58000000"
            valt_load_address_pri_inner="0x38000000"
-           valt_load_address_sec_norml="0x58000000"
-           valt_load_address_sec_inner="0x38000000"
 	fi
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
 	;;
