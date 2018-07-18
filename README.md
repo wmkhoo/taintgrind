@@ -1,6 +1,8 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2018-07-18 Display native assembly instead of VEX
+
 2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
 
 2015-10-06 Support for Valgrind 3.11.0, x86\_linux and amd64\_linux
@@ -20,28 +22,43 @@ Taintgrind: a Valgrind taint analysis tool
 Installation
 ------------
 
-1. Download [Valgrind](http://valgrind.org) and build
+1. Download and build [Valgrind](http://valgrind.org)
 
 
-		[me@machine ~/] tar jxvf valgrind-X.X.X.tar.bz2
-		[me@machine ~/] cd valgrind-X.X.X
-		[me@machine ~/valgrind-X.X.X] ./autogen.sh
-		[me@machine ~/valgrind-X.X.X] ./configure --prefix=`pwd`/inst
-		[me@machine ~/valgrind-X.X.X] make && make install
+		~$ tar jxvf valgrind-X.X.X.tar.bz2
+		~$ cd valgrind-X.X.X
+		~/valgrind-X.X.X$ ./autogen.sh
+		~/valgrind-X.X.X$ ./configure --prefix=`pwd`/inst
+		~/valgrind-X.X.X$ make && make install
 
-2. Git clone and build taintgrind
-
-
-		[me@machine ~/valgrind-X.X.X] git clone http://github.com/wmkhoo/taintgrind.git
-		[me@machine ~/valgrind-X.X.X] cd taintgrind 
-		[me@machine ~/valgrind-X.X.X/taintgrind] ../autogen.sh
-		[me@machine ~/valgrind-X.X.X/taintgrind] ./configure --prefix=`pwd`/../inst
-		[me@machine ~/valgrind-X.X.X/taintgrind] make && make install
-
-3. To compile examples in tests/
+2. Git clone taintgrind
 
 
-		[me@machine ~/valgrind-X.X.X/taintgrind] make check
+		~/valgrind-X.X.X$ git clone http://github.com/wmkhoo/taintgrind.git
+		~/valgrind-X.X.X$ cd taintgrind 
+
+3. Download and build [Capstone](http://github.com/aquynh/capstone)
+
+
+		~/valgrind-X.X.X/taintgrind$ wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone-3.0.4.tar.gz
+		~/valgrind-X.X.X/taintgrind$ tar zxvf capstone-3.0.4.tar.gz
+ 		~/valgrind-X.X.X/taintgrind$ sh configure_capstone.sh `pwd`/../inst
+ 		~/valgrind-X.X.X/taintgrind$ cd capstone-3.0.4
+ 		~/valgrind-X.X.X/taintgrind/capstone-3.0.4$ sh make_capstone.sh
+		~/valgrind-X.X.X/taintgrind/capstone-3.0.4$ cd ..
+
+4. Build taintgrind
+
+
+		~/valgrind-X.X.X/taintgrind$ ../autogen.sh
+		~/valgrind-X.X.X/taintgrind$ ./configure --prefix=`pwd`/../inst
+		~/valgrind-X.X.X/taintgrind$ make && make install
+
+
+5. To compile examples in tests/
+
+
+		~/valgrind-X.X.X/taintgrind$ make check
 
 A simple example
 ----------------
@@ -67,27 +84,26 @@ The TNT_TAINT client request (defined in taintgrind.h) taints a.
 
 Compile with
 
-	[../taintgrind] make check
+	../taintgrind$ make check
 
 Run with
 
-	[../taintgrind] ../inst/bin/valgrind --tool=taintgrind tests/sign32
+	../taintgrind$ ../inst/bin/valgrind --tool=taintgrind tests/sign32
 
 The first tainted instruction should be
 
-	0x804855A: main (sign32.c:12) | t19_9142 = LDle:I32 t17_9300 | 0x3e8 | t19_9142 <- a
+	0x40085E: main (sign32.c:12) | mov eax, dword ptr [rbp - 0x50] | Load | 0x3e8 | t22_6357 <- a:1ffefffce0
 
-The output of taintgrind is a list of Valgrind IR (VEX) statements of the form
+The output of taintgrind is of the form
 
-	Address/Location | VEX-IRStmt | Runtime value(s) | Information flow
+	Address/Location | Assembly instruction | Instruction type | Runtime value(s) | Information flow
 
-The first instruction indicates a byte (type I32, or int32\_t) is loaded from a into temporary variable t19\_9142. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:12) and the variable name (a).
+The first instruction indicates an integer is loaded from a into temporary variable t22\_6357. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:12) and the variable name (a).
 Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t19\_9142 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target; for loads and stores, it is the data.
-Details of VEX operators and IRStmts can be found in VEX/pub/libvex\_ir.h .
 The 2 tainted if-statements should come up as
 
-	0x80484A4: get_sign (sign32.c:3) | if(t28) { PUT(68) = 0x80484a6:I32.. } | 0x0 | t28_3680
-	0x80484B1: get_sign (sign32.c:4) | if(t6) { PUT(68) = 0x80484b3:I32.. | 0x0 | t6_14297
+	0x4007C3: get_sign (sign32.c:3) | jne 0x4007cc | IfGoto | 0x0 | t40_2439
+	0x4007D0: get_sign (sign32.c:4) | jns 0x4007d9 | IfGoto | 0x0 | t8_7931
 
 As expected, the conditions are both false, and are thus 0.
 	
@@ -99,16 +115,16 @@ Graph Visualisation
 
 Create a Graphviz dot file with e.g.
 
-	> valgrind --tool=taintgrind tests/sign32 2>&1 | python log2dot.py > sign32.dot
+	$ valgrind --tool=taintgrind tests/sign32 2>&1 | python log2dot.py > sign32.dot
 
 Visualise the graph with
 
-	> sudo apt install graphviz
-	> dot -Tpng sign32.dot -o sign32.png
+	$ sudo apt install graphviz
+	$ dot -Tpng sign32.dot -o sign32.png
 	
 Or, for larger graphs
 
-	> dot -Tsvg sign32.dot -o sign32.svg
+	$ dot -Tsvg sign32.dot -o sign32.svg
 	
 ![Example taint graph](/images/sign32.png)
 
@@ -117,7 +133,7 @@ Or, for larger graphs
 Tainting file input
 -------------------
 
-	[me@machine ~/valgrind-X.X.X] ./inst/bin/valgrind --tool=taintgrind --help
+	~/valgrind-X.X.X/taintgrind$ ../inst/bin/valgrind --tool=taintgrind --help
 	...
 	user options for Taintgrind:
 	    --file-filter=<full_path>   full path of file to taint [""]
@@ -135,7 +151,7 @@ Run without any parameters, taintgrind will not taint anything and the program o
 
 Run Taintgrind with e.g.
 
-	> valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
+	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
 See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
