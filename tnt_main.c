@@ -49,6 +49,7 @@
 #include "tnt_include.h"
 #include "tnt_strings.h"
 #include "tnt_structs.h"
+#include "tnt_asm.h"
 
 
 /*------------------------------------------------------------*/
@@ -2689,6 +2690,7 @@ void print_insn_type(IRStmt *clone, UWord value, UWord taint) {
    switch (clone->tag) {
       case Ist_Put:
       case Ist_PutI:
+         VG_(printf)(" | ");
          return;
       case Ist_WrTmp:
       {
@@ -2697,15 +2699,16 @@ void print_insn_type(IRStmt *clone, UWord value, UWord taint) {
             case Iex_Get:
             case Iex_GetI:
             case Iex_RdTmp:
+               VG_(printf)(" | ");
                return;
             case Iex_Qop:
-               ppIROp(data->Iex.Qop.details->op);
+               //ppIROp(data->Iex.Qop.details->op);
                break;
             case Iex_Triop:
-               ppIROp(data->Iex.Triop.details->op);
+               //ppIROp(data->Iex.Triop.details->op);
                break;
             case Iex_Binop:
-               ppIROp(data->Iex.Binop.op);
+               //ppIROp(data->Iex.Binop.op);
                break;
             case Iex_Unop:
             {
@@ -2743,48 +2746,51 @@ void print_insn_type(IRStmt *clone, UWord value, UWord taint) {
                   case Iop_64HIto32:  
                   case Iop_128to64:   
                   case Iop_128HIto64: 
+                     VG_(printf)(" | ");
                      return;
                   default:  break;
                }
-               ppIROp(data->Iex.Unop.op);
+               //ppIROp(data->Iex.Unop.op);
                break;
             }
             case Iex_Load:
-               ppIRStmt(clone);
+               //ppIRStmt(clone);
                VG_(printf)(" | ");
                VG_(printf)("Load");
                break;
             case Iex_ITE:
-               ppIRStmt(clone);
+               //ppIRStmt(clone);
                VG_(printf)(" | ");
                VG_(printf)("ITE");
                break;
             case Iex_CCall:
-               ppIRStmt(clone);
+               //ppIRStmt(clone);
                VG_(printf)(" | ");
                VG_(printf)("%s", data->Iex.CCall.cee->name);
                break;
             default:
+               VG_(printf)(" | ");
                return;
          }
          break;
       }
       case Ist_Store:
-         ppIRStmt(clone);
+         //ppIRStmt(clone);
          VG_(printf)(" | ");
          VG_(printf)("Store");
          break;
       case Ist_Dirty:
-         ppIRStmt(clone);
+         //ppIRStmt(clone);
          VG_(printf)(" | ");
          VG_(printf)("%s", clone->Ist.Dirty.details->cee->name);
          break;
       case Ist_Exit:
-         ppIRStmt(clone);
+         //ppIRStmt(clone);
          VG_(printf)(" | ");
          VG_(printf)("IfGoto");
          break;
       default:
+         VG_(printf)(" | ");
          return;
    }
 
@@ -3093,9 +3099,13 @@ void TNT_(emit_insn) (
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
+   // Print asm
+   char assem[128] = "\0";
+   tl_assert ( TNT_(asm_guest_pprint)(pc, 16, assem, sizeof(assem) ) && "Failed TNT_(asm_guest_pprint)");
+   VG_(printf)("%s", assem);
+
    // Print VEX IRStmt and type for log2dot.py
    print_insn_type(clone, value, taint);
-   //VG_(printf)(" | ");
 
    //if ( istty && taint ) VG_(printf)("%s", KRED);
    //if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
@@ -3133,9 +3143,13 @@ void TNT_(emit_insn1) (
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
+   // Print asm
+   char assem[128] = "\0";
+   tl_assert ( TNT_(asm_guest_pprint)(pc, 16, assem, sizeof(assem) ) && "Failed TNT_(asm_guest_pprint)");
+   VG_(printf)("%s", assem);
+
    // Print VEX IRStmt and type for log2dot.py
    print_insn_type(clone, 0, taint);
-   //VG_(printf)(" | ");
 
    // Print run-time value
    // We don't know this, so print ???
@@ -3847,6 +3861,10 @@ static void tnt_post_clo_init(void)
 
    // If taint-stdin=yes, prepare stdin for tainting
    TNT_(setup_tainted_map)();
+
+   if (! TNT_(asm_init)() ) {
+      VG_(tool_panic)("tnt_main.c: tnt_post_clo_init: assembly engine initialization failed");
+   }
 }
 
 static void tnt_fini(Int exitcode)
