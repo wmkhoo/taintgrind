@@ -2452,6 +2452,7 @@ int istty = 0;
 
 // macros
 #define KRED "\e[31m"
+#define KGRN "\e[32m"
 #define KMAG "\e[35m"
 #define KNRM "\e[0m"
 
@@ -2690,7 +2691,9 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
 void print_asm(ULong pc) {
    char assem[128] = "\0";
    tl_assert ( TNT_(asm_guest_pprint)(pc, 16, assem, sizeof(assem) ) && "Failed TNT_(asm_guest_pprint)");
+   if ( istty ) VG_(printf)("%s", KGRN);
    VG_(printf)("%s", assem);
+   if ( istty ) VG_(printf)("%s", KNRM);
 }
 
 
