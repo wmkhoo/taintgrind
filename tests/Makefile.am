@@ -33,4 +33,4 @@ signstdin2_CFLAGS = -I../ -I../../include -g -O0
 taint_stdin_SOURCES = taint_stdin.c
 taint_stdin_CFLAGS = -I../ -I../../include -g -O0
 misprint_SOURCES = misprint.c
-misprint_CFLAGS = -I../ -I../../include -g -O0 -fno-inline -fno-omit-frame-pointer -fno-stack-protector -m32
+misprint_CFLAGS = -I../ -I../../include -g -O0 -fno-inline -fno-omit-frame-pointer -fno-stack-protector
