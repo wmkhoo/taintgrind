@@ -1,6 +1,8 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2018-07-19 Support for Docker
+
 2018-07-18 Display native assembly instead of VEX
 
 2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
@@ -18,9 +20,23 @@ Taintgrind: a Valgrind taint analysis tool
 2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
 
 
+Installation (using Docker)
+---------------------------
 
-Installation
-------------
+Make sure you have Docker installed. Then do:
+
+	~$ git clone http://github.com/wmkhoo/taintgrind
+	~$ cd taintgrind 
+	~/taintgrind$ docker build -t taintgrind .
+
+After the container is built, you can run taintgrind by doing
+
+	~/taintgrind$ sudo docker run -it --rm -v $(pwd):/pwd taintgrind <ARGUMENTS>
+	~/taintgrind$ sudo docker run -it --rm -v $(pwd):/pwd taintgrind tests/sign32
+
+
+Installation (from source)
+--------------------------
 
 1. Download and build [Valgrind](http://valgrind.org)
 
