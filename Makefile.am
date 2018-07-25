@@ -23,7 +23,6 @@ endif
 
 TAINTGRIND_SOURCES_COMMON = \
 	tnt_syswrap.c \
-	tnt_malloc_wrappers.c \
 	tnt_main.c \
 	tnt_translate.c \
         copy.c \
@@ -69,45 +68,4 @@ taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LINK = \
 endif
 
 tnt_main.o: CFLAGS += -fomit-frame-pointer
-
-#----------------------------------------------------------------------------
-# vgpreload_taintgrind-<platform>.so
-#----------------------------------------------------------------------------
-
-noinst_PROGRAMS += vgpreload_taintgrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@.so
-if VGCONF_HAVE_PLATFORM_SEC
-noinst_PROGRAMS += vgpreload_taintgrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@.so
-endif
-
-if VGCONF_OS_IS_DARWIN
-noinst_DSYMS = $(noinst_PROGRAMS)
-endif
-
-#VGPRELOAD_TAINTGRIND_SOURCES_COMMON = tnt_replace_strmem.c
-
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_SOURCES      = \
-        $(VGPRELOAD_TAINTGRIND_SOURCES_COMMON)
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_CPPFLAGS     = \
-	$(AM_CPPFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_CFLAGS       = \
-	$(AM_CFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) $(AM_CFLAGS_PIC) -O2
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_DEPENDENCIES = \
-	$(LIBREPLACEMALLOC_@VGCONF_PLATFORM_PRI_CAPS@)
-vgpreload_taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_so_LDFLAGS      = \
-	$(PRELOAD_LDFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) \
-	$(LIBREPLACEMALLOC_LDFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
-if VGCONF_HAVE_PLATFORM_SEC
-vgpreload_taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_so_SOURCES      =
-vgpreload_taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_so_CPPFLAGS     = \
-	$(AM_CPPFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
-vgpreload_taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_so_CFLAGS       = \
-	$(AM_CFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) $(AM_CFLAGS_PIC) -O2
-vgpreload_taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_so_DEPENDENCIES = \
-	$(LIBREPLACEMALLOC_@VGCONF_PLATFORM_SEC_CAPS@)
-vgpreload_taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_so_LDFLAGS      = \
-	$(PRELOAD_LDFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) \
-	$(LIBREPLACEMALLOC_LDFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
-endif
-
-#tnt_replace_strmem.o: CFLAGS += -fno-omit-frame-pointer
 

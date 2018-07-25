@@ -3907,25 +3907,8 @@ static void tnt_pre_clo_init(void)
                                    tnt_print_usage,
                                    tnt_print_debug_usage);
 
-   VG_(needs_malloc_replacement)  (TNT_(malloc),
-                                   TNT_(__builtin_new),
-                                   TNT_(__builtin_vec_new),
-                                   TNT_(memalign),
-                                   TNT_(calloc),
-                                   TNT_(free),
-                                   TNT_(__builtin_delete),
-                                   TNT_(__builtin_vec_delete),
-                                   TNT_(realloc),
-                                   TNT_(malloc_usable_size),
-                                   TNT_MALLOC_REDZONE_SZB );
-
    VG_(needs_client_requests)  (TNT_(handle_client_requests));
 
-   // Taintgrind: Needed for tnt_malloc_wrappers.c
-   TNT_(malloc_list)  = VG_(HT_construct)( "TNT_(malloc_list)" );
-//   TNT_(mempool_list) = VG_(HT_construct)( "TNT_(mempool_list)" );
-
-//   VG_(track_new_mem_mmap)        ( tnt_new_mem_mmap );
    VG_(track_copy_mem_remap)      ( TNT_(copy_address_range_state) );
    VG_(track_die_mem_stack_signal)( TNT_(make_mem_untainted) );
    VG_(track_die_mem_brk)         ( TNT_(make_mem_untainted) );

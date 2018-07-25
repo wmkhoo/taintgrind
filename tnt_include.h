@@ -159,89 +159,12 @@ extern Bool   TNT_(clo_smt2);
 /* Functions defined in malloc_wrappers.c */
 #define TNT_MALLOC_REDZONE_SZB    16
 
-#if 0
-/* For malloc()/new/new[] vs. free()/delete/delete[] mismatch checking. */
-typedef
-   enum {
-      TNT_AllocMalloc = 0,
-      TNT_AllocNew    = 1,
-      TNT_AllocNewVec = 2,
-      TNT_AllocCustom = 3
-   }
-   TNT_AllocKind;
-#endif
-
-/* This describes a heap block. Nb: first two fields must match core's
- * VgHashNode. */
-typedef
-   struct _HP_Chunk {
-      struct _HP_Chunk* next;
-      Addr         data;            // Address of the actual block.
-      SizeT        req_szB;         // Size requested
-      SizeT        slop_szB;        // Extra bytes given above those requested
-   }
-   HP_Chunk;
-#if 0
-/* Memory pool.  Nb: first two fields must match core's VgHashNode. */
-typedef
-   struct _TNT_Mempool {
-      struct _TNT_Mempool* next;
-      Addr          pool;           // pool identifier
-      SizeT         rzB;            // pool red-zone size
-      Bool          is_zeroed;      // allocations from this pool are zeroed
-      VgHashTable   chunks;         // chunks associated with this pool
-   }
-   TNT_Mempool;
-
-
-void* TNT_(new_block)  ( ThreadId tid,
-                        Addr p, SizeT size, SizeT align,
-                        Bool is_zeroed, TNT_AllocKind kind,
-                        VgHashTable table);
-void TNT_(handle_free) ( ThreadId tid,
-                        Addr p, UInt rzB, TNT_AllocKind kind );
-
-void TNT_(create_mempool)  ( Addr pool, UInt rzB, Bool is_zeroed );
-void TNT_(destroy_mempool) ( Addr pool );
-void TNT_(mempool_alloc)   ( ThreadId tid, Addr pool,
-                            Addr addr, SizeT size );
-void TNT_(mempool_free)    ( Addr pool, Addr addr );
-void TNT_(mempool_trim)    ( Addr pool, Addr addr, SizeT size );
-void TNT_(move_mempool)    ( Addr poolA, Addr poolB );
-void TNT_(mempool_change)  ( Addr pool, Addr addrA, Addr addrB, SizeT size );
-Bool TNT_(mempool_exists)  ( Addr pool );
-
-TNT_Chunk* TNT_(get_freed_list_head)( void );
-#endif
-
-/* For tracking malloc'd blocks.  Nb: it's quite important that it's a
-   VgHashTable, because VgHashTable allows duplicate keys without complaint.
-   This can occur if a user marks a malloc() block as also a custom block with
-   MALLOCLIKE_BLOCK. */
-extern VgHashTable *TNT_(malloc_list);
-
-/* For tracking memory pools. */
-//extern VgHashTable TNT_(mempool_list);
-
 /* Shadow memory functions */
 Bool TNT_(check_mem_is_noaccess)( Addr a, SizeT len, Addr* bad_addr );
 void TNT_(make_mem_noaccess)        ( Addr a, SizeT len );
 void TNT_(make_mem_undefined_w_otag)( Addr a, SizeT len, UInt otag );
 void TNT_(make_mem_defined)         ( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
-
-void TNT_(print_malloc_stats) ( void );
-
-void* TNT_(malloc)               ( ThreadId tid, SizeT n );
-void* TNT_(__builtin_new)        ( ThreadId tid, SizeT n );
-void* TNT_(__builtin_vec_new)    ( ThreadId tid, SizeT n );
-void* TNT_(memalign)             ( ThreadId tid, SizeT align, SizeT n );
-void* TNT_(calloc)               ( ThreadId tid, SizeT nmemb, SizeT size1 );
-void  TNT_(free)                 ( ThreadId tid, void* p );
-void  TNT_(__builtin_delete)     ( ThreadId tid, void* p );
-void  TNT_(__builtin_vec_delete) ( ThreadId tid, void* p );
-void* TNT_(realloc)              ( ThreadId tid, void* p, SizeT new_size );
-SizeT TNT_(malloc_usable_size)   ( ThreadId tid, void* p );
 
 
 /* Functions defined in tnt_syswrap.c */
