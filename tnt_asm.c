@@ -77,6 +77,11 @@ static cs_insn *insn 	= 	(void*)INVALID;
 static cs_arch arch	=	INVALID;
 static cs_mode mode 	=	INVALID;
 
+#if defined(VGA_arm)
+static csh handle2 	= 	INVALID;
+static cs_mode mode2 	=	INVALID;
+#endif
+
 static Bool is_init(void) {
 	return (handle != INVALID && arch != INVALID && mode != INVALID);
 }
@@ -137,7 +142,8 @@ Bool TNT_(asm_init)(void) {
 #elif defined(VGA_arm)
 
 	arch = CS_ARCH_ARM;
-	mode = CS_MODE_ARM | CS_MODE_THUMB;	// default I think
+	mode = CS_MODE_ARM;	// default
+	mode2 = CS_MODE_THUMB;	// if ARM mode fails
 	
 #elif defined(VGA_arm64)
 
@@ -167,7 +173,12 @@ Bool TNT_(asm_init)(void) {
 		VG_(printf)("Failed cs_open");
 		goto end; 
 	}
-	
+#if defined(VGA_arm)
+	if ( (err=cs_open(arch, mode2, &handle2)) != CS_ERR_OK) { 
+		VG_(printf)("Failed cs_open");
+		goto end; 
+	}
+#endif
 	//// use AT&T syntax -- not sure this will fail on non-intel platforms...
 	//if ( (err=cs_option(handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_ATT)) != CS_ERR_OK) {
 	//	VG_(printf)("Failed cs_option. Make your capstone was NOT compiled with CAPSTONE_X86_ATT_DISABLE");
@@ -196,17 +207,22 @@ Bool TNT_(asm_guest_pprint)(Addr a, SizeT len, char *out, SizeT olen) {
 	// see http://www.capstone-engine.org/lang_c.html
 	count = cs_disasm(handle, (uint8_t*)a, len, a, 0, &insn);
 	if (count > 0) {
-		//size_t j;
-                // Only copy the first instruction
-		//for (j = 0; j < count; j++) {
-                VG_(snprintf)(out, olen, "%s %s", insn[0].mnemonic, insn[0].op_str);
-			//VG_(snprintf)(out, olen, "0x%"PRIx64":\t%s\t\t%s\n", insn[j].address, insn[j].mnemonic,
-            //      insn[j].op_str);
-		//}
- 
-		cs_free(insn, count);
-		ret = True;
+           // Only copy the first instruction
+           VG_(snprintf)(out, olen, "%s %s", insn[0].mnemonic, insn[0].op_str);
+	   cs_free(insn, count);
+	   ret = True;
 	}
+#if defined(VGA_arm)
+	else { // if primary mode fails, try secondary mode
+	   count = cs_disasm(handle2, (uint8_t*)a, len, a, 0, &insn);
+	   if (count > 0) {
+              // Only copy the first instruction
+              VG_(snprintf)(out, olen, "%s %s", insn[0].mnemonic, insn[0].op_str);
+	      cs_free(insn, count);
+	      ret = True;
+	   }
+        }
+#endif
  
 	return ret;
 }
