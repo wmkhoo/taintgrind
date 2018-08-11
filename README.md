@@ -38,14 +38,12 @@ After the container is built, you can run taintgrind by doing
 Installation (from source)
 --------------------------
 
-1. Download and build [Valgrind](http://valgrind.org)
+1. Download [Valgrind](http://valgrind.org)
 
 
 		~$ tar jxvf valgrind-X.X.X.tar.bz2
 		~$ cd valgrind-X.X.X
-		~/valgrind-X.X.X$ ./autogen.sh
-		~/valgrind-X.X.X$ ./configure --prefix=`pwd`/inst
-		~/valgrind-X.X.X$ make && make install
+		~/valgrind-X.X.X$ 
 
 2. Git clone taintgrind
 
@@ -53,28 +51,38 @@ Installation (from source)
 		~/valgrind-X.X.X$ git clone http://github.com/wmkhoo/taintgrind.git
 		~/valgrind-X.X.X$ cd taintgrind 
 
-3. Download and build [Capstone](http://github.com/aquynh/capstone)
+3. Run build_taintgrind.sh (to build valgrind, taintgrind and [Capstone](http://github.com/aquynh/capstone))
 
 
-		~/valgrind-X.X.X/taintgrind$ wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone-3.0.4.tar.gz
-		~/valgrind-X.X.X/taintgrind$ tar zxvf capstone-3.0.4.tar.gz
- 		~/valgrind-X.X.X/taintgrind$ sh configure_capstone.sh `pwd`/../inst
- 		~/valgrind-X.X.X/taintgrind$ cd capstone-3.0.4
- 		~/valgrind-X.X.X/taintgrind/capstone-3.0.4$ sh make_capstone.sh
-		~/valgrind-X.X.X/taintgrind/capstone-3.0.4$ cd ..
-
-4. Build taintgrind
+The script does the following:
 
 
-		~/valgrind-X.X.X/taintgrind$ ../autogen.sh
-		~/valgrind-X.X.X/taintgrind$ ./configure --prefix=`pwd`/../inst
-		~/valgrind-X.X.X/taintgrind$ make && make install
+		# Patch valgrind-3.13
+		patch -d ../ -p0 < d3basics.patch
+		
+		# Build valgrind
+		cd ../ && \
+		    ./autogen.sh && \
+		    ./configure --prefix=`pwd`/build && \
+		    make && \
+		    make install
+		
+		# build capstone
+		cd taintgrind && \
+		    wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone.tar.gz && \
+		    tar xf capstone.tar.gz && \
+		    sh configure_capstone.sh `pwd`/../build && \
+		    cd capstone-3.0.4 && \
+		    sh make_capstone.sh
+		
+		# build taintgrind
+		cd ../ && \
+		    ../autogen.sh && \
+		    ./configure --prefix=`pwd`/../build && \
+		    make && \
+		    make install && \
+		    make check
 
-
-5. To compile examples in tests/
-
-
-		~/valgrind-X.X.X/taintgrind$ make check
 
 A simple example
 ----------------
@@ -104,7 +112,7 @@ Compile with
 
 Run with
 
-	../taintgrind$ ../inst/bin/valgrind --tool=taintgrind tests/sign32
+	../taintgrind$ ../build/bin/valgrind --tool=taintgrind tests/sign32
 
 The first tainted instruction should be
 
@@ -149,7 +157,7 @@ Or, for larger graphs
 Tainting file input
 -------------------
 
-	~/valgrind-X.X.X/taintgrind$ ../inst/bin/valgrind --tool=taintgrind --help
+	~/valgrind-X.X.X/taintgrind$ ../build/bin/valgrind --tool=taintgrind --help
 	...
 	user options for Taintgrind:
 	    --file-filter=<full_path>   full path of file to taint [""]
