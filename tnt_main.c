@@ -2436,7 +2436,8 @@ void check_reg( UInt reg ){
 void infer_client_binary_name(UInt pc) {
 
    if (client_binary_name == NULL) {
-      DebugInfo* di = VG_(find_DebugInfo)(pc);
+      DiEpoch  ep = VG_(current_DiEpoch)();
+      DebugInfo* di = VG_(find_DebugInfo)(ep, pc);
       if (di && VG_(strcmp)(VG_(DebugInfo_get_soname)(di), "NONE") == 0) {
          //VG_(printf)("client_binary_name: %s\n", VG_(DebugInfo_get_filename)(di));
          client_binary_name = (HChar*)VG_(malloc)("client_binary_name",sizeof(HChar)*(VG_(strlen)(VG_(DebugInfo_get_filename)(di)+1)));
@@ -3104,7 +3105,8 @@ void TNT_(emit_insn) (
    }
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
+   DiEpoch  ep = VG_(current_DiEpoch)();
+   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
@@ -3143,7 +3145,8 @@ void TNT_(emit_insn1) (
    }
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
+   DiEpoch  ep = VG_(current_DiEpoch)();
+   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
@@ -3183,7 +3186,8 @@ void TNT_(emit_next) (
    if ( TNT_(clo_smt2) )           return;
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   const HChar *fnname = VG_(describe_IP) ( pc, NULL );
+   DiEpoch  ep = VG_(current_DiEpoch)();
+   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
@@ -3325,7 +3329,8 @@ Int TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
         }
 #endif
         AddrInfo ai; ai.tag = Addr_Undescribed;
-        VG_(describe_addr)(addr, &ai);
+        DiEpoch  ep = VG_(current_DiEpoch)();
+        VG_(describe_addr)(ep, addr, &ai);
         //VG_(pp_addrinfo)(addr, &ai);
         //VG_(printf)("ai->tag %x\n", ai.tag);
 
@@ -3353,7 +3358,7 @@ Int TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize) {
 	         = VG_(newXA)( VG_(malloc), "tnt.da.descr2",
 	                       VG_(free), sizeof(HChar) );
 
-	   (void) VG_(get_data_description)( descr1, descr2, addr );
+	   (void) VG_(get_data_description)( descr1, descr2, ep, addr );
 	   /* If there's nothing in descr1/2, free them.  Why is it safe to to
 	      VG_(indexXA) at zero here?  Because VG_(get_data_description)
 	      guarantees to zero terminate descr1/2 regardless of the outcome

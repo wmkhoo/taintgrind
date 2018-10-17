@@ -146,6 +146,7 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
 Bool TNT_(syscall_allowed_check)(ThreadId tid, int syscallno) {
 	if (IN_SANDBOX && IS_SYSCALL_ALLOWED(syscallno)) {
 		const HChar *fnname;
+
 		TNT_(get_fnname)(tid, &fnname);
 		VG_(printf)("*** Sandbox performed system call %s (%d) in method %s, but it is not allowed to. ***\n", syscallnames[syscallno], syscallno, fnname);
 		VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
@@ -404,7 +405,8 @@ void TNT_(syscall_write)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 
 void TNT_(get_fnname)(ThreadId tid, const HChar** buf) {
 	   UInt pc = VG_(get_IP)(tid);
-	   VG_(get_fnname)(pc, buf);
+           DiEpoch  ep = VG_(current_DiEpoch)();
+	   VG_(get_fnname)(ep, pc, buf);
 }
 
 void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {

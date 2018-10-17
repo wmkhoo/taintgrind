@@ -1656,90 +1656,107 @@ if test "$sys_user_has_user_regs" = "yes"; then
             [Define to 1 if <sys/user.h> defines struct user_regs_struct])
 fi
 
+AC_MSG_CHECKING([for __NR_membarrier])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <linux/unistd.h>
+]], [[
+return __NR_membarrier
+]])], [
+ac_have_nr_membarrier=yes
+AC_MSG_RESULT([yes])
+], [
+ac_have_nr_membarrier=no
+AC_MSG_RESULT([no])
+])
+
+AM_CONDITIONAL(HAVE_NR_MEMBARRIER, [test x$ac_have_nr_membarrier = xyes])
 
 #----------------------------------------------------------------------------
 # Checking for supported compiler flags.
 #----------------------------------------------------------------------------
 
-# does this compiler support -m32 ?
-AC_MSG_CHECKING([if gcc accepts -m32])
+case "${host_cpu}" in
+    mips*)
+        # does this compiler support -march=mips32 (mips32 default) ?
+        AC_MSG_CHECKING([if gcc accepts -march=mips32 -mabi=32])
 
-safe_CFLAGS=$CFLAGS
-CFLAGS="-m32 -Werror"
+        safe_CFLAGS=$CFLAGS
+        CFLAGS="$CFLAGS -mips32 -mabi=32 -Werror"
+        
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+          return 0;
+        ]])], [
+        FLAG_M32="-mips32 -mabi=32"
+        AC_MSG_RESULT([yes])
+        ], [
+        FLAG_M32=""
+        AC_MSG_RESULT([no])
+        ])
+        CFLAGS=$safe_CFLAGS
+        
+        AC_SUBST(FLAG_M32)
+        
+        
+        # does this compiler support -march=mips64r2 (mips64r2 default) ?
+        AC_MSG_CHECKING([if gcc accepts -march=mips64r2 -mabi=64])
+        
+        safe_CFLAGS=$CFLAGS
+        CFLAGS="$CFLAGS -march=mips64r2 -mabi=64 -Werror"
+        
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+          return 0;
+        ]])], [
+        FLAG_M64="-march=mips64r2 -mabi=64"
+        AC_MSG_RESULT([yes])
+        ], [
+        FLAG_M64=""
+        AC_MSG_RESULT([no])
+        ])
+        CFLAGS=$safe_CFLAGS
+        
+        AC_SUBST(FLAG_M64)
+	;;
+    *)
+        # does this compiler support -m32 ?
+        AC_MSG_CHECKING([if gcc accepts -m32])
 
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  return 0;
-]])], [
-FLAG_M32="-m32"
-AC_MSG_RESULT([yes])
-], [
-FLAG_M32=""
-AC_MSG_RESULT([no])
-])
-CFLAGS=$safe_CFLAGS
+        safe_CFLAGS=$CFLAGS
+        CFLAGS="-m32 -Werror"
 
-AC_SUBST(FLAG_M32)
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+          return 0;
+        ]])], [
+        FLAG_M32="-m32"
+        AC_MSG_RESULT([yes])
+        ], [
+        FLAG_M32=""
+        AC_MSG_RESULT([no])
+        ])
+        CFLAGS=$safe_CFLAGS
 
-
-# does this compiler support -m64 ?
-AC_MSG_CHECKING([if gcc accepts -m64])
-
-safe_CFLAGS=$CFLAGS
-CFLAGS="-m64 -Werror"
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  return 0;
-]])], [
-FLAG_M64="-m64"
-AC_MSG_RESULT([yes])
-], [
-FLAG_M64=""
-AC_MSG_RESULT([no])
-])
-CFLAGS=$safe_CFLAGS
-
-AC_SUBST(FLAG_M64)
+        AC_SUBST(FLAG_M32)
 
 
-# does this compiler support -march=mips32 (mips32 default) ?
-AC_MSG_CHECKING([if gcc accepts -march=mips32])
+        # does this compiler support -m64 ?
+        AC_MSG_CHECKING([if gcc accepts -m64])
 
-safe_CFLAGS=$CFLAGS
-CFLAGS="$CFLAGS -march=mips32 -Werror"
+        safe_CFLAGS=$CFLAGS
+        CFLAGS="-m64 -Werror"
 
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  return 0;
-]])], [
-FLAG_MIPS32="-march=mips32"
-AC_MSG_RESULT([yes])
-], [
-FLAG_MIPS32=""
-AC_MSG_RESULT([no])
-])
-CFLAGS=$safe_CFLAGS
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+          return 0;
+        ]])], [
+        FLAG_M64="-m64"
+        AC_MSG_RESULT([yes])
+        ], [
+        FLAG_M64=""
+        AC_MSG_RESULT([no])
+        ])
+        CFLAGS=$safe_CFLAGS
 
-AC_SUBST(FLAG_MIPS32)
-
-
-# does this compiler support -march=mips64 (mips64 default) ?
-AC_MSG_CHECKING([if gcc accepts -march=mips64])
-
-safe_CFLAGS=$CFLAGS
-CFLAGS="$CFLAGS -march=mips64 -Werror"
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  return 0;
-]])], [
-FLAG_MIPS64="-march=mips64"
-AC_MSG_RESULT([yes])
-], [
-FLAG_MIPS64=""
-AC_MSG_RESULT([no])
-])
-CFLAGS=$safe_CFLAGS
-
-AC_SUBST(FLAG_MIPS64)
-
+        AC_SUBST(FLAG_M64)
+        ;;
+esac
 
 # does this compiler support -march=octeon (Cavium OCTEON I Specific) ?
 AC_MSG_CHECKING([if gcc accepts -march=octeon])
@@ -1765,7 +1782,7 @@ AC_SUBST(FLAG_OCTEON)
 AC_MSG_CHECKING([if gcc accepts -march=octeon2])
 
 safe_CFLAGS=$CFLAGS
-CFLAGS="$CFLAGS -march=octeon2 -Werror"
+CFLAGS="$CFLAGS $FLAG_M64 -march=octeon2 -Werror"
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
   return 0;
@@ -1779,6 +1796,57 @@ AC_MSG_RESULT([no])
 CFLAGS=$safe_CFLAGS
 
 AC_SUBST(FLAG_OCTEON2)
+
+
+# does this compiler support -mmsa (MIPS MSA ASE) ?
+AC_MSG_CHECKING([if gcc accepts -mmsa])
+
+safe_CFLAGS=$CFLAGS
+CFLAGS="$CFLAGS -mmsa -Werror"
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+    return 0;
+]])], [
+FLAG_MSA="-mmsa"
+AC_MSG_RESULT([yes])
+], [
+FLAG_MSA=""
+AC_MSG_RESULT([no])
+])
+CFLAGS=$safe_CFLAGS
+
+AC_SUBST(FLAG_MSA)
+
+# Are we compiling for the MIPS64 n32 ABI?
+AC_MSG_CHECKING([if gcc is producing mips n32 binaries])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#if !defined(_MIPS_SIM) || (defined(_MIPS_SIM) && (_MIPS_SIM != _ABIN32))
+#error NO
+#endif
+]])], [
+VGCONF_ABI=N32
+FLAG_M64="-march=mips64r2 -mabi=n32"
+AC_MSG_RESULT([yes])
+], [
+AC_MSG_RESULT([no])
+])
+
+# Are we compiling for the MIPS64 n64 ABI?
+AC_MSG_CHECKING([if gcc is producing mips n64 binaries])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#if !defined(_MIPS_SIM) || (defined(_MIPS_SIM) && (_MIPS_SIM != _ABI64))
+#error NO
+#endif
+]])], [
+VGCONF_ABI=64
+AC_MSG_RESULT([yes])
+], [
+AC_MSG_RESULT([no])
+])
+
+AM_CONDITIONAL([VGCONF_HAVE_ABI],
+               [test x$VGCONF_ABI != x])
+AC_SUBST(VGCONF_ABI)
 
 
 # does this compiler support -mmmx ?
