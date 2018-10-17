@@ -1,6 +1,8 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux (Thanks @vanhauser-thc)
+
 2018-07-19 Support for Docker
 
 2018-07-18 Display native assembly instead of VEX
