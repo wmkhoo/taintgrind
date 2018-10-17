@@ -152,7 +152,7 @@ Or, for larger graphs
 
 	$ dot -Tsvg sign32.dot -o sign32.svg
 	
-![Example taint graph](/images/sign32.png)
+![Example taint graph](/images/sign32_small.png)
 
 
 
