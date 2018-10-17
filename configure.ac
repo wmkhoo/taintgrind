@@ -8,7 +8,7 @@
 ##------------------------------------------------------------##
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([Valgrind],[3.13.0],[valgrind-users@lists.sourceforge.net])
+AC_INIT([Valgrind],[3.14.0],[valgrind-users@lists.sourceforge.net])
 AC_CONFIG_SRCDIR(tnt_main.c)
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -45,6 +45,12 @@ AC_PROG_CXX
 #         AC_SUBST([OBJCFLAGS])
 #        ])
 AC_PROG_RANLIB
+# Set LTO_RANLIB variable to an lto enabled ranlib
+if test "x$LTO_RANLIB" = "x"; then
+  AC_PATH_PROGS([LTO_RANLIB], [gcc-ranlib])
+fi
+AC_ARG_VAR([LTO_RANLIB],[Library indexer command for link time optimisation])
+
 # provide a very basic definition for AC_PROG_SED if it's not provided by
 # autoconf (as e.g. in autoconf 2.59).
 m4_ifndef([AC_PROG_SED],
@@ -59,6 +65,13 @@ if test "x$AR" = "x"; then
   AC_PATH_PROGS([AR], [`echo $LD | $SED 's/ld$/ar/'` "ar"], [ar])
 fi
 AC_ARG_VAR([AR],[Archiver command])
+
+# same for LTO_AR variable for lto enabled archiver
+if test "x$LTO_AR" = "x"; then
+  AC_PATH_PROGS([LTO_AR], [gcc-ar])
+fi
+AC_ARG_VAR([LTO_AR],[Archiver command for link time optimisation])
+
 
 # Check for the compiler support
 if test "${GCC}" != "yes" ; then
@@ -100,6 +113,11 @@ else
 fi
 rm $tmpfile
 
+# Make sure we can compile in C99 mode.
+AC_PROG_CC_C99
+if test "$ac_cv_prog_cc_c99" == "no"; then
+    AC_MSG_ERROR([Valgrind relies on a C compiler supporting C99])
+fi
 
 # We don't want gcc < 3.0
 AC_MSG_CHECKING([for a supported version of gcc])
@@ -154,7 +172,7 @@ AM_CONDITIONAL(COMPILER_IS_ICC, test $is_clang = icc)
 # Note: m4 arguments are quoted with [ and ] so square brackets in shell
 # statements have to be quoted.
 case "${is_clang}-${gcc_version}" in
-     applellvm-5.1|applellvm-6.*|applellvm-7.*|applellvm-8.*)
+     applellvm-5.1|applellvm-[[6-9]].*|applellvm-[[1-9][0-9]]*)
 	AC_MSG_RESULT([ok (Apple LLVM version ${gcc_version})])
 	;;
      icc-1[[3-9]].*)
@@ -168,7 +186,7 @@ case "${is_clang}-${gcc_version}" in
 	;;
      *)
 	AC_MSG_RESULT([no (${is_clang}-${gcc_version})])
-	AC_MSG_ERROR([please use gcc >= 3.0 or clang >= 2.9 or icc >= 13.0])
+	AC_MSG_ERROR([please use gcc >= 3.0 or clang >= 2.9 or icc >= 13.0 or Apple LLVM >= 5.1])
 	;;
 esac
 
@@ -349,6 +367,7 @@ case "${host_os}" in
         AC_DEFINE([DARWIN_10_10], 101000, [DARWIN_VERS value for Mac OS X 10.10])
         AC_DEFINE([DARWIN_10_11], 101100, [DARWIN_VERS value for Mac OS X 10.11])
         AC_DEFINE([DARWIN_10_12], 101200, [DARWIN_VERS value for macOS 10.12])
+        AC_DEFINE([DARWIN_10_13], 101300, [DARWIN_VERS value for macOS 10.13])
 
 	AC_MSG_CHECKING([for the kernel version])
 	kernel=`uname -r`
@@ -418,17 +437,32 @@ case "${host_os}" in
 		  DEFAULT_SUPP="darwin16.supp ${DEFAULT_SUPP}"
 		  DEFAULT_SUPP="darwin10-drd.supp ${DEFAULT_SUPP}"
 		  ;;
-             *)
+	     17.*)
+		  AC_MSG_RESULT([Darwin 17.x (${kernel}) / macOS 10.13 High Sierra])
+		  AC_DEFINE([DARWIN_VERS], DARWIN_10_13, [Darwin / Mac OS X version])
+		  DEFAULT_SUPP="darwin17.supp ${DEFAULT_SUPP}"
+		  DEFAULT_SUPP="darwin10-drd.supp ${DEFAULT_SUPP}"
+		  ;;
+             *) 
 		  AC_MSG_RESULT([unsupported (${kernel})])
-		  AC_MSG_ERROR([Valgrind works on Darwin 10.x, 11.x, 12.x, 13.x, 14.x, 15.x and 16.x (Mac OS X 10.6/7/8/9/10/11 and macOS 10.12)])
-                  ;;
+		  AC_MSG_ERROR([Valgrind works on Darwin 10.x, 11.x, 12.x, 13.x, 14.x, 15.x, 16.x and 17.x (Mac OS X 10.6/7/8/9/10/11 and macOS 10.12/13)])
+		  ;;
 	esac
         ;;
 
      solaris2.11*)
         AC_MSG_RESULT([ok (${host_os})])
         VGCONF_OS="solaris"
-        DEFAULT_SUPP="solaris11.supp ${DEFAULT_SUPP}"
+
+        uname_v=$( uname -v )
+        case "$uname_v" in
+             11.4.*)
+                 DEFAULT_SUPP="solaris12.supp ${DEFAULT_SUPP}"
+                 ;;
+             *)
+                 DEFAULT_SUPP="solaris11.supp ${DEFAULT_SUPP}"
+                 ;;
+	esac
         ;;
 
      solaris2.12*)
@@ -457,6 +491,19 @@ case "$ARCH_MAX-$VGCONF_OS" in
         AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
           return 0;
         ]])], [
+        AC_MSG_RESULT([yes])
+        ], [
+        vg_cv_only64bit="yes"
+        AC_MSG_RESULT([no])
+        ])
+        CFLAGS=$safe_CFLAGS;;
+    mips64-linux)
+        AC_MSG_CHECKING([for 32 bit build support])
+        safe_CFLAGS=$CFLAGS
+        CFLAGS="$CFLAGS -mips32 -mabi=32"
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+          #include <sys/prctl.h>
+        ]], [[]])], [
         AC_MSG_RESULT([yes])
         ], [
         vg_cv_only64bit="yes"
@@ -547,11 +594,13 @@ case "$ARCH_MAX-$VGCONF_OS" in
            valt_load_address_pri_inner="0x38000000"
 	else
            VGCONF_ARCH_PRI="amd64"
-           VGCONF_ARCH_SEC=""
+           VGCONF_ARCH_SEC="x86"
 	   VGCONF_PLATFORM_PRI_CAPS="AMD64_LINUX"
-	   VGCONF_PLATFORM_SEC_CAPS=""
+	   VGCONF_PLATFORM_SEC_CAPS="X86_LINUX"
            valt_load_address_pri_norml="0x58000000"
            valt_load_address_pri_inner="0x38000000"
+           valt_load_address_sec_norml="0x58000000"
+           valt_load_address_sec_inner="0x38000000"
 	fi
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
 	;;
@@ -697,6 +746,7 @@ case "$ARCH_MAX-$VGCONF_OS" in
         ;;
      mips32-linux) 
         VGCONF_ARCH_PRI="mips32"
+        VGCONF_ARCH_SEC=""
         VGCONF_PLATFORM_PRI_CAPS="MIPS32_LINUX"
         VGCONF_PLATFORM_SEC_CAPS=""
         valt_load_address_pri_norml="0x58000000"
@@ -706,13 +756,32 @@ case "$ARCH_MAX-$VGCONF_OS" in
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
         ;;
      mips64-linux)
-        VGCONF_ARCH_PRI="mips64"
-        VGCONF_PLATFORM_PRI_CAPS="MIPS64_LINUX"
-        VGCONF_PLATFORM_SEC_CAPS=""
-        valt_load_address_pri_norml="0x58000000"
-        valt_load_address_pri_inner="0x38000000"
         valt_load_address_sec_norml="0xUNSET"
         valt_load_address_sec_inner="0xUNSET"
+        if test x$vg_cv_only64bit = xyes; then
+            VGCONF_ARCH_PRI="mips64"
+            VGCONF_PLATFORM_SEC_CAPS=""
+            VGCONF_PLATFORM_PRI_CAPS="MIPS64_LINUX"
+            VGCONF_PLATFORM_SEC_CAPS=""
+            valt_load_address_pri_norml="0x58000000"
+            valt_load_address_pri_inner="0x38000000"
+        elif test x$vg_cv_only32bit = xyes; then
+            VGCONF_ARCH_PRI="mips32"
+            VGCONF_ARCH_SEC=""
+            VGCONF_PLATFORM_PRI_CAPS="MIPS32_LINUX"
+            VGCONF_PLATFORM_SEC_CAPS=""
+            valt_load_address_pri_norml="0x58000000"
+            valt_load_address_pri_inner="0x38000000"
+        else
+            VGCONF_ARCH_PRI="mips64"
+            VGCONF_ARCH_SEC="mips32"
+            VGCONF_PLATFORM_PRI_CAPS="MIPS64_LINUX"
+            VGCONF_PLATFORM_SEC_CAPS="MIPS32_LINUX"
+            valt_load_address_pri_norml="0x58000000"
+            valt_load_address_pri_inner="0x38000000"
+            valt_load_address_sec_norml="0x58000000"
+            valt_load_address_sec_inner="0x38000000"
+        fi
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
         ;;
      x86-solaris)
@@ -798,7 +867,8 @@ AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_ARM64,
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_S390X,
                test x$VGCONF_PLATFORM_PRI_CAPS = xS390X_LINUX )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS32,
-               test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX )
+               test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
+                 -o x$VGCONF_PLATFORM_SEC_CAPS = xMIPS32_LINUX )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS64,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX ) 
 
@@ -825,7 +895,8 @@ AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_S390X_LINUX,
                test x$VGCONF_PLATFORM_PRI_CAPS = xS390X_LINUX \
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xS390X_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS32_LINUX,
-               test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX)
+               test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
+                 -o x$VGCONF_PLATFORM_SEC_CAPS = xMIPS32_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS64_LINUX,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_X86_DARWIN,   
@@ -1030,10 +1101,10 @@ case "${GLIBC_VERSION}" in
 	# No other suppression file is used.
 	;;
      musl)
-        AC_MSG_RESULT(Musl)
-        AC_DEFINE([MUSL_LIBC], 1, [Define to 1 if you're using Musl libc])
-        # no DEFAULT_SUPP file yet for musl libc.
-        ;;
+	AC_MSG_RESULT(Musl)
+	AC_DEFINE([MUSL_LIBC], 1, [Define to 1 if you're using Musl libc])
+	# no DEFAULT_SUPP file yet for musl libc.
+	;;
      2.0|2.1|*)
 	AC_MSG_RESULT([unsupported version ${GLIBC_VERSION}])
 	AC_MSG_ERROR([Valgrind requires glibc version 2.2 or later, uClibc,])
@@ -1682,7 +1753,7 @@ case "${host_cpu}" in
 
         safe_CFLAGS=$CFLAGS
         CFLAGS="$CFLAGS -mips32 -mabi=32 -Werror"
-        
+
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
           return 0;
         ]])], [
@@ -1693,16 +1764,16 @@ case "${host_cpu}" in
         AC_MSG_RESULT([no])
         ])
         CFLAGS=$safe_CFLAGS
-        
+
         AC_SUBST(FLAG_M32)
-        
-        
+
+
         # does this compiler support -march=mips64r2 (mips64r2 default) ?
         AC_MSG_CHECKING([if gcc accepts -march=mips64r2 -mabi=64])
-        
+
         safe_CFLAGS=$CFLAGS
         CFLAGS="$CFLAGS -march=mips64r2 -mabi=64 -Werror"
-        
+
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
           return 0;
         ]])], [
@@ -1713,9 +1784,9 @@ case "${host_cpu}" in
         AC_MSG_RESULT([no])
         ])
         CFLAGS=$safe_CFLAGS
-        
+
         AC_SUBST(FLAG_M64)
-	;;
+        ;;
     *)
         # does this compiler support -m32 ?
         AC_MSG_CHECKING([if gcc accepts -m32])
@@ -1762,7 +1833,7 @@ esac
 AC_MSG_CHECKING([if gcc accepts -march=octeon])
 
 safe_CFLAGS=$CFLAGS
-CFLAGS="$CFLAGS -march=octeon -Werror"
+CFLAGS="$CFLAGS $FLAG_M64 -march=octeon -Werror"
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
   return 0;
@@ -1932,6 +2003,55 @@ AM_CONDITIONAL(HAS_MLONG_DOUBLE_128, test x$ac_compiler_supports_mlong_double_12
 FLAG_MLONG_DOUBLE_128="-mlong-double-128"
 AC_SUBST(FLAG_MLONG_DOUBLE_128)
 
+# does this toolchain support lto ?
+# Not checked for if --enable-lto=no was given, or if LTO_AR or LTO_RANLIG
+# are not defined
+# If not enable-lto=* arg is provided, default to no, as  lto builds are
+# a lot slower, and so not appropriate for Valgrind developments.
+# --enable-lto=yes should be used by distro packagers.
+AC_CACHE_CHECK([for using the link time optimisation], vg_cv_lto,
+   [AC_ARG_ENABLE(lto,
+      [  --enable-lto          enables building with link time optimisation],
+      [vg_cv_lto=$enableval],
+      [vg_cv_lto=no])])
+
+if test "x${vg_cv_lto}" != "xno" -a "x${LTO_AR}" != "x" -a "x${LTO_RANLIB}" != "x"; then
+AC_MSG_CHECKING([if toolchain accepts lto])
+safe_CFLAGS=$CFLAGS
+TEST_LTO_CFLAGS="-flto -flto-partition=one -fuse-linker-plugin"
+# Note : using 'one' partition is giving a slightly smaller/faster memcheck
+# and ld/lto-trans1 still needs a reasonable memory (about 0.5GB) when linking.
+CFLAGS="$TEST_LTO_CFLAGS -Werror"
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  extern void somefun(void);
+  somefun();
+  return 0;
+]])], [
+LTO_CFLAGS=$TEST_LTO_CFLAGS
+AC_MSG_RESULT([yes])
+], [
+LTO_CFLAGS=""
+AC_MSG_RESULT([no])
+])
+CFLAGS=$safe_CFLAGS
+fi
+
+AC_SUBST(LTO_CFLAGS)
+
+# if we could not compile with lto args, or lto was disabled,
+# then set LTO_AR/LTO_RANLIB to the non lto values
+# define in config.h ENABLE_LTO (not needed by the code currently, but
+# this guarantees we recompile everything if we re-configure and rebuild
+# in a build dir previously build with another value of --enable-lto
+if test "x${LTO_CFLAGS}" = "x"; then
+   LTO_AR=${AR}
+   LTO_RANLIB=${RANLIB}
+   vg_cv_lto=no
+else
+   vg_cv_lto=yes
+   AC_DEFINE([ENABLE_LTO], 1, [configured to build with lto link time optimisation])
+fi
 
 # Convenience function to check whether GCC supports a particular
 # warning option. Takes two arguments,
@@ -1991,6 +2111,7 @@ AC_GCC_WARNING_SUBST([cast-qual], [FLAG_W_CAST_QUAL])
 AC_GCC_WARNING_SUBST([old-style-declaration], [FLAG_W_OLD_STYLE_DECLARATION])
 AC_GCC_WARNING_SUBST([ignored-qualifiers], [FLAG_W_IGNORED_QUALIFIERS])
 AC_GCC_WARNING_SUBST([missing-parameter-type], [FLAG_W_MISSING_PARAMETER_TYPE])
+AC_GCC_WARNING_SUBST([logical-op], [FLAG_W_LOGICAL_OP])
 
 # Does this compiler support -Wformat-security ?
 # Special handling is needed, because certain GCC versions require -Wformat
@@ -2042,6 +2163,27 @@ if test "X$VGCONF_ARCH_PRI" = "Xarm"; then
 else
   AC_SUBST([FLAG_W_CAST_ALIGN], [-Wcast-align])
 fi
+
+# does this compiler support -faligned-new ?
+AC_MSG_CHECKING([if g++ accepts -faligned-new])
+
+safe_CXXFLAGS=$CXXFLAGS
+CXXFLAGS="-faligned-new -Werror"
+
+AC_LANG(C++)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  return 0;
+]])], [
+FLAG_FALIGNED_NEW="-faligned-new"
+AC_MSG_RESULT([yes])
+], [
+FLAG_FALIGNED_NEW=""
+AC_MSG_RESULT([no])
+])
+CXXFLAGS=$safe_CXXFLAGS
+AC_LANG(C)
+
+AC_SUBST(FLAG_FALIGNED_NEW)
 
 # does this compiler support -fno-stack-protector ?
 AC_MSG_CHECKING([if gcc accepts -fno-stack-protector])
@@ -2176,7 +2318,7 @@ AC_MSG_CHECKING([if gcc accepts -g -gz=zlib])
 safe_CFLAGS=$CFLAGS
 CFLAGS="-g -gz=zlib"
 
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ ]], [[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[ ]], [[
   return 0;
 ]])], [
 ac_have_gz_zlib=yes
@@ -2196,7 +2338,7 @@ AC_MSG_CHECKING([if gcc accepts -g -gz=zlib-gnu])
 safe_CFLAGS=$CFLAGS
 CFLAGS="-g -gz=zlib-gnu"
 
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ ]], [[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[ ]], [[
   return 0;
 ]])], [
 ac_have_gz_zlib_gnu=yes
@@ -2241,6 +2383,27 @@ ac_have_asm_constraint_p=no
 AC_MSG_RESULT([no])
 ])
 AM_CONDITIONAL([HAVE_ASM_CONSTRAINT_P], [test x$ac_have_asm_constraint_p = xyes])
+
+
+# Does this compiler and linker support -pie?
+# Some compilers actually do not support -pie and report its usage
+# as an error. We need to check if it is safe to use it first.
+
+AC_MSG_CHECKING([if gcc accepts -pie])
+
+safe_CFLAGS=$CFLAGS
+CFLAGS="-pie"
+
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[ ]], [[
+  return 0;
+]])], [
+AC_SUBST([FLAG_PIE], ["-pie"])
+AC_MSG_RESULT([yes])
+], [
+AC_SUBST([FLAG_PIE], [""])
+AC_MSG_RESULT([no])
+])
+CFLAGS=$safe_CFLAGS
 
 
 # Does this compiler support -no-pie?
@@ -3103,11 +3266,11 @@ AM_CONDITIONAL(SOLARIS_LWP_SIGQUEUE_SYSCALL, test x$solaris_lwp_sigqueue_syscall
 # Solaris-specific check determining if the lwp_sigqueue() syscall
 # takes both pid and thread id arguments or just thread id.
 #
-# Old syscall (available on Solaris 11.x):
+# Old syscall (available up to Solaris 11.3):
 # int lwp_sigqueue(id_t lwpid, int sig, void *value,
 #                  int si_code, timespec_t *timeout);
 #
-# New syscall (available on Solaris 12):
+# New syscall (available since Solaris 11.4):
 # int lwp_sigqueue(pid_t pid, id_t lwpid, int sig, void *value,
 #                  int si_code, timespec_t *timeout);
 #
@@ -3223,7 +3386,7 @@ AM_CONDITIONAL(SOLARIS_ZONE_DEFUNCT, test x$solaris_zone_defunct = xyes)
 # Solaris-specific check determining if commands A_GETSTAT and A_SETSTAT
 # for auditon(2) subcode of the auditsys() syscall are available.
 # These commands are available in Solaris 11 and illumos but were removed
-# in Solaris 12.
+# in Solaris 11.4.
 #
 # C-level symbol: SOLARIS_AUDITON_STAT
 # Automake-level symbol: SOLARIS_AUDITON_STAT
@@ -3395,8 +3558,8 @@ AM_CONDITIONAL(SOLARIS_TSOL_CLEARANCE, test x$solaris_tsol_clearance = xyes)
 
 
 # Solaris-specific check determining if the new pset() syscall subcode
-# PSET_GET_NAME is available. This subcode was added in Solaris 12 but
-# is missing on illumos and Solaris 11.
+# PSET_GET_NAME is available. This subcode was added in Solaris 11.4 but
+# is missing on illumos and Solaris 11.3.
 #
 # C-level symbol: SOLARIS_PSET_GET_NAME
 # Automake-level symbol: SOLARIS_PSET_GET_NAME
@@ -3661,7 +3824,7 @@ AC_DEFINE_UNQUOTED([SOLARIS_REPCACHE_PROTOCOL_VERSION], [$version],
 # Solaris-specific check determining if "sysstat" segment reservation type
 # is available.
 #
-# New "sysstat" segment reservation (available on Solaris 12):
+# New "sysstat" segment reservation (available on Solaris 11.4):
 # - program header type:    PT_SUNW_SYSSTAT
 # - auxiliary vector entry: AT_SUN_SYSSTAT_ADDR
 #
@@ -3688,7 +3851,7 @@ AM_CONDITIONAL(SOLARIS_RESERVE_SYSSTAT_ADDR, test x$solaris_reserve_sysstat_addr
 # Solaris-specific check determining if "sysstat_zone" segment reservation type
 # is available.
 #
-# New "sysstat_zone" segment reservation (available on Solaris 12):
+# New "sysstat_zone" segment reservation (available on Solaris 11.4):
 # - program header type:    PT_SUNW_SYSSTAT_ZONE
 # - auxiliary vector entry: AT_SUN_SYSSTAT_ZONE_ADDR
 #
@@ -3982,12 +4145,12 @@ if test x$VGCONF_PLATFORM_PRI_CAPS = xX86_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xPPC32_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xARM_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
-     -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS ; then
   mflag_primary=$FLAG_M32
 elif test x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_LINUX \
        -o x$VGCONF_PLATFORM_PRI_CAPS = xPPC64_LINUX \
        -o x$VGCONF_PLATFORM_PRI_CAPS = xARM64_LINUX \
+       -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX \
        -o x$VGCONF_PLATFORM_PRI_CAPS = xS390X_LINUX ; then
   mflag_primary=$FLAG_M64
 elif test x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN ; then
@@ -3999,7 +4162,8 @@ fi
 mflag_secondary=
 if test x$VGCONF_PLATFORM_SEC_CAPS = xX86_LINUX \
      -o x$VGCONF_PLATFORM_SEC_CAPS = xPPC32_LINUX \
-     -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_SOLARIS ; then
+     -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_SOLARIS \
+     -o x$VGCONF_PLATFORM_SEC_CAPS = xMIPS32_LINUX ; then
   mflag_secondary=$FLAG_M32
 elif test x$VGCONF_PLATFORM_SEC_CAPS = xX86_DARWIN ; then
   mflag_secondary="$FLAG_M32 -arch i386"
@@ -4426,7 +4590,7 @@ AM_CONDITIONAL([HAVE_SHARED_POINTER_ANNOTATION],
 # Nb: VEX/Makefile is generated from Makefile.vex.in.
 AC_CONFIG_FILES([
    Makefile 
-   tests/Makefile
+   tests/Makefile 
 ])
 #AC_CONFIG_FILES([coregrind/link_tool_exe_linux],
 #                [chmod +x coregrind/link_tool_exe_linux])
@@ -4442,6 +4606,7 @@ cat<<EOF
          Primary build arch: ${VGCONF_ARCH_PRI}
        Secondary build arch: ${VGCONF_ARCH_SEC}
                    Build OS: ${VGCONF_OS}
+     Link Time Optimisation: ${vg_cv_lto}
        Primary build target: ${VGCONF_PLATFORM_PRI_CAPS}
      Secondary build target: ${VGCONF_PLATFORM_SEC_CAPS}
            Platform variant: ${VGCONF_PLATVARIANT}
