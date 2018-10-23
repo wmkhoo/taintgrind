@@ -116,22 +116,20 @@ Run with
 
 	../taintgrind$ ../build/bin/valgrind --tool=taintgrind tests/sign32
 
-The first tainted instruction should be
+![Example output](/images/sign32_cli.png)
 
-	0x40085E: main (sign32.c:12) | mov eax, dword ptr [rbp - 0x50] | Load | 0x3e8 | t22_6357 <- a:1ffefffce0
 
 The output of taintgrind is of the form
 
 	Address/Location | Assembly instruction | Instruction type | Runtime value(s) | Information flow
 
-The first instruction indicates an integer is loaded from a into temporary variable t22\_6357. Its run-time value is 0x3e8 or 1,000. With debugging information, taintgrind can list the source location (sign32.c:12) and the variable name (a).
-Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned, e.g. t19\_9142 in this case. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target; for loads and stores, it is the data.
-The 2 tainted if-statements should come up as
-
-	0x4007C3: get_sign (sign32.c:3) | jne 0x4007cc | IfGoto | 0x0 | t40_2439
-	0x4007D0: get_sign (sign32.c:4) | jns 0x4007d9 | IfGoto | 0x0 | t8_7931
-
-As expected, the conditions are both false, and are thus 0.
+The first instruction indicates an integer is loaded from a into temporary variable t22\_6518. 
+Its run-time value is 0x3e8 or 1,000 (hightlighted in red). 
+With debugging information, taintgrind can list the source location, e.g. sign32.c:12 (highlighted in magenta), and the variable name (a).
+Only one run-time/taint value per instruction is shown. That variable is usually the one being assigned. In the case of an if-goto, it is the conditional variable; in the case of an indirect jump, it is the jump target; for loads and stores, it is the data.
+The assembly instructions, e.g. jne 0x1088f0, are highlighted in green.
+The other instructions are intermediate VEX instructions, which have been either omitted or simplified.
+As expected, the conditions (instructions 0x1088E7 and 0x1088F4, are both false, and are thus 0.
 	
 See [Detecting a classic buffer overflow](https://github.com/wmkhoo/taintgrind/wiki/Detecting-a-classic-buffer-overflow)
 
