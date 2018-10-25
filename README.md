@@ -116,7 +116,7 @@ Run with
 
 	../taintgrind$ ../build/bin/valgrind --tool=taintgrind tests/sign32
 
-![Example output](/images/sign32_cli.png)
+![Example output](../assets/sign32_cli.png?raw=true)
 
 
 The output of taintgrind is of the form
@@ -150,7 +150,7 @@ Or, for larger graphs
 
 	$ dot -Tsvg sign32.dot -o sign32.svg
 	
-![Example taint graph](/images/sign32_small.png)
+![Example taint graph](../assets/sign32_small.png?raw=true)
 
 
 
