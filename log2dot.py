@@ -199,7 +199,7 @@ print "digraph {"
 
 # Print subgraphs
 for s in subgraph:
-    print "    subgraph cluster_%s{" % (s.replace(":","_").replace("???","unknown"))
+    print "    subgraph cluster_%s{" % (s.replace(".", "_").replace("@", "_").replace(":","_").replace("???","unknown"))
     print "        label=\"%s\"" % (s)
     print subgraph[s]
     print "    }"
