@@ -199,7 +199,9 @@ print "digraph {"
 
 # Print subgraphs
 for s in subgraph:
-    print "    subgraph cluster_%s{" % (s.replace(".", "_").replace("@", "_").replace(":","_").replace("&","_").replace("???","unknown"))
+    sname = s.replace("???","unknown")
+    sname = re.sub(r'[^a-zA-Z0-9_]', '_', sname)
+    print "    subgraph cluster_%s{" % (sname)
     print "        label=\"%s\"" % (s)
     print subgraph[s]
     print "    }"
