@@ -2530,6 +2530,20 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
          tv[ltmp] = value;
          break;
       }
+      case Ist_Dirty:
+      {
+         UInt ltmp = clone->Ist.Dirty.details->tmp;
+         if ( ltmp >= TI_MAX )
+            VG_(printf)("ltmp %d\n", ltmp);
+         tl_assert( ltmp < TI_MAX );
+         ti[ltmp]++;
+         if ( taint )
+            ti[ltmp] |= 0x80000000;
+         else
+            ti[ltmp] &= 0x7fffffff;
+         tv[ltmp] = value;
+         break;
+      }
       default:
          break;
    }
@@ -2560,6 +2574,19 @@ void bookkeeping1(IRStmt *clone, UWord taint) {
       case Ist_WrTmp:
       {
          UInt ltmp = clone->Ist.WrTmp.tmp;
+         if ( ltmp >= TI_MAX )
+            VG_(printf)("ltmp %d\n", ltmp);
+         tl_assert( ltmp < TI_MAX );
+         ti[ltmp]++;
+         if ( taint )
+            ti[ltmp] |= 0x80000000;
+         else
+            ti[ltmp] &= 0x7fffffff;
+         break;
+      }
+      case Ist_Dirty:
+      {
+         UInt ltmp = clone->Ist.Dirty.details->tmp;
          if ( ltmp >= TI_MAX )
             VG_(printf)("ltmp %d\n", ltmp);
          tl_assert( ltmp < TI_MAX );
