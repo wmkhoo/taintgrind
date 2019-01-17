@@ -155,6 +155,7 @@ static INLINE Bool is_distinguished_sm ( SecMap* sm ) {
 void check_reg( UInt reg );
 void infer_client_binary_name(UInt pc);
 void bookkeeping(IRStmt *clone, UWord value, UWord taint);
+void bookkeeping1(IRStmt *clone, UWord taint);
 Int exit_early (IRStmt *clone, UWord taint);
 Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
@@ -2535,6 +2536,46 @@ void bookkeeping(IRStmt *clone, UWord value, UWord taint) {
 }
 
 
+// Book-keeping1: Keep track of taint values of regs and tmps
+// Same as bookkeeping, except without run-time value
+void bookkeeping1(IRStmt *clone, UWord taint) {
+   switch (clone->tag) {
+      case Ist_Put:
+      {
+         UInt reg = clone->Ist.Put.offset/(sizeof(UWord));
+         check_reg( reg );
+         ri[reg]++;
+         break;
+      }
+      case Ist_PutI:
+      {
+         UInt reg = get_geti_puti_reg(clone->Ist.PutI.details->descr,
+                                      clone->Ist.PutI.details->ix,
+                                      clone->Ist.PutI.details->bias)
+                    /(sizeof(UWord));
+         check_reg( reg );
+         ri[reg]++;
+         break;
+      }
+      case Ist_WrTmp:
+      {
+         UInt ltmp = clone->Ist.WrTmp.tmp;
+         if ( ltmp >= TI_MAX )
+            VG_(printf)("ltmp %d\n", ltmp);
+         tl_assert( ltmp < TI_MAX );
+         ti[ltmp]++;
+         if ( taint )
+            ti[ltmp] |= 0x80000000;
+         else
+            ti[ltmp] &= 0x7fffffff;
+         break;
+      }
+      default:
+         break;
+   }
+}
+
+
 // Exit early if e is untainted and taint is zero
 Int exit_early_data (IRExpr *e, UWord taint) {
    if (e->tag == Iex_RdTmp) {
@@ -3134,6 +3175,8 @@ VG_REGPARM(1)
 void TNT_(emit_insn1) (
    IRStmt *clone, 
    UWord taint ) {
+
+   bookkeeping1(clone, taint);
 
    // Check if we exit early
    if ( exit_early(clone, taint) ) return;
