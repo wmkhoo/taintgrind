@@ -2568,9 +2568,16 @@ void bookkeeping_taint(IRStmt *clone, UWord taint) {
             ti[ltmp] &= 0x7fffffff;
          break;
       }
+      case Ist_Exit:
+      case Ist_Store:
+         break;
       default:
+	 ppIRStmt(clone);
+	 tl_assert(0);
          break;
    }
+   //ppIRStmt(clone);
+   //VG_(printf)("\n");
 }
 
 

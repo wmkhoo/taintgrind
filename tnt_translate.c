@@ -5806,6 +5806,12 @@ static void do_shadow_LoadG ( MCEnv* mce, IRLoadG* lg )
                                         lg->guard, vwiden, vbits_alt );
    /* And finally, bind the V bits to the destination temporary. */
    assign( 'V', mce, findShadowTmpV(mce, lg->dst), vbits_final );
+
+   // Taintgrind
+   IRExpr *data = IRExpr_Load ( lg->end, loadedTy, lg->addr );
+   IRStmt *load = IRStmt_WrTmp ( lg->dst, data );
+   IRStmt *clone = deepMallocIRStmt(load);
+   create_dirty_EMIT ( mce, clone, IRExpr_RdTmp(lg->dst) );
 }
 
 /*------------------------------------------------------------*/
