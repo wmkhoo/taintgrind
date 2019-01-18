@@ -160,7 +160,7 @@ Int exit_early (IRStmt *clone, UWord taint);
 Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
 void print_asm(ULong pc);
-void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint);
+int print_insn_type(ULong pc, IRStmt *clone);
 void print_info_flow(IRStmt *clone, UWord taint);
 void print_info_flow_tmp(IRExpr *e, Int print_leading_space);
 void print_info_flow_tmp_indirect(IRExpr *e);
@@ -2738,11 +2738,13 @@ void print_asm(ULong pc) {
 
 
 // Prints insn type for log2dot.py to parse
-void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint) {
+// Returns 0 for VEX intermediate instructions
+// Returns 1 otherwise, which will indicate that the run-time value needs to be printed
+int print_insn_type(ULong pc, IRStmt *clone) {
    switch (clone->tag) {
       case Ist_Put:
       case Ist_PutI:
-         return;
+         return 0;
       case Ist_WrTmp:
       {
          IRExpr *data = clone->Ist.WrTmp.data;
@@ -2750,7 +2752,7 @@ void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint) {
             case Iex_Get:
             case Iex_GetI:
             case Iex_RdTmp:
-               return;
+               return 0;
             case Iex_Qop:
                ppIROp(data->Iex.Qop.details->op);
                break;
@@ -2796,7 +2798,7 @@ void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint) {
                   case Iop_64HIto32:  
                   case Iop_128to64:   
                   case Iop_128HIto64: 
-                     return;
+                     return 0;
                   default:  break;
                }
                ppIROp(data->Iex.Unop.op);
@@ -2821,7 +2823,7 @@ void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint) {
                VG_(printf)("%s", data->Iex.CCall.cee->name);
                break;
             default:
-               return;
+               return 0;
          }
          break;
       }
@@ -2844,16 +2846,9 @@ void print_insn_type(ULong pc, IRStmt *clone, UWord value, UWord taint) {
          VG_(printf)("IfGoto");
          break;
       default:
-         return;
+         return 0;
    }
-
-   // Print run-time and taint values
-   VG_(printf)(" | ");
-   if ( istty && taint ) VG_(printf)("%s", KRED);
-   if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
-   else                    VG_(printf)("0x%llx", (ULong)value);
-   if ( istty && taint ) VG_(printf)("%s", KNRM);
-   VG_(printf)(" | ");
+   return 1;
 }
 
 
@@ -3155,7 +3150,15 @@ void TNT_(emit_insn) (
    VG_(printf)(" | ");
 
    // Print assembly instruction and type for log2dot.py
-   print_insn_type(pc, clone, value, taint);
+   if ( print_insn_type(pc, clone) ){
+      // Print run-time and taint values
+      VG_(printf)(" | ");
+      if ( istty && taint ) VG_(printf)("%s", KRED);
+      if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)value);
+      else                    VG_(printf)("0x%llx", (ULong)value);
+      if ( istty && taint ) VG_(printf)("%s", KNRM);
+      VG_(printf)(" | ");
+   }
 
    //if ( istty && taint ) VG_(printf)("%s", KRED);
    //if (sizeof(UWord) == 4) VG_(printf)("0x%x", (UInt)taint);
@@ -3197,14 +3200,12 @@ void TNT_(emit_insn1) (
    VG_(printf)(" | ");
 
    // Print assembly instruction and type for log2dot.py
-   print_insn_type(pc, clone, 0, taint);
-
-   // Print run-time value
-   // We don't know this, so print ???
-   //if ( istty && taint ) VG_(printf)("%s", KRED);
-   //VG_(printf)("???");
-   //if ( istty && taint ) VG_(printf)("%s", KNRM);
-   //VG_(printf)(" | ");
+   if ( print_insn_type(pc, clone) ) {
+      // Print run-time and taint values
+      VG_(printf)(" | ");
+      VG_(printf)("na");
+      VG_(printf)(" | ");
+   }
 
    // Print information flow
    print_info_flow(clone, taint);
