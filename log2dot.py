@@ -46,6 +46,26 @@ def add_node(g, label, loc):
     return g
 
 
+# Extract the function name from, e.g.
+# 0x4CC398D: free (malloc.c:3103)
+# Expected output from above: free (malloc.c)
+def getfuncname(addr):
+    funcname = addr
+    # Get rid of address
+    if ": " in addr:
+        funcname = addr.split(": ")[1]
+
+    # Remove all digits and colons
+    funcname = re.sub(r'[0-9:]', '', funcname)
+    return funcname
+
+
+TAINT_SINKS = ["__memcpy_sse_unaligned_erms (memmove-vec-unaligned-erms.S)",
+               "memcpy@GLIBC_.. (memmove-vec-unaligned-erms.S)",
+               "_int_malloc (malloc.c)",
+              ]
+
+
 # array to store all lines
 data = []
 
@@ -103,6 +123,8 @@ for line in data:
         print "%d" % (len(a))
         sys.exit(0)
 
+    funcname = getfuncname(addr)
+
     # If there is taint flow
     if len(flow) >= 4:
         # Get location/function of line
@@ -127,11 +149,14 @@ for line in data:
 
             vname = sanitise_var(sink)
 
-            if (len(sources.split()) > 1) and ("Load" in insnty or "Store" in insnty):
-                # If both address and data to this Load/Store are tainted,
-                # Colour it red
+            if (funcname in TAINT_SINKS) and ("Store" in insnty):
+                # If we find Stores in predefined TAINT_SINKS, e.g. malloc or memcpy, colour it red
+                nodes[sink] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty), loc)
+            elif (len(sources.split()) > 1) and ("Store" in insnty):
+                # If both address and data to this Store are tainted, colour it red
                 nodes[sink] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,sink,val,insnty), loc)
             elif val and insnty:
+                #os.system(">&2 echo \"%s\" %s" % (funcname, insnty))
                 nodes[sink] = ("%s [label=\"%s:%s (%s)\"]" % (vname,sink,val,insnty), loc)
             else:
                 nodes[sink] = ("%s [label=\"\" shape=point]" % (vname), loc)
@@ -139,6 +164,10 @@ for line in data:
         elif "Jmp" in insnty:
             vname = sanitise_var(flow)
             # If jump target is tainted, colour it red
+            nodes[flow] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty), loc)
+        elif "IfGoto" in insnty and funcname in TAINT_SINKS:
+            vname = sanitise_var(flow)
+            # If if-goto is in a taint sink, colour it red
             nodes[flow] = ("%s [label=\"%s:%s (%s)\",fillcolor=red,style=filled]" % (vname,flow,val,insnty), loc)
         elif val and insnty:
             vname = sanitise_var(flow)
