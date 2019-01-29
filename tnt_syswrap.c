@@ -327,6 +327,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 	   VG_(resolve_filename)(fd, fdpath, FD_MAX_PATH-1);
 #elif defined VGO_linux
 	   resolve_filename(fd, fdpath, FD_MAX_PATH-1);
+#elif defined VGO_darwin
+	   resolve_filename(fd, fdpath, FD_MAX_PATH-1);
 #else
 #error OS unknown
 #endif
@@ -346,6 +348,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 #ifdef VGO_freebsd
 	VG_(resolve_filename)(fd, fdpath, FD_MAX_PATH-1);
 #elif defined VGO_linux
+        resolve_filename(fd, fdpath, FD_MAX_PATH-1);
+#elif defined VGO_darwin
         resolve_filename(fd, fdpath, FD_MAX_PATH-1);
 #else
 #error OS unknown
@@ -434,6 +438,8 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 			VG_(resolve_filename)(fd, fdpath, FD_MAX_PATH-1);
 #elif defined VGO_linux
 			resolve_filename(fd, fdpath, FD_MAX_PATH-1);
+#elif defined VGO_darwin
+			resolve_filename(fd, fdpath, FD_MAX_PATH-1);
 #else
 #error OS unknown
 #endif
@@ -453,47 +459,69 @@ void TNT_(syscall_socketcall)(ThreadId tid, UWord* args, UInt nArgs, SysRes res)
 // int socketcall(int call, unsigned long *args);
 
   switch (args[0]) {
+#ifdef VKI_SYS_SOCKET
     case VKI_SYS_SOCKET:
       //VG_(printf)("syscall_socketcall: SOCKET\n");
       TNT_(syscall_socket)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_LISTEN
     case VKI_SYS_LISTEN:
       //TNT_(syscall_listen)(tid, res);
       break;
+#endif
+#ifdef VKI_SYS_ACCEPT
     case VKI_SYS_ACCEPT:
       //VG_(printf)("syscall_socketcall: ACCEPT\n");
       TNT_(syscall_accept)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_CONNECT
     case VKI_SYS_CONNECT:
       //VG_(printf)("syscall_socketcall: CONNECT\n");
       // TODO: submit a syscall hooking patch to valgrind to avoid this.
       TNT_(syscall_connect)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_GETPEERNAME
     case VKI_SYS_GETPEERNAME:
       //VG_(printf)("syscall_socketcall: GETPEERNAME\n");
       break;
+#endif
+#ifdef VKI_SYS_GETSOCKNAME
     case VKI_SYS_GETSOCKNAME:
       //VG_(printf)("syscall_socketcall: GETSOCKNAME\n");
       break;
+#endif
+#ifdef VKI_SYS_SOCKETPAIR
     case VKI_SYS_SOCKETPAIR:
       //VG_(printf)("syscall_socketcall: SOCKETPAIR\n");
       TNT_(syscall_socketpair)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_RECV
     case VKI_SYS_RECV:
      // VG_(printf)("syscall_socketcall: RECV\n");
       TNT_(syscall_recv)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_RECVMSG
     case VKI_SYS_RECVMSG:
       //VG_(printf)("syscall_socketcall: RECVMSG\n");
       TNT_(syscall_recvmsg)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_RECVFROM
     case VKI_SYS_RECVFROM:
       //VG_(printf)("syscall_socketcall: RECVFROM\n");
       TNT_(syscall_recvfrom)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef VKI_SYS_SHUTDOWN
     case VKI_SYS_SHUTDOWN:
      // VG_(printf)("syscall_socketcall: SHUTDOWN\n");
       break;
+#endif
     default:
       return;
   }

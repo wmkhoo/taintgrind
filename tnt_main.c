@@ -3603,30 +3603,42 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       break;
 #else
     // Should be defined by respective vki/vki-arch-os.h
+#ifdef __NR_read
     case __NR_read:
       TNT_(syscall_read)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef __NR_read
     case __NR_write:
       TNT_(syscall_write)(tid, args, nArgs, res);
       break;
+#endif
+#if defined __NR_open && defined __NR_openat
     case __NR_open:
     case __NR_openat:
       TNT_(syscall_open)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef __NR_close
     case __NR_close:
       TNT_(syscall_close)(tid, args, nArgs, res);
       break;
+#endif
+#ifdef __NR_lseek
     case __NR_lseek:
       TNT_(syscall_lseek)(tid, args, nArgs, res);
       break;
+#endif
 #ifdef __NR_llseek
     case __NR_llseek:
       TNT_(syscall_llseek)(tid, args, nArgs, res);
       break;
 #endif
+#ifdef __NR_pread64
     case __NR_pread64:
       TNT_(syscall_pread)(tid, args, nArgs, res);
       break;
+#endif
 /*** Networking syscalls ***/
 #ifdef __NR_connect
     case __NR_connect:
