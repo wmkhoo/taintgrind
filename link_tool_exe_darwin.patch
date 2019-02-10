@@ -1,11 +1,13 @@
 --- coregrind/link_tool_exe_darwin.in.new	2019-02-10 20:57:55.000000000 +0800
 +++ coregrind/link_tool_exe_darwin.in	2019-02-10 20:59:15.000000000 +0800
-@@ -169,6 +169,9 @@
+@@ -169,6 +169,11 @@
      }
  }
  
 +# Taintgrind: ld options for linking capstone
-+$cmd = "$cmd -lcapstone -L./capstone-3.0.4/";
++if ("$cmd" =~ /taintgrind/){
++    $cmd = "$cmd -lcapstone -L./capstone-3.0.4/";
++}
 +
  print "link_tool_exe_darwin: $cmd\n";
  
