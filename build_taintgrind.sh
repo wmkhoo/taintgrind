@@ -2,6 +2,9 @@
 # Patch valgrind-3.13
 patch -d ../ -p0 < d3basics.patch
 
+# Patch link_exe_tool_darwin
+patch -d ../ -p0 < link_tool_exe_darwin.patch
+
 # Build valgrind
 cd ../ && \
     ./autogen.sh && \
