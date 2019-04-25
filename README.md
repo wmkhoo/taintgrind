@@ -1,23 +1,15 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2019-04-25 Support for Valgrind 3.15.0, x86\_linux, amd64\_linux, arm\_linux
+
 2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux (Thanks @vanhauser-thc)
-
-2018-07-19 Support for Docker
-
-2018-07-18 Display native assembly instead of VEX
 
 2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
 
 2015-10-06 Support for Valgrind 3.11.0, x86\_linux and amd64\_linux
 
-2015-10-06 Highly experimental feature: SMT-libv2 output via --smt2=yes
-
-2014-09-25 Support for client requests
-
 2014-09-15 Support for Valgrind 3.10.0, x86\_linux and amd64\_linux
-
-2013-12-20 Experimental support for 32-bit ARM, tested on Android 4.4 emulator with API 19
 
 2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
 
