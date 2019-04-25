@@ -5,7 +5,7 @@ RUN apt-get install -y git wget gcc build-essential automake python
 RUN mkdir /code
 
 # build, install valgrind
-RUN wget -O /code/valgrind.tar.bz2 ftp://sourceware.org/pub/valgrind/valgrind-3.14.0.tar.bz2
+RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.15.0.tar.bz2
 RUN cd /code && \
     tar jxf /code/valgrind.tar.bz2 && \
     mv valgrind-3.14.0 valgrind
