@@ -5,11 +5,17 @@ patch -d ../ -p0 < d3basics.patch
 # Patch link_exe_tool_darwin
 patch -d ../ -p0 < link_tool_exe_darwin.patch
 
+# Find out how far we can parallelize the build
+jobs="`lscpu -p | awk 'BEGIN { n = 0 } /^[^#]/ { n += 1 } END { print n }'`"
+if [ "" = "$jobs" -o "1" -gt "$jobs" ]; then
+    jobs=1
+fi
+
 # Build valgrind
 cd ../ && \
     ./autogen.sh && \
     ./configure --prefix=`pwd`/build && \
-    make && \
+    make -j"$jobs" && \
     make install
 
 # build capstone
@@ -24,6 +30,6 @@ cd taintgrind && \
 cd ../ && \
     ../autogen.sh && \
     ./configure --prefix=`pwd`/../build && \
-    make && \
+    make -j"$jobs" && \
     make install && \
     make check
