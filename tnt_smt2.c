@@ -736,7 +736,7 @@ void TNT_(smt2_get) ( IRStmt *clone )
    UInt ltmp    = clone->Ist.WrTmp.tmp;
    IRExpr *data = clone->Ist.WrTmp.data;
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
-   UInt reg     = data->Iex.Get.offset;
+   UInt reg     = data->Iex.Get.offset/(sizeof(UWord));
 
    VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
 
@@ -764,7 +764,7 @@ void TNT_(smt2_get) ( IRStmt *clone )
 void TNT_(smt2_put_t_32) ( IRStmt *clone )
 {
 
-   UInt reg     = clone->Ist.Put.offset;
+   UInt reg     = clone->Ist.Put.offset/(sizeof(UWord));
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
@@ -793,7 +793,7 @@ void TNT_(smt2_put_t_32) ( IRStmt *clone )
 void TNT_(smt2_put_t_64) ( IRStmt *clone )
 {
 
-   UInt reg     = clone->Ist.Put.offset;
+   UInt reg     = clone->Ist.Put.offset/(sizeof(UWord));
    IRExpr *data = clone->Ist.Put.data;
    UInt tmp     = data->Iex.RdTmp.tmp;
 
