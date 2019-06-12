@@ -162,7 +162,7 @@ void read_common ( UInt taint_offset, Int taint_len,
                    HChar *data ) {
    UWord addr;
    Int   len;
-   UInt  offset;
+   UInt  offset = curr_offset;
    Int   i;
 
    if( TNT_(clo_taint_all) ){
