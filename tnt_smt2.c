@@ -40,6 +40,12 @@ void TNT_(smt2_preamble)()
 }
 
 // Get the concrete value (1 byte) of an address location
+#define a2v16(v, c) \
+   (UInt)((v >> ((1-(c))*8)) & 0xff)
+
+#define a2t16(t, c) \
+   (t >> ((1-(c))*8)) & 0xff
+
 #define a2v32(v, c) \
    (UInt)((v >> ((3-(c))*8)) & 0xff)
 
@@ -52,10 +58,35 @@ void TNT_(smt2_preamble)()
 #define a2t64(t, c) \
    (t >> ((7-(c))*8)) & 0xff
 
+static char *tnt_smt2_concat_16( char *buf, ULong addr, UInt c, UInt v, UInt t )
+{
+   char tmp[1024];
+
+   if ( c == 0 )
+   {
+      if ( a2t16(t,c) )
+         VG_(sprintf)(tmp, "a%llx", addr);
+      else
+         VG_(sprintf)(tmp, "#x%02x", a2v16(v,c));
+
+      if ( a2t16(t,c+1) )
+         VG_(sprintf)(buf, "(concat %s a%llx)", tmp, addr+1);
+      else
+         VG_(sprintf)(buf, "(concat %s #x%02x)", tmp, a2v16(v,c+1));
+      return buf;
+   }
+   if ( a2t16(t,c+1) )
+       VG_(sprintf)(tmp, "(concat a%llx %s)", addr, tnt_smt2_concat_16(buf, addr+1, c-1, v, t) );
+   else
+       VG_(sprintf)(tmp, "(concat #x%02x %s)", a2v16(v,c+1), tnt_smt2_concat_16(buf, addr+1, c-1, v, t) );
+   VG_(strcpy)(buf, tmp);
+   return buf;
+}
+
 static char *tnt_smt2_concat_32( char *buf, ULong addr, UInt c, UInt v, UInt t )
 {
    char tmp[1024];
-   //VG_(printf)("c %d t %x a2t %x\n", c+1, t, a2t(t,c+1));
+
    if ( c == 0 )
    {
       if ( a2t32(t,c) )
@@ -183,7 +214,7 @@ static void tnt_smt2_load_ltmp_32 ( UInt ltmp, UInt ty, ULong address, UInt valu
       VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 0, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
    } else if ( SMT2_ty[ty] == 8 )
    {
       VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
@@ -208,10 +239,10 @@ static void tnt_smt2_load_ltmp_64 ( UInt ltmp, UInt ty, ULong address, ULong val
       VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 6, value, taint) );
    } else if ( SMT2_ty[ty] == 32 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 2, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 0, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
    } else if ( SMT2_ty[ty] == 8 )
    {
       VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
