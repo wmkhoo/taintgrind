@@ -162,7 +162,8 @@ void read_common ( UInt taint_offset, Int taint_len,
                    HChar *data ) {
    UWord addr;
    Int   len;
-   //Int   i;
+   UInt  offset;
+   Int   i;
 
    if( TNT_(clo_taint_all) ){
       addr = (UWord)data;
@@ -205,14 +206,16 @@ void read_common ( UInt taint_offset, Int taint_len,
 
    if( taint_offset >= curr_offset &&
        taint_offset <= curr_offset + curr_len ){
-       if( (taint_offset + taint_len) <= (curr_offset + curr_len) ){
+      if( (taint_offset + taint_len) <= (curr_offset + curr_len) ){
          // Case 1
          addr = (UWord)(data + taint_offset - curr_offset);
          len  = taint_len;
+	 offset = taint_offset;
       }else{
-          // Case 2
-          addr = (UWord)(data + taint_offset - curr_offset);
-          len  = curr_len - taint_offset + curr_offset;
+         // Case 2
+         addr = (UWord)(data + taint_offset - curr_offset);
+         len  = curr_len - taint_offset + curr_offset;
+	 offset = taint_offset;
       }
 
    }else if( ( ( taint_offset + taint_len ) >= curr_offset ) &&
@@ -220,11 +223,13 @@ void read_common ( UInt taint_offset, Int taint_len,
       // Case 3
       addr = (UWord)data;
       len  = taint_len - curr_offset + taint_offset;
+      offset = curr_offset;
    }else if( ( taint_offset <= curr_offset ) &&
        ( taint_offset + taint_len ) >= ( curr_offset + curr_len ) ){
       // Case 4
       addr = (UWord)data;
       len  = curr_len;
+      offset = curr_offset;
    }else{
       return;
    }
@@ -234,8 +239,15 @@ void read_common ( UInt taint_offset, Int taint_len,
    else
       TNT_(make_mem_tainted)( addr, len );
 
-   //for( i=0; i<len; i++) 
-   //   VG_(printf)("taint_byte 0x%08lx 0x%02x\n", addr+i, *(Char *)(addr+i));
+   for( i=0; i<len; i++) {
+      Int success = TNT_(describe_data)(addr+i, varname, VARNAMESIZE);
+      VG_(printf)("0x: taint_byte | ");
+
+      VG_(printf)("%s", varname);
+      if (success)    VG_(printf)( ":%llx", addr+i);
+
+      VG_(printf)(" <- byte_%d\n", offset+i);
+   }
 }
 
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
