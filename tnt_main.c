@@ -2958,16 +2958,18 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             }
          } else {
          // Case 2: Address is Const
-            UInt dtmp    = data->Iex.RdTmp.tmp;
-            address = extract_IRConst64(addr->Iex.Const.con);
-            Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
+            if (data->tag == Iex_RdTmp) {
+               UInt dtmp    = data->Iex.RdTmp.tmp;
+               address = extract_IRConst64(addr->Iex.Const.con);
+               Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
 
-            tl_assert( dtmp < TI_MAX );
+               tl_assert( dtmp < TI_MAX );
 
-            if ( is_tainted(dtmp) ) {
-               if (success)    VG_(printf)( "%s:%llx <-", varname, address);
-               else            VG_(printf)( "%s <-", varname );
-               print_info_flow_tmp(data, 1);
+               if ( is_tainted(dtmp) ) {
+                  if (success)    VG_(printf)( "%s:%llx <-", varname, address);
+                  else            VG_(printf)( "%s <-", varname );
+                  print_info_flow_tmp(data, 1);
+               }
             }
          }
          break;
