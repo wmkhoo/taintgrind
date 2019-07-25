@@ -98,10 +98,6 @@ def readfromfile(filename):
 def save2file(content, filename):
 	with open(filename, "w") as f:
 		f.write(content)
-		
-def print_progress_ok(s):
-	print s.ljust(60) + "[OK]"
-	time.sleep(USER_DELAY)
 	
 def main(options):
 	
@@ -126,7 +122,6 @@ def main(options):
 	if not os.path.isdir(vginstdir_incval):
 		raise Exception("'include/valgrind/' missing from folder '%s'. Was Valgrind compiled and installed in this folder?" % vginstdir)
 	
-	print_progress_ok("Validity of Valgrind's installation directory")
 	# read the Makefile of Valgrind and extract 
 	# - the relevant options to pass to valgrind's headers 
 	#		- platform flags :VGA_x86, VGA_amd64, VGA_ppc32, VGA_ppc64be, VGA_ppc64le, VGA_arm, VGA_arm64, VGA_s390x, VGA_mips32, VGA_mips64
@@ -137,7 +132,6 @@ def main(options):
 	
 	# I extract any flags that looks like -DVGO_***=1, eg -DVGO_linux=1 and -DVGA_***=1
 	flags = get_flags("../Makefile")
-	print_progress_ok("Flags recovery")
 	
 	# file content. 
 	# originally I used this to install. I've changed to a simple copy so it does not require root
@@ -163,13 +157,9 @@ def main(options):
 	silentremove(outmakefile)
 	save2file(content, outmakefile)
 	
-	print_progress_ok("File creation")
-	
 	# create the symbolic link
 	silentremove("../include/capstone")
 	os.symlink(capstonedir + "include/", "../include/capstone")
-	
-	print_progress_ok("Include dir creation")
 	
 	# create the file that we'll use for building capstone with the correct options
 	# CAPSTONE_ARCHS="arm aarch64 x86" TODO
@@ -182,22 +172,8 @@ if __name__ == '__main__':
 	check_options(parser, options, args)
 	ret = 0
 	
-	try:
-		
-		main(options)
-		
-		print "SUCCESS"
-	
-	except Exception, e:
-		ret = -1
-		print "Exception: " + str(e)
-	#except:
-	#	print "Exception caught"
-	#	traceback.print_exc(file=sys.stdout)
-	#finally:
-		#print 'finally'
+	main(options)
 
 	sys.exit(ret)
-	#print 'Done ...'
 	
 	
