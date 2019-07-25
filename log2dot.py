@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, sys
 import fileinput
 import re
@@ -120,7 +121,7 @@ for line in data:
     elif len(a) == 2:
         (addr,flow) = line.rstrip().split(" | ")
     else:
-        print "%d" % (len(a))
+        print("%d" % (len(a)))
         sys.exit(0)
 
     funcname = getfuncname(addr)
@@ -197,7 +198,7 @@ for line in data:
     elif len(a) == 2:
         (_,flow) = line.rstrip().split(" | ")
     else:
-        print "%d" % (len(a))
+        print("%d" % (len(a)))
         sys.exit(0)
 
     # If there is taint flow
@@ -224,19 +225,19 @@ for line in data:
 
 
 # Now we construct the graph
-print "digraph {"
+print("digraph {")
 
 # Print subgraphs
 for s in subgraph:
     sname = s.replace("???","unknown")
     sname = re.sub(r'[^a-zA-Z0-9_]', '_', sname)
-    print "    subgraph cluster_%s{" % (sname)
-    print "        label=\"%s\"" % (s)
-    print subgraph[s]
-    print "    }"
+    print("    subgraph cluster_%s{" % (sname))
+    print("        label=\"%s\"" % (s))
+    print(subgraph[s])
+    print("    }")
 
 # Print the edges
 for e in edges:
-    print "    " + e
+    print("    " + e)
 
-print "}"
+print("}")
