@@ -46,6 +46,12 @@
 
 #include "tnt_include.h"
 
+// macros
+#define KRED "\e[31m"
+#define KGRN "\e[32m"
+#define KMAG "\e[35m"
+#define KNRM "\e[0m"
+
 static
 void resolve_filename(UWord fd, HChar *path, Int max)
 {
@@ -162,8 +168,6 @@ void read_common ( UInt taint_offset, Int taint_len,
                    HChar *data ) {
    UWord addr;
    Int   len;
-   UInt  offset = curr_offset;
-   Int   i;
 
    if( TNT_(clo_taint_all) ){
       addr = (UWord)data;
@@ -210,12 +214,10 @@ void read_common ( UInt taint_offset, Int taint_len,
          // Case 1
          addr = (UWord)(data + taint_offset - curr_offset);
          len  = taint_len;
-	 offset = taint_offset;
       }else{
          // Case 2
          addr = (UWord)(data + taint_offset - curr_offset);
          len  = curr_len - taint_offset + curr_offset;
-	 offset = taint_offset;
       }
 
    }else if( ( ( taint_offset + taint_len ) >= curr_offset ) &&
@@ -223,13 +225,11 @@ void read_common ( UInt taint_offset, Int taint_len,
       // Case 3
       addr = (UWord)data;
       len  = taint_len - curr_offset + taint_offset;
-      offset = curr_offset;
    }else if( ( taint_offset <= curr_offset ) &&
        ( taint_offset + taint_len ) >= ( curr_offset + curr_len ) ){
       // Case 4
       addr = (UWord)data;
       len  = curr_len;
-      offset = curr_offset;
    }else{
       return;
    }
@@ -238,16 +238,6 @@ void read_common ( UInt taint_offset, Int taint_len,
       TNT_(make_mem_tainted_named)( addr, len, "read" );
    else
       TNT_(make_mem_tainted)( addr, len );
-
-   for( i=0; i<len; i++) {
-      Int success = TNT_(describe_data)(addr+i, varname, VARNAMESIZE);
-      VG_(printf)("0x: taint_byte | ");
-
-      VG_(printf)("%s", varname);
-      if (success)    VG_(printf)( ":%llx", addr+i);
-
-      VG_(printf)(" <- byte_%d\n", offset+i);
-   }
 }
 
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
@@ -282,7 +272,21 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
           *(HChar *)data);
 #endif
    }
-
+   if ( !TNT_(clo_smt2) ) {
+      Int success = TNT_(describe_data)(data, varname, VARNAMESIZE);
+      if ( istty ) VG_(printf)("%s", KMAG);
+      if (TNT_(clo_compact))
+         VG_(printf)("0xFFFFFFFF ");
+      else
+         VG_(printf)("0xFFFFFFFF: _syscall_read ");
+      if ( istty ) VG_(printf)("%s", KNRM);
+      VG_(printf)("| Read:%d | ", curr_len);
+      if ( istty ) VG_(printf)("%s", KRED);
+      VG_(printf)("0x%x", curr_offset);
+      if ( istty ) VG_(printf)("%s", KNRM);
+      if (success)    VG_(printf)( " | %s:%x\n", varname, data);
+      else            VG_(printf)( " | %s\n", varname );
+   }
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
 
    // Update file position
@@ -322,7 +326,21 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
 #endif
 
    }
-
+   if ( !TNT_(clo_smt2) ) {
+      Int success = TNT_(describe_data)(data, varname, VARNAMESIZE);
+      if ( istty ) VG_(printf)("%s", KMAG);
+      if (TNT_(clo_compact))
+         VG_(printf)("0xFFFFFFFF ");
+      else
+         VG_(printf)("0xFFFFFFFF: _syscall_pread ");
+      if ( istty ) VG_(printf)("%s", KNRM);
+      VG_(printf)("| Read:%d | ", curr_len);
+      if ( istty ) VG_(printf)("%s", KRED);
+      VG_(printf)("0x%x", curr_offset);
+      if ( istty ) VG_(printf)("%s", KNRM);
+      if (success)    VG_(printf)( " | %s:%x\n", varname, data);
+      else            VG_(printf)( " | %s\n", varname );
+   }
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
 }
 
