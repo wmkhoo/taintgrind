@@ -160,7 +160,7 @@ Int exit_early (IRStmt *clone, UWord taint);
 Int exit_early_data (IRExpr *e, UWord taint);
 void do_smt2(IRStmt *clone, UWord value, UWord taint);
 void print_asm(ULong pc);
-int print_insn_type(ULong pc, IRStmt *clone);
+int print_insn_type(ULong pc, IRStmt *clone, UWord size);
 void print_info_flow(IRStmt *clone, UWord taint);
 void print_info_flow_tmp(IRExpr *e, Int print_leading_space);
 void print_info_flow_tmp_indirect(IRExpr *e);
@@ -2747,7 +2747,7 @@ void print_asm(ULong pc) {
 // Prints insn type for log2dot.py to parse
 // Returns 0 for VEX intermediate instructions
 // Returns 1 otherwise, which will indicate that the run-time value needs to be printed
-int print_insn_type(ULong pc, IRStmt *clone) {
+int print_insn_type(ULong pc, IRStmt *clone, UWord size) {
    switch (clone->tag) {
       case Ist_Put:
       case Ist_PutI:
@@ -2815,7 +2815,7 @@ int print_insn_type(ULong pc, IRStmt *clone) {
                print_asm(pc);
                //ppIRStmt(clone);
                VG_(printf)(" | ");
-               VG_(printf)("Load");
+               VG_(printf)("Load:%d", size);
                break;
             case Iex_ITE:
                print_asm(pc);
@@ -2838,7 +2838,7 @@ int print_insn_type(ULong pc, IRStmt *clone) {
          print_asm(pc);
          //ppIRStmt(clone);
          VG_(printf)(" | ");
-         VG_(printf)("Store");
+         VG_(printf)("Store:%d", size);
          break;
       case Ist_Dirty:
          print_asm(pc);
@@ -3134,7 +3134,8 @@ VG_REGPARM(1)
 void TNT_(emit_insn) (
    IRStmt *clone, 
    UWord value, 
-   UWord taint ) {
+   UWord taint,
+   UWord size ) {
 
    bookkeeping_values(clone, value);
    bookkeeping_taint(clone, taint);
@@ -3149,17 +3150,22 @@ void TNT_(emit_insn) (
    }
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   DiEpoch  ep = VG_(current_DiEpoch)();
-   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
+  
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
-   VG_(printf)("%s", fnname);
+   if (TNT_(clo_compact))
+      VG_(printf)("%p", pc);
+   else {
+      DiEpoch  ep = VG_(current_DiEpoch)();
+      const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
+      VG_(printf)("%s", fnname);
+   }
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
    // Print assembly instruction and type for log2dot.py
-   if ( print_insn_type(pc, clone) ){
+   if ( print_insn_type(pc, clone, size) ){
       // Print run-time and taint values
       VG_(printf)(" | ");
       if ( istty && taint ) VG_(printf)("%s", KRED);
@@ -3185,7 +3191,8 @@ void TNT_(emit_insn) (
 VG_REGPARM(1)
 void TNT_(emit_insn1) (
    IRStmt *clone, 
-   UWord taint ) {
+   UWord taint,
+   UWord size ) {
 
    bookkeeping_taint(clone, taint);
 
@@ -3199,17 +3206,22 @@ void TNT_(emit_insn1) (
    }
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   DiEpoch  ep = VG_(current_DiEpoch)();
-   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
+  
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
-   VG_(printf)("%s", fnname);
+   if (TNT_(clo_compact))
+      VG_(printf)("%p", pc);
+   else {
+      DiEpoch  ep = VG_(current_DiEpoch)();
+      const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
+      VG_(printf)("%s", fnname);
+   }
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
    // Print assembly instruction and type for log2dot.py
-   if ( print_insn_type(pc, clone) ) {
+   if ( print_insn_type(pc, clone, size) ) {
       // Print run-time and taint values
       VG_(printf)(" | ");
       VG_(printf)("na");
@@ -3238,12 +3250,16 @@ void TNT_(emit_next) (
    if ( TNT_(clo_smt2) )           return;
 
    ULong pc = VG_(get_IP)( VG_(get_running_tid)() );
-   DiEpoch  ep = VG_(current_DiEpoch)();
-   const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
 
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
-   VG_(printf)("%s", fnname);
+   if (TNT_(clo_compact))
+      VG_(printf)("%p", pc);
+   else {
+      DiEpoch  ep = VG_(current_DiEpoch)();
+      const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
+      VG_(printf)("%s", fnname);
+   }
    if ( istty && taint ) VG_(printf)("%s", KNRM);
 
    // Print the VEX IRStmt
@@ -3787,6 +3803,7 @@ Int           TNT_(clo_taint_len)              = 0x800000;
 Bool          TNT_(clo_taint_all)              = False;
 Bool          TNT_(clo_tainted_ins_only)       = True;
 Bool          TNT_(clo_critical_ins_only)      = False;
+Bool          TNT_(clo_compact)                = False;
 Bool          TNT_(clo_taint_network)          = False;
 Bool          TNT_(clo_taint_stdin)            = False;
 Int           TNT_(do_print)                   = 0;
@@ -3808,6 +3825,7 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
    else if VG_BOOL_CLO(arg, "--taint-all", TNT_(clo_taint_all)) {}
    else if VG_BOOL_CLO(arg, "--tainted-ins-only", TNT_(clo_tainted_ins_only)) {}
    else if VG_BOOL_CLO(arg, "--critical-ins-only", TNT_(clo_critical_ins_only)) {}
+   else if VG_BOOL_CLO(arg, "--compact", TNT_(clo_compact)) {}
    else if VG_BOOL_CLO(arg, "--taint-network", TNT_(clo_taint_network)) {}
    else if VG_BOOL_CLO(arg, "--taint-stdin", TNT_(clo_taint_stdin)) {}
 //   else if VG_STR_CLO(arg, "--allowed-syscalls", TNT_(clo_allowed_syscalls)) {
@@ -3828,6 +3846,7 @@ static void tnt_print_usage(void) {
 "    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
+"    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
 "    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
    );
 }

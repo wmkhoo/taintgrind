@@ -107,8 +107,8 @@ void TNT_(make_mem_untainted)( Addr a, SizeT len );
 void TNT_(copy_address_range_state) ( Addr src, Addr dst, SizeT len );
 
 // Emits instructions
-VG_REGPARM(1) void TNT_(emit_insn)  ( IRStmt *, UWord, UWord );
-VG_REGPARM(1) void TNT_(emit_insn1) ( IRStmt *, UWord );
+VG_REGPARM(1) void TNT_(emit_insn)  ( IRStmt *, UWord, UWord, UWord );
+VG_REGPARM(1) void TNT_(emit_insn1) ( IRStmt *, UWord, UWord );
 VG_REGPARM(3) void TNT_(emit_next)  ( IRExpr *, UWord, UWord );
 
 /* Functions defined in tnt_translate, used by tnt_main */
@@ -149,6 +149,7 @@ extern Int    TNT_(clo_after_kbb);
 extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
+extern Bool   TNT_(clo_compact);
 extern Bool   TNT_(clo_taint_network);
 extern Bool   TNT_(clo_taint_stdin);
 extern Int    TNT_(do_print);
@@ -241,6 +242,8 @@ extern UInt callgate_nesting_depth;
 /* System call array */
 extern const char* syscallnames[];
 
+extern int istty;
+
 /* Utility functions */
 extern Int TNT_(describe_data)(Addr addr, HChar* varnamebuf, UInt bufsize);
 extern void TNT_(get_fnname)(ThreadId tid, const HChar** buf);
@@ -248,8 +251,8 @@ extern void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request);
 extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_request, enum VariableType type, enum VariableLocation var_loc);
 
 /* Arrays for keeping track of register/tmp SSA indices, values */
-#define TI_MAX 2100 
-#define RI_MAX 240 
+#define TI_MAX 8192 
+#define RI_MAX 8192 
 #define VARNAMESIZE 1024 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)

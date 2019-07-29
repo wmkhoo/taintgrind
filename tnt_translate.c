@@ -6841,11 +6841,10 @@ void create_dirty_EMIT ( MCEnv* mce,
          hname  = "TNT_(emit_insn1)";
 
          IRDirty *di;
-   
          di = unsafeIRDirty_0_N(
                  1/*regparms*/,
                  hname, VG_(fnptr_to_fnentry)( helper ),
-                 mkIRExprVec_2( clone, mkPCastTo(mce, tyAddr, vdata) )
+                 mkIRExprVec_3( clone, mkPCastTo(mce, tyAddr, vdata), mkIRExpr_HWord((HWord)sizeofIRType(ty)))
               );
          setHelperAnns( mce, di );
          stmt( 'V', mce, IRStmt_Dirty(di) );
@@ -6857,7 +6856,6 @@ void create_dirty_EMIT ( MCEnv* mce,
       case Ity_I64:
       {
          IRDirty *di;
-
          if (tyAddr == Ity_I32) {
             helper = &TNT_(emit_insn1);
             hname  = "TNT_(emit_insn1)";
@@ -6865,7 +6863,7 @@ void create_dirty_EMIT ( MCEnv* mce,
             di = unsafeIRDirty_0_N(
                     1/*regparms*/,
                     hname, VG_(fnptr_to_fnentry)( helper ),
-                    mkIRExprVec_2( clone, mkPCastTo(mce, tyAddr, vdata) )
+                    mkIRExprVec_3( clone, mkPCastTo(mce, tyAddr, vdata), mkIRExpr_HWord((HWord)sizeofIRType(ty)))
                  );
          } else {
             helper = &TNT_(emit_insn);
@@ -6874,9 +6872,10 @@ void create_dirty_EMIT ( MCEnv* mce,
             di = unsafeIRDirty_0_N(
                     1/*regparms*/,
                     hname, VG_(fnptr_to_fnentry)( helper ),
-                    mkIRExprVec_3( clone,
+                    mkIRExprVec_4( clone,
                                    zwidenToHostWordC( mce, data ),
-                                   zwidenToHostWord( mce, vdata ))
+                                   zwidenToHostWord( mce, vdata ),
+                                   mkIRExpr_HWord((HWord)sizeofIRType(ty)))
                  );
          }
          setHelperAnns( mce, di );
@@ -6892,13 +6891,20 @@ void create_dirty_EMIT ( MCEnv* mce,
          hname  = "TNT_(emit_insn)";
 
          IRDirty *di;
-   
+         // Ugly hack: there is no sizeof for Ity_I1
+         HWord size;
+         if(ty == Ity_I1)
+            size = 1;
+         else
+            size = sizeofIRType(ty);
+
          di = unsafeIRDirty_0_N(
                  1/*regparms*/,
                  hname, VG_(fnptr_to_fnentry)( helper ),
-                 mkIRExprVec_3( clone,
+                 mkIRExprVec_4( clone,
                                 zwidenToHostWordC( mce, data ),
-                                zwidenToHostWord( mce, vdata ))
+                                zwidenToHostWord( mce, vdata ),
+                                mkIRExpr_HWord(size))
               );
          setHelperAnns( mce, di );
          stmt( 'V', mce, IRStmt_Dirty(di) );
