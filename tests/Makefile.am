@@ -13,7 +13,8 @@ check_PROGRAMS = heartbleed \
                  signstdin2 \
                  taint_stdin \
                  misprint \
-		 memchr
+		 memchr \
+		 checktaint
 
 heartbleed_SOURCES = heartbleed.c
 heartbleed_CFLAGS = -I../ -I../../include -g -O0
@@ -37,3 +38,5 @@ misprint_SOURCES = misprint.c
 misprint_CFLAGS = -I../ -I../../include -g -O0 -fno-inline -fno-omit-frame-pointer -fno-stack-protector
 memchr_SOURCES = memchr.c
 memchr_CFLAGS = -I../ -I../../include -g -O0
+checktaint_SOURCES = checktaint.c
+checktaint_CFLAGS = -I../ -I../../include -g -O0

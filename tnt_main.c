@@ -3771,6 +3771,10 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			TNT_(make_mem_untainted)(arg[1], arg[2]);
 			break;
 		}
+		case VG_USERREQ__TAINTGRIND_IS_TAINTED: {
+			*ret = tnt_LOADVn_slow(/*address*/arg[1], /*size in bits*/8*arg[2], /*endianness*/True);
+			break;
+		}
 		case VG_USERREQ__TAINTGRIND_START_PRINT: {
 			TNT_(do_print) = 1;
 			TNT_(clo_tainted_ins_only) = False;
