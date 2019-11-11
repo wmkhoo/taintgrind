@@ -171,6 +171,12 @@ Run Taintgrind with e.g.
 
 See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
+
+Reverse taint analysis
+----------------------
+Reverse taint analysis tracks data from sink to the source. After a crash, use [rtaint](https://github.com/Cycura/rtaint) on the Taintgrind log file to track data back to the input file.
+
+
 Notes
 -----
 
