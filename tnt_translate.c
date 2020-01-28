@@ -1348,13 +1348,11 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
 
    ty = typeOfIRExpr(mce->sb->tyenv, vatom);
    tl_assert(ty != Ity_I1);
-
-   // Taintgrind: Let's keep the vbits regardless
-//   if (isAlwaysDefd(mce, offset, sizeofIRType(ty))) {
+   if (isAlwaysDefd(mce, offset, sizeofIRType(ty))) {
       /* later: no ... */
       /* emit code to emit a complaint if any of the vbits are 1. */
       /* complainIfTainted(mce, atom); */
-//   } else {
+   } else {
       /* Do a plain shadow Put. */
       if (guard) {
          /* If the guard expression evaluates to false we simply Put the value
@@ -1368,16 +1366,13 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
       }
       stmt( 'V', mce, IRStmt_Put( offset + mce->layout->total_sizeB, vatom ) );
 
-      // For why total_sizeB is added to offset, 
-      // see VEX/pub/libvex.h "A note about guest state layout"
-
       // Taintgrind
       if( atom ){
          // Check if clone is NULL
          tl_assert(clone);
          create_dirty_EMIT( mce, clone, atom );
       }
-//   }
+   }
 }
 
 /* Return an expression which contains the V bits corresponding to the
@@ -1388,7 +1383,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone, IRPutI *puti)
 {
    IRAtom* vatom;
    IRType  ty, tyS;
-   //Int     arrSize;
+   Int     arrSize;
    IRRegArray* descr = puti->descr;
    IRAtom*     ix    = puti->ix;
    Int         bias  = puti->bias;
@@ -1406,19 +1401,18 @@ void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone, IRPutI *puti)
    tl_assert(sameKindedAtoms(atom, vatom));
    ty   = descr->elemTy;
    tyS  = shadowTypeV(ty);
-   //arrSize = descr->nElems * sizeofIRType(ty);
+   arrSize = descr->nElems * sizeofIRType(ty);
    tl_assert(ty != Ity_I1);
    tl_assert(isOriginalAtom(mce,ix));
 
    // Taintgrind:
    create_dirty_EMIT( mce, clone, atom );
 
-   // Taintgrind: Let's keep the vbits regardless
-//   if (isAlwaysDefd(mce, descr->base, arrSize)) {
+   if (isAlwaysDefd(mce, descr->base, arrSize)) {
       /* later: no ... */
       /* emit code to emit a complaint if any of the vbits are 1. */
       /* complainIfUndefined(mce, atom); */
-//   } else {
+   } else {
       /* Do a cloned version of the Put that refers to the shadow
          area. */
       IRRegArray* new_descr
@@ -1426,7 +1420,7 @@ void do_shadow_PUTI ( MCEnv* mce, IRStmt *clone, IRPutI *puti)
                          tyS, descr->nElems);
       stmt( 'V', mce, IRStmt_PutI( mkIRPutI(new_descr, ix, bias, vatom) ));
 
-//   }
+   }
 }
 
 
@@ -1438,17 +1432,16 @@ IRExpr* shadow_GET ( MCEnv* mce, Int offset, IRType ty )
 {
    IRType tyS = shadowTypeV(ty);
    tl_assert(ty != Ity_I1);
-
-   // Taintgrind: Let's keep the vbits regardless
-//   if (isAlwaysDefd(mce, offset, sizeofIRType(ty))) {
+   tl_assert(ty != Ity_I128);
+   if (isAlwaysDefd(mce, offset, sizeofIRType(ty))) {
       /* Always defined, return all zeroes of the relevant type */
-//      return definedOfType(tyS);
-//   } else {
+      return definedOfType(tyS);
+   } else {
       /* return a cloned version of the Get that refers to the shadow
          area. */
       /* FIXME: this isn't an atom! */
       return IRExpr_Get( offset + mce->layout->total_sizeB, tyS );
-//   }
+   }
 }
 
 
@@ -1461,23 +1454,20 @@ IRExpr* shadow_GETI ( MCEnv* mce,
 {
    IRType ty   = descr->elemTy;
    IRType tyS  = shadowTypeV(ty);
-//   Int arrSize = descr->nElems * sizeofIRType(ty);
-
+   Int arrSize = descr->nElems * sizeofIRType(ty);
    tl_assert(ty != Ity_I1);
    tl_assert(isOriginalAtom(mce,ix));
-
-   // Taintgrind: Let's keep the vbits regardless
-//   if (isAlwaysDefd(mce, descr->base, arrSize)) {
+   if (isAlwaysDefd(mce, descr->base, arrSize)) {
       /* Always defined, return all zeroes of the relevant type */
-//      return definedOfType(tyS);
-//   } else {
+      return definedOfType(tyS);
+   } else {
       /* return a cloned version of the Get that refers to the shadow
          area. */
       IRRegArray* new_descr
          = mkIRRegArray( descr->base + mce->layout->total_sizeB,
                          tyS, descr->nElems);
       return IRExpr_GetI( new_descr, ix, bias );
-//   }
+   }
 }
 
 
