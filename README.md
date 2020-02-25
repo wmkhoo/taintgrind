@@ -1,7 +1,7 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
-2020-02-25 Experimental feature --head=yes
+2020-02-25 Experimental feature --head=yes to limit taint propagation
 
 2019-04-25 Support for Valgrind 3.15.0, x86\_linux, amd64\_linux, arm\_linux
 
@@ -172,16 +172,12 @@ Run Taintgrind with e.g.
 	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
 See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
+See [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
 
 
 Reverse taint analysis
 ----------------------
 Reverse taint analysis tracks data from sink to the source. After a crash, use [rtaint](https://github.com/Cycura/rtaint) on the Taintgrind log file to track data back to the input file.
-
-
-Limiting taint propagation with --head=yes
-------------------------------------------
-See [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
 
 
 Notes
