@@ -160,19 +160,27 @@ Tainting file input
 	    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]
 	    --tainted-ins-only= no|yes  print tainted instructions only [yes]
 	    --critical-ins-only= no|yes print critical instructions only [no]
+	    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
+	    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
+	    --head= no|yes              limited taint propagation [no]\n"
 
 If the file-filter field is '\*', it is equivalent to --taint-all=yes.
 Tainted instructions are really instructions where one or more of its input/output variables are tainted.
 At the moment, critical instructions include loads, stores, conditional jumps and indirect jumps/calls. If --critical-ins-only is turned on, all other instructions are not printed.
-The last two options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
+The --tainted-ins-only and --critical-ins-only options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
 Run without any parameters, taintgrind will not taint anything and the program output should be printed.
 
-Run Taintgrind with e.g.
+To taint all contents of a file, run:
+
+	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt gzip -c path/to/test.txt
+
+To limit taint to certain bytes, run:
 
 	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
-See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
-See [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
+For generating SMT Libv2, see [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
+
+For limiting taint propagation, see [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
 
 
 Reverse taint analysis
