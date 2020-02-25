@@ -1469,7 +1469,7 @@ void TNT_(make_mem_noaccess) ( Addr a, SizeT len )
 void TNT_(make_mem_tainted) ( Addr a, SizeT len )
 {
    PROF_EVENT(42, "TNT_(make_mem_tainted)");
-//   DEBUG("TNT_(make_mem_undefined)(%p, %lu)\n", a, len);
+//   DEBUG("TNT_(make_mem_tainted)(%p, %lu)\n", a, len);
    set_address_range_perms ( a, len, VA_BITS16_TAINTED, SM_DIST_TAINTED );
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
 //      ocache_sarp_Clear_Origins ( a, len );
@@ -3164,6 +3164,10 @@ void TNT_(emit_insn) (
    if ( istty && taint ) VG_(printf)("%s", KNRM);
    VG_(printf)(" | ");
 
+   // Debugging purposes
+   //ppIRStmt(clone);
+   //VG_(printf)(" | ");
+
    // Print assembly instruction and type for log2dot.py
    if ( print_insn_type(pc, clone, size) ){
       // Print run-time and taint values
@@ -3814,6 +3818,7 @@ Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
 Bool          TNT_(clo_smt2)                   = False;
+Bool          TNT_(clo_head)                   = False;
 
 void init_soaap_data(void);
 
@@ -3836,6 +3841,7 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
 //	   TNT_(read_syscalls_file) = True;
 //   }
    else if VG_BOOL_CLO(arg, "--smt2", TNT_(clo_smt2)) {}
+   else if VG_BOOL_CLO(arg, "--head", TNT_(clo_head)) {}
    else
       return VG_(replacement_malloc_process_cmd_line_option)(arg);
 

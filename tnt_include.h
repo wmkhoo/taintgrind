@@ -145,8 +145,6 @@ extern HChar  TNT_(clo_file_filter)[MAX_PATH];
 extern Int    TNT_(clo_taint_start);
 extern Int    TNT_(clo_taint_len);
 extern Bool   TNT_(clo_taint_all);
-extern Int    TNT_(clo_after_kbb);
-extern Int    TNT_(clo_before_kbb);
 extern Bool   TNT_(clo_tainted_ins_only);
 extern Bool   TNT_(clo_critical_ins_only);
 extern Bool   TNT_(clo_compact);
@@ -154,6 +152,7 @@ extern Bool   TNT_(clo_taint_network);
 extern Bool   TNT_(clo_taint_stdin);
 extern Int    TNT_(do_print);
 extern Bool   TNT_(clo_smt2);
+extern Bool   TNT_(clo_head);
 //extern Char* TNT_(clo_allowed_syscalls);
 //extern Bool  TNT_(read_syscalls_file);
 

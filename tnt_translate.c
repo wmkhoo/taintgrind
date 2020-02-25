@@ -245,6 +245,22 @@ static IRTemp newTemp ( MCEnv* mce, IRType ty, TempKind kind )
 }
 
 
+/* Allocate a shadow tmp.  */
+static IRTemp createShadowTmpV ( MCEnv* mce, IRTemp orig )
+{
+   TempMapEnt* ent;
+   IRTemp tmpV
+     = newTemp( mce, shadowTypeV(mce->sb->tyenv->types[orig]), VSh );
+   /* newTemp may cause mce->tmpMap to resize, hence previous results
+      from VG_(indexXA) are invalid. */
+   ent = (TempMapEnt*)VG_(indexXA)( mce->tmpMap, (Word)orig );
+   tl_assert(ent->kind == Orig);
+   tl_assert(ent->shadowV == IRTemp_INVALID);
+   ent->shadowV = tmpV;
+   return ent->shadowV;
+}
+
+
 /* Find the tmp currently shadowing the given original tmp.  If none
    so far exists, allocate one.  */
 static IRTemp findShadowTmpV ( MCEnv* mce, IRTemp orig )
@@ -255,6 +271,7 @@ static IRTemp findShadowTmpV ( MCEnv* mce, IRTemp orig )
    ent = (TempMapEnt*)VG_(indexXA)( mce->tmpMap, (Word)orig );
    tl_assert(ent->kind == Orig);
    if (ent->shadowV == IRTemp_INVALID) {
+      tl_assert(0);
       IRTemp tmpV
         = newTemp( mce, shadowTypeV(mce->sb->tyenv->types[orig]), VSh );
       /* newTemp may cause mce->tmpMap to resize, hence previous results
@@ -265,6 +282,18 @@ static IRTemp findShadowTmpV ( MCEnv* mce, IRTemp orig )
       ent->shadowV = tmpV;
    }
    return ent->shadowV;
+}
+
+
+/* Check if the shadow tmp exists.  */
+static int checkShadowTmpV ( MCEnv* mce, IRTemp orig )
+{
+   TempMapEnt* ent;
+   /* VG_(indexXA) range-checks 'orig', hence no need to check
+      here. */
+   ent = (TempMapEnt*)VG_(indexXA)( mce->tmpMap, (Word)orig );
+   tl_assert(ent->kind == Orig);
+   return (ent->shadowV != IRTemp_INVALID);
 }
 
 /* Allocate a new shadow for the given original tmp.  This means any
@@ -280,15 +309,15 @@ static IRTemp findShadowTmpV ( MCEnv* mce, IRTemp orig )
 //static void newShadowTmpV ( MCEnv* mce, IRTemp orig )
 //{
 //   TempMapEnt* ent;
-   /* VG_(indexXA) range-checks 'orig', hence no need to check
-      here. */
+// /* VG_(indexXA) range-checks 'orig', hence no need to check
+//    here. */
 //   ent = (TempMapEnt*)VG_(indexXA)( mce->tmpMap, (Word)orig );
 //   tl_assert(ent->kind == Orig);
 //   if (1) {
 //      IRTemp tmpV
 //        = newTemp( mce, shadowTypeV(mce->sb->tyenv->types[orig]), VSh );
-      /* newTemp may cause mce->tmpMap to resize, hence previous results
-         from VG_(indexXA) are invalid. */
+//    /* newTemp may cause mce->tmpMap to resize, hence previous results
+//       from VG_(indexXA) are invalid. */
 //      ent = (TempMapEnt*)VG_(indexXA)( mce->tmpMap, (Word)orig );
 //      tl_assert(ent->kind == Orig);
 //      ent->shadowV = tmpV;
@@ -1283,6 +1312,30 @@ void create_dirty_NEXT  ( MCEnv* mce, IRExpr* next );
 //   }*/
 //}
 
+/*
+ * Taintgrind: Mark a shadow variable as untainted, i.e. don't propagate taint any more
+ */
+//static void makeUntainted ( MCEnv* mce, IRAtom* atom )
+//{
+//   IRAtom*  vatom;
+//   IRType   ty;
+//
+//   tl_assert(isOriginalAtom(mce, atom));
+//   vatom = expr2vbits( mce, atom, HuOth );
+//   tl_assert(isShadowAtom(mce, vatom));
+//   tl_assert(sameKindedAtoms(atom, vatom));
+//
+//   ty = typeOfIRExpr(mce->sb->tyenv, vatom);
+//
+//   tl_assert(isIRAtom(vatom));
+//   /* sameKindedAtoms ... */
+//   if (vatom->tag == Iex_RdTmp) {
+//      tl_assert(atom->tag == Iex_RdTmp);
+//      newShadowTmpV(mce, atom->Iex.RdTmp.tmp);
+//      assign('V', mce, findShadowTmpV(mce, atom->Iex.RdTmp.tmp),
+//                       definedOfType(ty));
+//   }
+//}
 
 
 /*------------------------------------------------------------*/
@@ -1334,10 +1387,12 @@ void do_shadow_PUT ( MCEnv* mce, IRStmt *clone, Int offset,
    // Their absence lets Vex's optimiser remove all the shadow computation
    // that they depend on, which includes GETs of the shadow registers.
    // Taintgrind: We're doing undefined value checking no matter what
-//   if (TNT_(clo_tnt_level) == 1)
-//      return;
+   //if (TNT_(clo_head))
+   //   return;
 
    if (atom) {
+      if (atom->tag == Iex_RdTmp && !checkShadowTmpV(mce, atom->Iex.RdTmp.tmp))
+         return;
       tl_assert(!vatom);
       tl_assert(isOriginalAtom(mce, atom));
       vatom = atom2vbits( mce, atom );
@@ -5135,8 +5190,9 @@ IRExpr* atom2vbits ( MCEnv* mce, IRAtom* atom )
    switch (atom->tag) {
 
       case Iex_RdTmp:
+      {
          return IRExpr_RdTmp( findShadowTmpV(mce, atom->Iex.RdTmp.tmp) );
-
+      }
       case Iex_Const:
          return definedOfType(shadowTypeV(typeOfIRExpr(mce->sb->tyenv, atom)));
 
@@ -5148,12 +5204,156 @@ IRExpr* atom2vbits ( MCEnv* mce, IRAtom* atom )
    }
 }
 
+static
+int shouldUntaint( MCEnv* mce, IRExpr *e )
+{
+   switch (e->tag) {
+      case Iex_Get:
+      case Iex_GetI:
+      case Iex_Load:
+      case Iex_RdTmp:
+         break;
+
+      case Iex_Qop:
+      case Iex_Triop:
+      case Iex_CCall:
+      case Iex_ITE:
+         return 1;
+
+      case Iex_Binop:
+      {
+	 UInt op = e->Iex.Binop.op;
+
+	 switch (op) {
+	    case Iop_Add64:
+            case Iop_Sub64:
+               break;
+	    default:
+	       return 1;
+	 }
+      }
+      case Iex_Unop:
+      {
+         UInt op = e->Iex.Unop.op;
+
+         switch (op) {
+            case Iop_1Sto8:
+            case Iop_1Sto16:
+            case Iop_1Sto32:
+            case Iop_1Sto64:
+            case Iop_1Uto8:
+            case Iop_1Uto32:
+            case Iop_1Uto64:
+            case Iop_32to1:
+            case Iop_64to1:
+	       return 1;
+            case Iop_8Sto16:
+            case Iop_8Sto32:
+            case Iop_8Sto64:
+            case Iop_8Uto16:
+            case Iop_8Uto32:
+            case Iop_8Uto64:
+            case Iop_16to8:
+            case Iop_16HIto8:
+            case Iop_16Sto32:
+            case Iop_16Sto64:
+            case Iop_16Uto32:
+            case Iop_16Uto64:
+            case Iop_32to8:
+            case Iop_32to16:
+            case Iop_32HIto16:
+            case Iop_32Sto64:
+            case Iop_32Uto64:
+            case Iop_64to8:
+            case Iop_64to16:
+            case Iop_64to32:
+            case Iop_64HIto32:
+            case Iop_128to64:
+            case Iop_128HIto64:
+            default:
+               break;
+         }
+      }
+
+      //case Iex_Const:
+      default:
+         break;
+   }
+   return 0;
+}
+
+static
+int missingShadowTmps( MCEnv* mce, IRExpr *e )
+{
+   switch (e->tag) {
+      case Iex_Load:
+      {
+         IRExpr *addr = e->Iex.Load.addr;
+         if (addr->tag == Iex_RdTmp) {
+            if (!checkShadowTmpV(mce, addr->Iex.RdTmp.tmp))
+               return 1;
+	 }
+	 break;
+      }
+      case Iex_RdTmp:
+      {
+         if (!checkShadowTmpV(mce, e->Iex.RdTmp.tmp))
+            return 1;
+         break;
+      }
+      case Iex_Unop:
+      {
+         IRExpr *arg = e->Iex.Unop.arg;
+         if (arg->tag == Iex_RdTmp) {
+            if (!checkShadowTmpV(mce, arg->Iex.RdTmp.tmp))
+               return 1;
+	 }
+	 break;
+      }
+      case Iex_Binop:
+      {
+         IRExpr *arg1 = e->Iex.Binop.arg1;
+         IRExpr *arg2 = e->Iex.Binop.arg2;
+         if (arg1->tag == Iex_RdTmp) {
+            if (!checkShadowTmpV(mce, arg1->Iex.RdTmp.tmp))
+               return 1;
+	 }
+         if (arg2->tag == Iex_RdTmp) {
+            if (!checkShadowTmpV(mce, arg2->Iex.RdTmp.tmp))
+               return 1;
+	 }
+	 break;
+      }
+      default:
+         break;
+   }
+   return 0;
+}
+
 // Taintgrind: include checks for tainted RdTmp's
 static
 void do_shadow_WRTMP ( MCEnv* mce, IRStmt *clone, IRTemp tmp, IRExpr* expr, HowUsed hu )
 {
    stmt( 'C', mce, IRStmt_WrTmp( tmp, expr ) );
-   assign( 'V', mce, findShadowTmpV( mce, tmp ), expr2vbits( mce, expr, hu ) );
+
+   if (TNT_(clo_head) && shouldUntaint(mce, expr))
+      return;
+
+   if (TNT_(clo_head) && missingShadowTmps(mce, expr))
+      return;
+
+   //ppIRExpr(IRExpr_RdTmp(tmp));
+   //VG_(printf)(" = ");
+   //ppIRExpr(expr);
+   //VG_(printf)("\n");
+   assign( 'V', mce, createShadowTmpV( mce, tmp ), expr2vbits( mce, expr, hu ) );
+
+   // For unmodified value-flow, we untaint dest tmp for:
+   // 1. Binops, Triops, Qops
+   // 2. Unop with src/dst size 1
+   // This constraints the flow of taint up to where the byte values are unmodified
+   //if ( TNT_(clo_head) && shouldUntaint( mce, expr ) )
+   //   makeUntainted( mce, IRExpr_RdTmp(tmp) );
 
    create_dirty_EMIT( mce, clone, IRExpr_RdTmp(tmp) );
 }
@@ -5287,6 +5487,14 @@ void do_shadow_Store ( MCEnv* mce,
    void*    helper = NULL;
    const HChar*   hname = NULL;
 //   IRConst* c;
+
+   // Taintgrind: If we don't find the shadow tmp, skip
+   if (data && data->tag == Iex_RdTmp) {
+      if (!checkShadowTmpV(mce, data->Iex.RdTmp.tmp))
+         return;
+   }
+   if (!data && !vdata)
+      return;
 
    tyAddr = mce->hWordTy;
    mkAdd  = tyAddr==Ity_I32 ? Iop_Add32 : Iop_Add64;
@@ -5575,6 +5783,13 @@ void do_shadow_Dirty ( MCEnv* mce, IRStmt* clone, IRDirty* d )
    /* Inputs: unmasked args */
    for (i = 0; d->args[i]; i++) {
       IRAtom* arg = d->args[i];
+
+      // Taintgrind: Check if shadow tmp is defined
+      if (TNT_(clo_head) && arg->tag == Iex_RdTmp) {
+         if (!checkShadowTmpV(mce, arg->Iex.RdTmp.tmp))
+	    return;
+      }
+
       if (d->cee->mcx_mask & (1<<i)
            || UNLIKELY(is_IRExpr_VECRET_or_GSPTR(arg)) ) {
          /* ignore this arg */
@@ -5693,7 +5908,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRStmt* clone, IRDirty* d )
 
    /* Outputs: the destination temporary, if there is one. */
    if (d->tmp != IRTemp_INVALID) {
-      dst   = findShadowTmpV(mce, d->tmp);
+      dst   = createShadowTmpV(mce, d->tmp);
       tyDst = typeOfIRTemp(mce->sb->tyenv, d->tmp);
       assign( 'V', mce, dst, mkPCastTo( mce, tyDst, curr) );
    }
@@ -5847,7 +6062,7 @@ static void bind_shadow_tmp_to_orig ( UChar how,
       case Iex_RdTmp:
          tl_assert(shadow->tag == Iex_RdTmp);
          if (how == 'V') {
-            assign('V', mce, findShadowTmpV(mce,orig->Iex.RdTmp.tmp),
+            assign('V', mce, createShadowTmpV(mce,orig->Iex.RdTmp.tmp),
                    shadow);
          }/* else {
             tl_assert(how == 'B');
@@ -5888,6 +6103,18 @@ static void do_shadow_CAS_single ( MCEnv* mce, IRCAS* cas )
 
    /* 1. fetch data# (the proposed new value) */
    tl_assert(isOriginalAtom(mce, cas->dataLo));
+
+   // Taintgrind: Check cas->dataLo shadow exists
+   if (TNT_(clo_head) && cas->dataLo->tag == Iex_RdTmp) {
+      if (!checkShadowTmpV(mce, cas->dataLo->Iex.RdTmp.tmp))
+         goto tnt_cas_skip;
+   }
+
+   if (TNT_(clo_head) && cas->expdLo->tag == Iex_RdTmp) {
+      if (!checkShadowTmpV(mce, cas->expdLo->Iex.RdTmp.tmp))
+         goto tnt_cas_skip;
+   }
+
    vdataLo
       = assignNew('V', mce, elemTy, atom2vbits(mce, cas->dataLo));
    tl_assert(isShadowAtom(mce, vdataLo));
@@ -5932,7 +6159,7 @@ static void do_shadow_CAS_single ( MCEnv* mce, IRCAS* cas )
 //                     gen_load_b(mce, elemSzB, cas->addr, 0/*addr bias*/));
 //      bind_shadow_tmp_to_orig('B', mce, mkexpr(cas->oldLo), boldLo);
 //   }
-
+tnt_cas_skip:
    /* 5. the CAS itself */
    stmt( 'C', mce, IRStmt_CAS(cas) );
 
@@ -6245,7 +6472,7 @@ static void do_shadow_LoadG ( MCEnv* mce, IRLoadG* lg )
                                         lg->addr, 0/*addr bias*/,
                                         lg->guard, vwiden, vbits_alt );
    /* And finally, bind the V bits to the destination temporary. */
-   assign( 'V', mce, findShadowTmpV(mce, lg->dst), vbits_final );
+   assign( 'V', mce, createShadowTmpV(mce, lg->dst), vbits_final );
 
    // Taintgrind
    IRExpr *data = IRExpr_Load ( lg->end, loadedTy, lg->addr );
@@ -6917,6 +7144,10 @@ void create_dirty_NEXT( MCEnv* mce, IRExpr* next ){
 
    // If next is a constant, there is no useful run-time/taint info, skip
    if( next->tag == Iex_Const )       return;
+
+   if (TNT_(clo_head) && missingShadowTmps(mce, next))
+      return;
+
    IRExpr *clone = deepMallocIRExpr(next);
 
    args  = mkIRExprVec_3( mkIRExpr_HWord((HWord)clone),
@@ -7201,7 +7432,8 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
             break;
 
          case Ist_Exit: // Conditional jumps, if(t<guard>) goto {Boring} <addr>:I32
-            create_dirty_EMIT( &mce, clone, st->Ist.Exit.guard );
+	    if (!TNT_(clo_head))
+               create_dirty_EMIT( &mce, clone, st->Ist.Exit.guard );
             break;
 
          case Ist_IMark:

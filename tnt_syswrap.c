@@ -349,7 +349,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 //  int open (const char *filename, int flags[, mode_t mode])
    HChar fdpath[FD_MAX_PATH];
    Int fd = sr_Res(res);
-   Bool verbose = False;
+   Bool verbose = True;
 
    // check if we have already created a sandbox
    if (have_created_sandbox && !IN_SANDBOX) {
@@ -386,11 +386,28 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 #endif
 
         if( TNT_(clo_taint_all) ){
-
-            tainted_fds[tid][fd] = True;
-            if ( verbose )
-               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
-            read_offset = 0;
+	    // Skip /dev/pts/0
+	    // Skip executables
+            if ( VG_(strncmp)(fdpath, "/dev/pts/0", 
+                            VG_(strlen)("/dev/pts/0")) == 0 ) {
+	    //} else if ( VG_(strncmp)(fdpath + VG_(strlen)(fdpath) - 3, ".so", 3) == 0 ) {
+	    //} else if ( VG_(strncmp)(fdpath + VG_(strlen)(fdpath) - 3, ".py", 3) == 0 ) {
+	    //} else if ( VG_(strncmp)(fdpath + VG_(strlen)(fdpath) - 4, ".pyc", 4) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/usr/bin/", 9) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/usr/local/bin/", 15) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/usr/lib/", 9) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/usr/local/lib/", 15) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/bin/", 5) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/lib/", 5) == 0 ) {
+	    } else if ( VG_(strncmp)(fdpath, "/etc/", 5) == 0 ) {
+	    } else {
+               tainted_fds[tid][fd] = True;
+               if ( verbose )
+                  VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+               if ( verbose )
+                  VG_(printf)("%s\n", fdpath + VG_(strlen)(fdpath) - 3);
+               read_offset = 0;
+	    }
 
         } else if ( VG_(strncmp)(fdpath, TNT_(clo_file_filter), 
                             VG_(strlen)( TNT_(clo_file_filter))) == 0 ) {
@@ -405,6 +422,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
                         - VG_(strlen)( TNT_(clo_file_filter) ) + 1, 
                           TNT_(clo_file_filter) + 1, 
                           VG_(strlen)( TNT_(clo_file_filter)) - 1 ) == 0 ) {
+	    // Example: --file-filter=*.pdf
 
             tainted_fds[tid][fd] = True;
             if ( verbose )
