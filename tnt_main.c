@@ -3858,6 +3858,7 @@ static void tnt_print_usage(void) {
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
 "    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
 "    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
+"    --head= no|yes              limited taint propagation [no]\n"
    );
 }
 
