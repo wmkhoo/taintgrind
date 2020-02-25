@@ -1,9 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2020-02-25 Experimental feature --head=yes
+
 2019-04-25 Support for Valgrind 3.15.0, x86\_linux, amd64\_linux, arm\_linux
 
-2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux (Thanks @vanhauser-thc)
+2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux
 
 2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
 
@@ -177,6 +179,11 @@ Reverse taint analysis
 Reverse taint analysis tracks data from sink to the source. After a crash, use [rtaint](https://github.com/Cycura/rtaint) on the Taintgrind log file to track data back to the input file.
 
 
+Limiting taint propagation with --head=yes
+------------------------------------------
+See [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
+
+
 Notes
 -----
 
@@ -192,3 +199,16 @@ License
 
 Taintgrind is licensed under GNU GPLv2.
 
+
+Thanks
+------
+Many of the improvements wouldn't be possible without help, feedback, bug reports, or patches from:
+
+```
+Khilan Gudka
+Laurent Simon
+Giuseppe Di Guglielmo
+Marc Heuse
+tkchia
+Marek Zmysłowski
+```
