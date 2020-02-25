@@ -349,7 +349,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 //  int open (const char *filename, int flags[, mode_t mode])
    HChar fdpath[FD_MAX_PATH];
    Int fd = sr_Res(res);
-   Bool verbose = True;
+   Bool verbose = False;
 
    // check if we have already created a sandbox
    if (have_created_sandbox && !IN_SANDBOX) {
@@ -404,8 +404,8 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
                tainted_fds[tid][fd] = True;
                if ( verbose )
                   VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
-               if ( verbose )
-                  VG_(printf)("%s\n", fdpath + VG_(strlen)(fdpath) - 3);
+               //if ( verbose )
+               //   VG_(printf)("%s\n", fdpath + VG_(strlen)(fdpath) - 3);
                read_offset = 0;
 	    }
 
