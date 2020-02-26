@@ -5226,6 +5226,9 @@ int shouldUntaint( MCEnv* mce, IRExpr *e )
 
 	 switch (op) {
 	    case Iop_Add64:
+	    case Iop_And64:
+            case Iop_Shl64:
+            case Iop_Shr64:
             case Iop_Sub64:
                break;
 	    default:
