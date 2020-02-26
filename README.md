@@ -1,9 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2020-02-25 Experimental feature --head=yes to limit taint propagation
+
 2019-04-25 Support for Valgrind 3.15.0, x86\_linux, amd64\_linux, arm\_linux
 
-2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux (Thanks @vanhauser-thc)
+2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux
 
 2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
 
@@ -158,18 +160,27 @@ Tainting file input
 	    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]
 	    --tainted-ins-only= no|yes  print tainted instructions only [yes]
 	    --critical-ins-only= no|yes print critical instructions only [no]
+	    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
+	    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
+	    --head= no|yes              limited taint propagation [no]\n"
 
 If the file-filter field is '\*', it is equivalent to --taint-all=yes.
 Tainted instructions are really instructions where one or more of its input/output variables are tainted.
 At the moment, critical instructions include loads, stores, conditional jumps and indirect jumps/calls. If --critical-ins-only is turned on, all other instructions are not printed.
-The last two options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
+The --tainted-ins-only and --critical-ins-only options control the output of taintgrind. If both of these options are 'no', then taintgrind prints every instruction executed. 
 Run without any parameters, taintgrind will not taint anything and the program output should be printed.
 
-Run Taintgrind with e.g.
+To taint all contents of a file, run:
+
+	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt gzip -c path/to/test.txt
+
+To limit taint to certain bytes, run:
 
 	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
-See [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
+For generating SMT Libv2, see [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
+
+For limiting taint propagation, see [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
 
 
 Reverse taint analysis
@@ -192,3 +203,16 @@ License
 
 Taintgrind is licensed under GNU GPLv2.
 
+
+Thanks
+------
+Many of the improvements wouldn't be possible without help, feedback, bug reports, or patches from:
+
+```
+Khilan Gudka
+Laurent Simon
+Giuseppe Di Guglielmo
+Marc Heuse
+tkchia
+Marek Zmysłowski
+```
