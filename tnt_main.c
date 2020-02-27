@@ -1477,7 +1477,7 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )
    // SMT2
    if ( TNT_(clo_smt2) )
    {
-      UInt i = 0;
+      Int i = 0;
       for ( ; i<len; i++ )
       {
          VG_(printf)("(declare-fun byte%d () (_ BitVec 8))\n", i);
@@ -1498,7 +1498,7 @@ void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *var )
    // SMT2
    if ( TNT_(clo_smt2) )
    {
-      UInt i = 0;
+      Int i = 0;
       for ( ; i<len; i++ )
       {
          VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", var, i);
@@ -2429,7 +2429,7 @@ UInt callgate_nesting_depth = 0;
 void check_reg( UInt reg ){
 
    if( reg >= RI_MAX ){
-      VG_(printf)("check_reg: reg %d >= %d\n", reg, RI_MAX );
+      VG_(printf)("check_reg: reg %d >= %d\n", (int)reg, RI_MAX );
       tl_assert( reg < RI_MAX );
    }
 }
@@ -2502,7 +2502,7 @@ void bookkeeping_values(IRStmt *clone, UWord value) {
       {
          UInt ltmp = clone->Ist.WrTmp.tmp;
          if ( ltmp >= TI_MAX )
-            VG_(printf)("ltmp %d\n", ltmp);
+            VG_(printf)("ltmp %d\n", (int)ltmp);
          tl_assert( ltmp < TI_MAX );
          tv[ltmp] = value;
          break;
@@ -2511,7 +2511,7 @@ void bookkeeping_values(IRStmt *clone, UWord value) {
       {
          UInt ltmp = clone->Ist.Dirty.details->tmp;
          if ( ltmp >= TI_MAX )
-            VG_(printf)("ltmp %d\n", ltmp);
+            VG_(printf)("ltmp %d\n", (int)ltmp);
          tl_assert( ltmp < TI_MAX );
          tv[ltmp] = value;
          break;
@@ -2546,7 +2546,7 @@ void bookkeeping_taint(IRStmt *clone, UWord taint) {
       {
          UInt ltmp = clone->Ist.WrTmp.tmp;
          if ( ltmp >= TI_MAX )
-            VG_(printf)("ltmp %d\n", ltmp);
+            VG_(printf)("ltmp %d\n", (int)ltmp);
          tl_assert( ltmp < TI_MAX );
          ti[ltmp]++;
          if ( taint )
@@ -2559,7 +2559,7 @@ void bookkeeping_taint(IRStmt *clone, UWord taint) {
       {
          UInt ltmp = clone->Ist.Dirty.details->tmp;
          if ( ltmp >= TI_MAX )
-            VG_(printf)("ltmp %d\n", ltmp);
+            VG_(printf)("ltmp %d\n", (int)ltmp);
          tl_assert( ltmp < TI_MAX );
          ti[ltmp]++;
          if ( taint )
@@ -2815,7 +2815,7 @@ int print_insn_type(ULong pc, IRStmt *clone, UWord size) {
                print_asm(pc);
                //ppIRStmt(clone);
                VG_(printf)(" | ");
-               VG_(printf)("Load:%d", size);
+               VG_(printf)("Load:%d", (int)size);
                break;
             case Iex_ITE:
                print_asm(pc);
@@ -2838,7 +2838,7 @@ int print_insn_type(ULong pc, IRStmt *clone, UWord size) {
          print_asm(pc);
          //ppIRStmt(clone);
          VG_(printf)(" | ");
-         VG_(printf)("Store:%d", size);
+         VG_(printf)("Store:%d", (int)size);
          break;
       case Ist_Dirty:
          print_asm(pc);
@@ -2869,9 +2869,9 @@ void print_info_flow_tmp(IRExpr *e, Int print_leading_space) {
 
    if ( is_tainted(tmp) ) {
       if (print_leading_space)
-         VG_(printf)(" t%d_%d", tmp, _ti(tmp));
+         VG_(printf)(" t%d_%d", (int)tmp, (int)_ti(tmp));
       else
-         VG_(printf)("t%d_%d", tmp, _ti(tmp));
+         VG_(printf)("t%d_%d", (int)tmp, (int)_ti(tmp));
    }
 }
 
@@ -2885,7 +2885,7 @@ void print_info_flow_tmp_indirect(IRExpr *e) {
    tl_assert( tmp < TI_MAX );
 
    if ( is_tainted(tmp) )
-      VG_(printf)(" (t%d_%d)", tmp, _ti(tmp));
+      VG_(printf)(" (t%d_%d)", (int)tmp, (int)_ti(tmp));
 }
 
 
@@ -2902,7 +2902,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          if (!taint) break;
          // Since it's tainted, data must be RdTmp
          UInt reg = clone->Ist.Put.offset/(sizeof(UWord));
-         VG_(printf)("r%d_%d <-", reg, ri[reg]);
+         VG_(printf)("r%d_%d <-", (int)reg, (int)ri[reg]);
          print_info_flow_tmp(clone->Ist.Put.data, 1);
          break;
       }
@@ -2914,7 +2914,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                                       clone->Ist.PutI.details->ix,
                                       clone->Ist.PutI.details->bias)
                     /(sizeof(UWord));
-         VG_(printf)("r%d_%d <-", reg, ri[reg]);
+         VG_(printf)("r%d_%d <-", (int)reg, (int)ri[reg]);
          print_info_flow_tmp(clone->Ist.PutI.details->data, 1);
          print_info_flow_tmp_indirect(clone->Ist.PutI.details->ix);
          break;
@@ -2987,7 +2987,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
          if (d->tmp == IRTemp_INVALID) break;
          UInt ltmp = d->tmp;
          tl_assert(ltmp < TI_MAX);
-         VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+         VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
          Int i;
          for (i = 0; d->args[i]; i++)
             print_info_flow_tmp(d->args[i], 1);
@@ -3007,7 +3007,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                UInt reg = e->Iex.Get.offset/(sizeof(UWord));
                check_reg( reg );
 
-               VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
+               VG_(printf)( "t%d_%d <- r%d_%d", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
                break;
             }
             case Iex_GetI:
@@ -3019,28 +3019,28 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                                             e->Iex.GetI.bias)
                           /(sizeof(UWord));
 
-               VG_(printf)( "t%d_%d <- r%d_%d", ltmp, _ti(ltmp), reg, ri[reg] );
+               VG_(printf)( "t%d_%d <- r%d_%d", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
                print_info_flow_tmp(e->Iex.GetI.ix, 1);
                break;
             }
             case Iex_RdTmp:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e, 1);
                break;
             }
             case Iex_Unop:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e->Iex.Unop.arg, 1);
                break;
             }
             case Iex_Binop:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e->Iex.Binop.arg1, 1);
                print_info_flow_tmp(e->Iex.Binop.arg2, 1);
                break;
@@ -3048,7 +3048,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             case Iex_Triop:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e->Iex.Triop.details->arg1, 1);
                print_info_flow_tmp(e->Iex.Triop.details->arg2, 1);
                print_info_flow_tmp(e->Iex.Triop.details->arg3, 1);
@@ -3057,7 +3057,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             case Iex_Qop:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e->Iex.Qop.details->arg1, 1);
                print_info_flow_tmp(e->Iex.Qop.details->arg2, 1);
                print_info_flow_tmp(e->Iex.Qop.details->arg3, 1);
@@ -3076,14 +3076,14 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                   Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
 
                   if ( is_tainted(ltmp) && is_tainted(atmp) ) {
-                     VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     VG_(printf)( "t%d_%d <- %s", (int)ltmp, (int)_ti(ltmp), varname);
                      if (success)    VG_(printf)( ":%llx", address);
                      print_info_flow_tmp_indirect(addr);
                   } else if ( is_tainted(ltmp) ) {
-                     VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     VG_(printf)( "t%d_%d <- %s", (int)ltmp, (int)_ti(ltmp), varname);
                      if (success)    VG_(printf)( ":%llx", address);
                   } else if ( is_tainted(atmp) ) {
-                     VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+                     VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                      print_info_flow_tmp_indirect(addr);
                   }
                } else {
@@ -3091,7 +3091,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
                   if ( is_tainted(ltmp) ) {
                      address = extract_IRConst64(addr->Iex.Const.con);
                      Int success = TNT_(describe_data)(address, varname, VARNAMESIZE);
-                     VG_(printf)( "t%d_%d <- %s", ltmp, _ti(ltmp), varname);
+                     VG_(printf)( "t%d_%d <- %s", (int)ltmp, (int)_ti(ltmp), varname);
                      if (success)    VG_(printf)( ":%llx", address);
                   }
                }
@@ -3100,7 +3100,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             case Iex_CCall:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                Int i;
                for (i = 0; e->Iex.CCall.args[i]; i++)
                   print_info_flow_tmp(e->Iex.CCall.args[i], 1);
@@ -3109,7 +3109,7 @@ void print_info_flow(IRStmt *clone, UWord taint) {
             case Iex_ITE:
             {
                if (!taint) break;
-               VG_(printf)( "t%d_%d <-", ltmp, _ti(ltmp) );
+               VG_(printf)( "t%d_%d <-", (int)ltmp, (int)_ti(ltmp) );
                print_info_flow_tmp(e->Iex.ITE.cond, 1);
                print_info_flow_tmp(e->Iex.ITE.iftrue, 1);
                print_info_flow_tmp(e->Iex.ITE.iffalse, 1);
@@ -3155,7 +3155,7 @@ void TNT_(emit_insn) (
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
    if (TNT_(clo_compact))
-      VG_(printf)("%p", pc);
+      VG_(printf)("%p", (void *)pc);
    else {
       DiEpoch  ep = VG_(current_DiEpoch)();
       const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
@@ -3215,7 +3215,7 @@ void TNT_(emit_insn1) (
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
    if (TNT_(clo_compact))
-      VG_(printf)("%p", pc);
+      VG_(printf)("%p", (void *)pc);
    else {
       DiEpoch  ep = VG_(current_DiEpoch)();
       const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
@@ -3258,7 +3258,7 @@ void TNT_(emit_next) (
    // Print address & function name
    if ( istty && taint ) VG_(printf)("%s", KMAG);
    if (TNT_(clo_compact))
-      VG_(printf)("%p", pc);
+      VG_(printf)("%p", (void *)pc);
    else {
       DiEpoch  ep = VG_(current_DiEpoch)();
       const HChar *fnname = VG_(describe_IP) ( ep, pc, NULL );
@@ -3290,7 +3290,7 @@ void TNT_(emit_next) (
    // Print information flow
    UInt next = clone->Iex.RdTmp.tmp;
    if ( is_tainted(next) )
-      VG_(printf)( "t%d_%d", next, _ti(next));
+      VG_(printf)( "t%d_%d", (int)next, (int)_ti(next));
    VG_(printf)("\n");
 }
 /*-- End of emit functions --*/

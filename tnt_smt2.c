@@ -139,10 +139,10 @@ static char *tnt_smt2_concat_indexed( char *buf, UInt t, UInt c, UInt max )
 
    if ( c == 0 )
    {
-      VG_(sprintf)(buf, "(concat t%d_%d_%d t%d_%d_%d)", t, _ti(t), max-c, t, _ti(t), max-c+1);
+      VG_(sprintf)(buf, "(concat t%d_%d_%d t%d_%d_%d)", (int)t, (int)_ti(t), (int)(max-c), (int)t, (int)_ti(t), (int)(max-c+1));
       return buf;
    }
-   VG_(sprintf)(tmp, "(concat t%d_%d_%d %s)", t, _ti(t), max-c, tnt_smt2_concat_indexed(buf, t, c-1, max) );
+   VG_(sprintf)(tmp, "(concat t%d_%d_%d %s)", (int)t, (int)_ti(t), (int)(max-c), tnt_smt2_concat_indexed(buf, t, c-1, max) );
    VG_(strcpy)(buf, tmp);
    return buf;
 }
@@ -156,18 +156,18 @@ void TNT_(smt2_exit) ( IRStmt *clone )
    VG_(printf)("(push)\n");
    // Invert branch
    if ( tv[gtmp] ) {
-      VG_(printf)("(assert (= t%d_%d #b0))\n", gtmp, _ti(gtmp));
+      VG_(printf)("(assert (= t%d_%d #b0))\n", (int)gtmp, (int)_ti(gtmp));
    } else {
-      VG_(printf)("(assert (= t%d_%d #b1))\n", gtmp, _ti(gtmp));
+      VG_(printf)("(assert (= t%d_%d #b1))\n", (int)gtmp, (int)_ti(gtmp));
    }
    VG_(printf)("(check-sat)\n(get-model)\n");
    // Restore assertions
    VG_(printf)("(pop)\n");
    // Add original branch condition
    if ( tv[gtmp] ) {
-      VG_(printf)("(assert (= t%d_%d #b1))\n", gtmp, _ti(gtmp));
+      VG_(printf)("(assert (= t%d_%d #b1))\n", (int)gtmp, (int)_ti(gtmp));
    } else {
-      VG_(printf)("(assert (= t%d_%d #b0))\n", gtmp, _ti(gtmp));
+      VG_(printf)("(assert (= t%d_%d #b0))\n", (int)gtmp, (int)_ti(gtmp));
    }
 }
 
@@ -178,9 +178,9 @@ static void tnt_smt2_loadstore_atmp ( UInt atmp, ULong address )
    VG_(printf)("(push)\n");
    // Invert branch
    if ( tt[atmp] == 32 )
-      VG_(printf)("(assert (not (= t%d_%d #x%08llx)))\n", atmp, _ti(atmp), address);
+      VG_(printf)("(assert (not (= t%d_%d #x%08llx)))\n", (int)atmp, (int)_ti(atmp), address);
    else if ( tt[atmp] == 64 )
-      VG_(printf)("(assert (not (= t%d_%d #x%016llx)))\n", atmp, _ti(atmp), address);
+      VG_(printf)("(assert (not (= t%d_%d #x%016llx)))\n", (int)atmp, (int)_ti(atmp), address);
    else
       tl_assert(0);
 
@@ -189,9 +189,9 @@ static void tnt_smt2_loadstore_atmp ( UInt atmp, ULong address )
    VG_(printf)("(pop)\n");
    // Add original branch condition
    if ( tt[atmp] == 32 )
-      VG_(printf)("(assert (= t%d_%d #x%08llx))\n", atmp, _ti(atmp), address);
+      VG_(printf)("(assert (= t%d_%d #x%08llx))\n", (int)atmp, (int)_ti(atmp), address);
    else if ( tt[atmp] == 64 )
-      VG_(printf)("(assert (= t%d_%d #x%016llx))\n", atmp, _ti(atmp), address);
+      VG_(printf)("(assert (= t%d_%d #x%016llx))\n", (int)atmp, (int)_ti(atmp), address);
    else
       tl_assert(0);
 }
@@ -201,23 +201,23 @@ static void tnt_smt2_load_ltmp_32 ( UInt ltmp, UInt ty, ULong address, UInt valu
 {
    char buf[1024];
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), SMT2_ty[ty]);
 
    if ( SMT2_ty[ty] == 128 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 14, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_32(buf, address, 14, value, taint) );
    } else if ( SMT2_ty[ty] == 64 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 6, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_32(buf, address, 6, value, taint) );
    } else if ( SMT2_ty[ty] == 32 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
    } else if ( SMT2_ty[ty] == 8 )
    {
-      VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
+      VG_(printf)("(assert (= t%d_%d a%llx))\n", (int)ltmp, (int)_ti(ltmp), address );
    } else {
       VG_(printf)("smt2_load_t: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
       tl_assert(0);
@@ -229,23 +229,23 @@ static void tnt_smt2_load_ltmp_64 ( UInt ltmp, UInt ty, ULong address, ULong val
 {
    char buf[1024];
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), SMT2_ty[ty]);
 
    if ( SMT2_ty[ty] == 128 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 14, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_64(buf, address, 14, value, taint) );
    } else if ( SMT2_ty[ty] == 64 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_64(buf, address, 6, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_64(buf, address, 6, value, taint) );
    } else if ( SMT2_ty[ty] == 32 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_32(buf, address, 2, value, taint) );
    } else if ( SMT2_ty[ty] == 16 )
    {
-      VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
+      VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_16(buf, address, 0, value, taint) );
    } else if ( SMT2_ty[ty] == 8 )
    {
-      VG_(printf)("(assert (= t%d_%d a%llx))\n", ltmp, _ti(ltmp), address );
+      VG_(printf)("(assert (= t%d_%d a%llx))\n", (int)ltmp, (int)_ti(ltmp), address );
    } else {
       VG_(printf)("smt2_load_t: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
       tl_assert(0);
@@ -292,7 +292,7 @@ static void tnt_smt2_store_dtmp( UInt dtmp, ULong address )
    for ( i=0; i<numbytes; i++ )
    {
       VG_(printf)("(declare-fun a%llx () (_ BitVec 8))\n", address+i);
-      VG_(printf)("(assert (= a%llx ((_ extract %d %d) t%d_%d)))\n", address+i, ((i+1)*8)-1, i*8, dtmp, _ti(dtmp) );
+      VG_(printf)("(assert (= a%llx ((_ extract %d %d) t%d_%d)))\n", address+i, ((i+1)*8)-1, i*8, (int)dtmp, (int)_ti(dtmp) );
    }
 }
 
@@ -324,23 +324,23 @@ void TNT_(smt2_store) ( IRStmt *clone )
 }
 
 #define smt2_sign_extend(a, b) \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d ((_ sign_extend " #a ") t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d ((_ sign_extend " #a ") t%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = b
 
 #define smt2_zero_extend(a, b) \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d ((_ zero_extend " #a ") t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d ((_ zero_extend " #a ") t%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = b
 
 #define smt2_extract(a, b, c) \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #c "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d ((_ extract " #b " " #a ") t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #c "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d ((_ extract " #b " " #a ") t%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = c
 
 #define smt2_unop(a, b) \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (" #a " t%d_%d)))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #b "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #a " t%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = b
 
 // PMOVMSKB http://x86.renejeschke.de/html/file_module_x86_id_243.html
@@ -348,44 +348,45 @@ void TNT_(smt2_store) ( IRStmt *clone )
       { \
          int i; char buf[512]; \
          tl_assert(tt[rtmp] == (ty*8)); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
          for ( i=0; i<ty; i++ ) { \
-            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp), i); \
-            VG_(printf)("(assert (= t%d_%d_%d ((_ extract %d %d) t%d_%d) ))\n", ltmp, _ti(ltmp), i, (i+1)*8-1, (i+1)*8-1, rtmp, _ti(rtmp) ); \
+            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec 1))\n", (int)ltmp, (int)_ti(ltmp), i); \
+            VG_(printf)("(assert (= t%d_%d_%d ((_ extract %d %d) t%d_%d) ))\n", (int)ltmp, (int)_ti(ltmp), i, (i+1)*8-1, (i+1)*8-1, (int)rtmp, (int)_ti(rtmp) ); \
          } \
-         VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_indexed(buf, ltmp, ty-2, ty-2) ); \
+         VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_indexed(buf, (int)ltmp, ty-2, ty-2) ); \
          tt[ltmp] = ty; \
       }
 
 // ctz32 https://github.com/agocke/qemu/blob/master/host-utils.h
 #define smt2_ctz64(ty) \
       { \
-         int mask = 0xFFFFFFFF, shift = 32, i; \
+         unsigned int mask = 0xFFFFFFFF, shift = 32; \
+	 int i; \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
          /* cnt = 0; */ \
-         VG_(printf)("(declare-fun t%d_%d_cnt0 () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d_cnt0 #x%016x))\n", ltmp, _ti(ltmp), 0); \
-         VG_(printf)("(declare-fun t%d_%d_sh0 () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp)); \
-         VG_(printf)("(assert (= t%d_%d_sh0 t%d_%d))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp)); \
+         VG_(printf)("(declare-fun t%d_%d_cnt0 () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d_cnt0 #x%016x))\n", (int)ltmp, (int)_ti(ltmp), 0U); \
+         VG_(printf)("(declare-fun t%d_%d_sh0 () (_ BitVec " #ty "))\n", (int)rtmp, (int)_ti(rtmp)); \
+         VG_(printf)("(assert (= t%d_%d_sh0 t%d_%d))\n", (int)rtmp, (int)_ti(rtmp), (int)rtmp, (int)_ti(rtmp)); \
          for ( i=0; i<6; i++ ) { \
             /* if (!(val & 0xFFFFFFFF)) */ \
-            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec 1))\n", rtmp, _ti(rtmp), i); \
-            VG_(printf)("(assert (= t%d_%d_%d (bvnot (bvand t%d_%d_sh%d #x%016x))))\n", rtmp, _ti(rtmp), i, rtmp, _ti(rtmp), i, mask); \
+            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec 1))\n", (int)rtmp, (int)_ti(rtmp), i); \
+            VG_(printf)("(assert (= t%d_%d_%d (bvnot (bvand t%d_%d_sh%d #x%016x))))\n", (int)rtmp, (int)_ti(rtmp), i, (int)rtmp, (int)_ti(rtmp), i, mask); \
             /*    cnt += 32; */ \
-            VG_(printf)("(declare-fun t%d_%d_cnt%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp), i+1); \
-            VG_(printf)("(assert (= t%d_%d_cnt%d (bvadd t%d_%d_cnt%d (ite t%d_%d_%d #x%016x #x%016x))))\n", ltmp, _ti(ltmp), i+1, ltmp, _ti(ltmp), i, rtmp, _ti(rtmp), i, shift, 0); \
+            VG_(printf)("(declare-fun t%d_%d_cnt%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp), i+1); \
+            VG_(printf)("(assert (= t%d_%d_cnt%d (bvadd t%d_%d_cnt%d (ite t%d_%d_%d #x%016x #x%016x))))\n", (int)ltmp, (int)_ti(ltmp), i+1, (int)ltmp, (int)_ti(ltmp), i, (int)rtmp, (int)_ti(rtmp), i, (unsigned)shift, 0U); \
             /*    val >>= 32; */ \
-            VG_(printf)("(declare-fun t%d_%d_sh%d () (_ BitVec " #ty "))\n", rtmp, _ti(rtmp), i+1); \
-            VG_(printf)("(assert (= t%d_%d_sh%d (bvshr t%d_%d_sh%d (ite t%d_%d_%d #x%016x #x%016x))))\n", rtmp, _ti(rtmp), i+1, rtmp, _ti(rtmp), i, rtmp, _ti(rtmp), i, shift, 0); \
+            VG_(printf)("(declare-fun t%d_%d_sh%d () (_ BitVec " #ty "))\n", (int)rtmp, (int)_ti(rtmp), i+1); \
+            VG_(printf)("(assert (= t%d_%d_sh%d (bvshr t%d_%d_sh%d (ite t%d_%d_%d #x%016x #x%016x))))\n", (int)rtmp, (int)_ti(rtmp), i+1, (int)rtmp, (int)_ti(rtmp), i, (int)rtmp, (int)_ti(rtmp), i, shift, 0U); \
             shift /= 2; \
             mask >>= shift; \
          } \
          /* if (!(val & 0x1)) */ \
-         VG_(printf)("(declare-fun t%d_%d_6 () (_ BitVec 1))\n", rtmp, _ti(rtmp)); \
-         VG_(printf)("(assert (= t%d_%d_6 (bvnot (bvand t%d_%d_sh6 #x%016x))))\n", rtmp, _ti(rtmp), rtmp, _ti(rtmp), 0x1); \
+         VG_(printf)("(declare-fun t%d_%d_6 () (_ BitVec 1))\n", (int)rtmp, (int)_ti(rtmp)); \
+         VG_(printf)("(assert (= t%d_%d_6 (bvnot (bvand t%d_%d_sh6 #x%016x))))\n", (int)rtmp, (int)_ti(rtmp), (int)rtmp, (int)_ti(rtmp), 1U); \
          /*    cnt += 1; */ \
-         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d_cnt6 (ite t%d_%d_6 #x%016x #x%016x))))\n", ltmp, _ti(ltmp), ltmp, _ti(ltmp), rtmp, _ti(rtmp), 1, 0); \
+         VG_(printf)("(assert (= t%d_%d (bvadd t%d_%d_cnt6 (ite t%d_%d_6 #x%016x #x%016x))))\n", (int)ltmp, (int)_ti(ltmp), (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp), 1U, 0U); \
          tt[ltmp] = ty; \
       }
 
@@ -449,14 +450,14 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
 
 #define smt2_binop_tc_add(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (" #op " t%d_%d #x%0" #zeros "llx) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #op " t%d_%d #x%0" #zeros "llx) ))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp), c ); \
          tt[ltmp] = ty
 
 #define smt2_binop_tc_cmp(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp), c ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #op " t%d_%d #x%0" #zeros "llx) #b1 #b0) ))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp), c ); \
          tt[ltmp] = 1
 
 // PCMPEQB http://x86.renejeschke.de/html/file_module_x86_id_234.html
@@ -464,25 +465,25 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       { \
          int i; char buf[512]; \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
          for ( i=0; i<n; i++ ) { \
-            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec " #m "))\n", ltmp, _ti(ltmp), i); \
-            VG_(printf)("(assert (= t%d_%d_%d (ite (" #op " ((_ extract %d %d) t%d_%d) #x%0" #zeros "llx) #xff #x00) ))\n", ltmp, _ti(ltmp), i, (i+1)*m-1, i*m, rtmp, _ti(rtmp), c ); \
+            VG_(printf)("(declare-fun t%d_%d_%d () (_ BitVec " #m "))\n", (int)ltmp, (int)_ti(ltmp), i); \
+            VG_(printf)("(assert (= t%d_%d_%d (ite (" #op " ((_ extract %d %d) t%d_%d) #x%0" #zeros "llx) #xff #x00) ))\n", (int)ltmp, (int)_ti(ltmp), i, (i+1)*m-1, i*m, (int)rtmp, (int)_ti(rtmp), c ); \
          } \
-         VG_(printf)("(assert (= t%d_%d %s))\n", ltmp, _ti(ltmp), tnt_smt2_concat_indexed(buf, ltmp, n-2, n-2) ); \
+         VG_(printf)("(assert (= t%d_%d %s))\n", (int)ltmp, (int)_ti(ltmp), tnt_smt2_concat_indexed(buf, (int)ltmp, n-2, n-2) ); \
          tt[ltmp] = ty; \
       }
 
 #define smt2_binop_ct_add(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (" #op " #x%0" #zeros "llx t%d_%d) ))\n", ltmp, _ti(ltmp), c, rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #ty "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #op " #x%0" #zeros "llx t%d_%d) ))\n", (int)ltmp, (int)_ti(ltmp), c, (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = ty
 
 #define smt2_binop_ct_cmp(ty, zeros, op) \
          tl_assert(tt[rtmp] == ty); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (ite (" #op " #x%0" #zeros "llx t%d_%d) #b1 #b0) ))\n", ltmp, _ti(ltmp), c, rtmp, _ti(rtmp) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #op " #x%0" #zeros "llx t%d_%d) #b1 #b0) ))\n", (int)ltmp, (int)_ti(ltmp), c, (int)rtmp, (int)_ti(rtmp) ); \
          tt[ltmp] = 1
 
 static void tnt_smt2_binop_tc_common ( UInt op, UInt ltmp, UInt rtmp, ULong c ) {
@@ -659,15 +660,15 @@ static void tnt_smt2_binop_tt_01 ( IRStmt *clone )
 #define smt2_binop_tt_11_add(a, d) \
          tl_assert(tt[rtmp1] == a); \
          tl_assert(tt[rtmp2] == a); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #a "))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (" #d " t%d_%d t%d_%d) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec " #a "))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (" #d " t%d_%d t%d_%d) ))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp1, (int)_ti(rtmp1), (int)rtmp2, (int)_ti(rtmp2) ); \
          tt[ltmp] = a
 
 #define smt2_binop_tt_11_cmp(a, d) \
          tl_assert(tt[rtmp1] == a); \
          tl_assert(tt[rtmp2] == a); \
-         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", ltmp, _ti(ltmp)); \
-         VG_(printf)("(assert (= t%d_%d (ite (" #d " t%d_%d t%d_%d) #b1 #b0) ))\n", ltmp, _ti(ltmp), rtmp1, _ti(rtmp1), rtmp2, _ti(rtmp2) ); \
+         VG_(printf)("(declare-fun t%d_%d () (_ BitVec 1))\n", (int)ltmp, (int)_ti(ltmp)); \
+         VG_(printf)("(assert (= t%d_%d (ite (" #d " t%d_%d t%d_%d) #b1 #b0) ))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp1, (int)_ti(rtmp1), (int)rtmp2, (int)_ti(rtmp2) ); \
          tt[ltmp] = 1
 
 // ltmp = <op> rtmp1 rtmp2, both tainted
@@ -756,8 +757,8 @@ void TNT_(smt2_rdtmp) ( IRStmt *clone )
 
    tl_assert(tt[rtmp]);
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[rtmp]);
-   VG_(printf)("(assert (= t%d_%d t%d_%d))\n", ltmp, _ti(ltmp), rtmp, _ti(rtmp) );
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), (int)tt[rtmp]);
+   VG_(printf)("(assert (= t%d_%d t%d_%d))\n", (int)ltmp, (int)_ti(ltmp), (int)rtmp, (int)_ti(rtmp) );
    tt[ltmp] = tt[rtmp];
 }
 
@@ -769,20 +770,20 @@ void TNT_(smt2_get) ( IRStmt *clone )
    UInt ty      = data->Iex.Get.ty - Ity_INVALID;
    UInt reg     = data->Iex.Get.offset/(sizeof(UWord));
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), SMT2_ty[ty]);
 
    switch (SMT2_ty[ty]) {
       case 8:
-         VG_(printf)("(assert (= t%d_%d ((_ extract 7 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         VG_(printf)("(assert (= t%d_%d ((_ extract 7 0) r%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
          break;
       case 16:
-         VG_(printf)("(assert (= t%d_%d ((_ extract 15 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         VG_(printf)("(assert (= t%d_%d ((_ extract 15 0) r%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
          break;
       case 32:
-         VG_(printf)("(assert (= t%d_%d ((_ extract 31 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         VG_(printf)("(assert (= t%d_%d ((_ extract 31 0) r%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
          break;
       case 64:
-         VG_(printf)("(assert (= t%d_%d ((_ extract 63 0) r%d_%d)))\n", ltmp, _ti(ltmp), reg, ri[reg] );
+         VG_(printf)("(assert (= t%d_%d ((_ extract 63 0) r%d_%d)))\n", (int)ltmp, (int)_ti(ltmp), (int)reg, (int)ri[reg] );
          break;
       default:
          VG_(printf)("smt2_get: SMT2_ty[ty] = %d not yet supported\n", SMT2_ty[ty]);
@@ -801,20 +802,20 @@ void TNT_(smt2_put_t_32) ( IRStmt *clone )
 
    tl_assert(tt[tmp]);
 
-   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 32))\n", reg, ri[reg]);
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 32))\n", (int)reg, (int)ri[reg]);
 
    switch (tt[tmp]) {
       case 8:
-         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 24) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 24) t%d_%d)))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       case 16:
-         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 16) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 16) t%d_%d)))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       case 32:
-         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       default:
-         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", tt[tmp]);
+         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", (int)tt[tmp]);
          tl_assert(0);
          break;
    }
@@ -830,23 +831,23 @@ void TNT_(smt2_put_t_64) ( IRStmt *clone )
 
    tl_assert(tt[tmp]);
 
-   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 64))\n", reg, ri[reg]);
+   VG_(printf)("(declare-fun r%d_%d () (_ BitVec 64))\n", (int)reg, (int)ri[reg]);
 
    switch (tt[tmp]) {
       case 8:
-         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 56) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 56) t%d_%d)))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       case 16:
-         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 48) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 48) t%d_%d)))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       case 32:
-         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 32) t%d_%d)))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d ((_ zero_extend 32) t%d_%d)))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       case 64:
-         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", reg, ri[reg], tmp, _ti(tmp) );
+         VG_(printf)("(assert (= r%d_%d t%d_%d))\n", (int)reg, (int)ri[reg], (int)tmp, (int)_ti(tmp) );
          break;
       default:
-         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", tt[tmp]);
+         VG_(printf)("smt2_put: tt[tmp] = %d not yet supported\n", (int)tt[tmp]);
          tl_assert(0);
          break;
    }
@@ -860,7 +861,7 @@ void TNT_(smt2_x86g_calculate_condition) ( IRStmt *clone )
 
    //char buf[1024];
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), SMT2_ty[ty]);
 
    //VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
    //         tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
@@ -975,23 +976,23 @@ static char *tnt_smt2_amd64g_calculate_condition_op_tc_common( IRStmt *clone, ch
    {
       case AMD64G_CC_OP_SUBB:
          VG_(sprintf)(tmp, "(bvsub ((_ extract 7 0) t%d_%d) #x%02x) #x%02x",
-            dep1tmp, _ti(dep1tmp),
-            (char)dep2c, 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (unsigned char)dep2c, 0U );
          break;
       case AMD64G_CC_OP_SUBW:
          VG_(sprintf)(tmp, "(bvsub ((_ extract 15 0) t%d_%d) #x%04x) #x%04x",
-            dep1tmp, _ti(dep1tmp),
-            (short)dep2c, 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (unsigned short)dep2c, 0U );
          break;
       case AMD64G_CC_OP_SUBL:
          VG_(sprintf)(tmp, "(bvsub ((_ extract 31 0) t%d_%d) #x%08x) #x%08x",
-            dep1tmp, _ti(dep1tmp),
-            (int)dep2c, 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (unsigned int)dep2c, 0U );
          break;
       case AMD64G_CC_OP_SUBQ:
          VG_(sprintf)(tmp, "(bvsub t%d_%d #x%016llx) #x%016llx",
-            dep1tmp, _ti(dep1tmp),
-            dep2c, 0LL );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (long long unsigned int)dep2c, 0ULL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -1034,23 +1035,23 @@ static char *tnt_smt2_amd64g_calculate_condition_op_ct_common( IRStmt *clone, ch
    {
       case AMD64G_CC_OP_SUBB:
          VG_(sprintf)(tmp, "(bvsub #x%02x ((_ extract 7 0) t%d_%d)) #x%02x",
-            (char)dep1c,
-            dep2tmp, _ti(dep2tmp), 0 );
+            (unsigned char)dep1c,
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBW:
          VG_(sprintf)(tmp, "(bvsub #x%04x ((_ extract 15 0) t%d_%d)) #x%04x",
-            (short)dep1c,
-            dep2tmp, _ti(dep2tmp), 0 );
+            (unsigned short)dep1c,
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBL:
          VG_(sprintf)(tmp, "(bvsub #x%08x ((_ extract 31 0) t%d_%d)) #x%08x",
-            (int)dep1c,
-            dep2tmp, _ti(dep2tmp), 0 );
+            (unsigned int)dep1c,
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBQ:
          VG_(sprintf)(tmp, "(bvsub #x%016llx t%d_%d) #x%016llx",
-            dep1c,
-            dep2tmp, _ti(dep2tmp), 0LL );
+            (long long unsigned int)dep1c,
+            (int)dep2tmp, (int)_ti(dep2tmp), 0ULL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -1123,23 +1124,23 @@ static char *tnt_smt2_amd64g_calculate_condition_op_tt_11( IRStmt *clone, char *
    {
       case AMD64G_CC_OP_SUBB:
          VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%02x",
-            dep1tmp, _ti(dep1tmp),
-            dep2tmp, _ti(dep2tmp), 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBW:
          VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%04x",
-            dep1tmp, _ti(dep1tmp),
-            dep2tmp, _ti(dep2tmp), 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBL:
          VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%08x",
-            dep1tmp, _ti(dep1tmp),
-            dep2tmp, _ti(dep2tmp), 0 );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (int)dep2tmp, (int)_ti(dep2tmp), 0U );
          break;
       case AMD64G_CC_OP_SUBQ:
          VG_(sprintf)(tmp, "(bvsub t%d_%d t%d_%d) #x%016llx",
-            dep1tmp, _ti(dep1tmp),
-            dep2tmp, _ti(dep2tmp), 0LL );
+            (int)dep1tmp, (int)_ti(dep1tmp),
+            (int)dep2tmp, (int)_ti(dep2tmp), 0ULL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cc_op = %llx not yet supported\n", cc_op);
@@ -1187,22 +1188,22 @@ static char *tnt_smt2_amd64g_calculate_condition_cond( IRStmt *clone, char *buf 
       case AMD64CondZ:
          VG_(sprintf)(tmp, "ite (= %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            1ULL, 0ULL );
          break;
       case AMD64CondNZ:
          VG_(sprintf)(tmp, "ite (not (= %s)) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            1ULL, 0ULL );
          break;
       case AMD64CondS:
          VG_(sprintf)(tmp, "ite (bvslt %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            1ULL, 0ULL );
          break;
       case AMD64CondNS:
          VG_(sprintf)(tmp, "ite (bvsge %s) #x%016llx #x%016llx",
             tnt_smt2_amd64g_calculate_condition_op(clone, buf),
-            1LL, 0LL );
+            1ULL, 0ULL );
          break;
       default:
          VG_(printf)("smt2_amd64g_calculate_condition: cond = %llx not yet supported\n", cond);
@@ -1220,9 +1221,9 @@ void TNT_(smt2_amd64g_calculate_condition) ( IRStmt *clone )
 
    char buf[1024];
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), SMT2_ty[ty]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), SMT2_ty[ty]);
 
-   VG_(printf)("(assert (= t%d_%d (%s)))\n", ltmp, _ti(ltmp),
+   VG_(printf)("(assert (= t%d_%d (%s)))\n", (int)ltmp, (int)_ti(ltmp),
             tnt_smt2_amd64g_calculate_condition_cond( clone, buf ) );
 
    tt[ltmp] = SMT2_ty[ty];
@@ -1236,44 +1237,44 @@ void TNT_(smt2_ite_tt) ( IRStmt *clone )
    UInt ttmp    = data->Iex.ITE.iftrue->Iex.RdTmp.tmp;
    UInt ftmp    = data->Iex.ITE.iffalse->Iex.RdTmp.tmp;
 
-   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", ltmp, _ti(ltmp), tt[ttmp]);
+   VG_(printf)("(declare-fun t%d_%d () (_ BitVec %d))\n", (int)ltmp, (int)_ti(ltmp), (int)tt[ttmp]);
 
    if ( !is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite #b%d %016llx t%d_%d)))\n",
-            ltmp, _ti(ltmp),
+            (int)ltmp, (int)_ti(ltmp),
             (char)tv[ctmp],
             tv[ttmp],
-            ftmp, _ti(ftmp) );
+            (int)ftmp, (int)_ti(ftmp) );
    } else if ( is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d %016llx t%d_%d)))\n",
-            ltmp, _ti(ltmp),
-            ctmp, _ti(ctmp),
+            (int)ltmp, (int)_ti(ltmp),
+            (int)ctmp, (int)_ti(ctmp),
             tv[ttmp],
-            ftmp, _ti(ftmp) );
+            (int)ftmp, (int)_ti(ftmp) );
    } else if ( !is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite #b%d t%d_%d %016llx)))\n",
-            ltmp, _ti(ltmp),
+            (int)ltmp, (int)_ti(ltmp),
             (char)tv[ctmp],
-            ttmp, _ti(ttmp),
+            (int)ttmp, (int)_ti(ttmp),
             tv[ftmp] );
    } else if ( is_tainted(ctmp) && !is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d %016llx)))\n",
-            ltmp, _ti(ltmp),
-            ctmp, _ti(ctmp),
-            ttmp, _ti(ttmp),
+            (int)ltmp, (int)_ti(ltmp),
+            (int)ctmp, (int)_ti(ctmp),
+            (int)ttmp, (int)_ti(ttmp),
             tv[ftmp] );
    } else if ( !is_tainted(ctmp) && is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite #b%d t%d_%d t%d_%d)))\n",
-            ltmp, _ti(ltmp),
+            (int)ltmp, (int)_ti(ltmp),
             (char)tv[ctmp],
-            ttmp, _ti(ttmp),
-            ftmp, _ti(ftmp) );
+            (int)ttmp, (int)_ti(ttmp),
+            (int)ftmp, (int)_ti(ftmp) );
    } else if ( is_tainted(ctmp) && is_tainted(ttmp) && is_tainted(ftmp) ) {
       VG_(printf)("(assert (= t%d_%d (ite t%d_%d t%d_%d t%d_%d)))\n",
-            ltmp, _ti(ltmp),
-            ctmp, _ti(ctmp),
-            ttmp, _ti(ttmp),
-            ftmp, _ti(ftmp) );
+            (int)ltmp, (int)_ti(ltmp),
+            (int)ctmp, (int)_ti(ctmp),
+            (int)ttmp, (int)_ti(ttmp),
+            (int)ftmp, (int)_ti(ftmp) );
    }
 
    tt[ltmp] = tt[ttmp];

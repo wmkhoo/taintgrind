@@ -97,9 +97,9 @@ void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
 
    if ( verbose )
    {
-      VG_(printf)("syscall _lseek %d %d ", tid, fd);
+      VG_(printf)("syscall _lseek %d %d ", (int)tid, fd);
       VG_(printf)("offset: 0x%x whence: 0x%x ", (UInt)offset, whence);
-      VG_(printf)("retval: 0x%x read_offset: 0x%x\n", retval, read_offset);
+      VG_(printf)("retval: 0x%x read_offset: 0x%x\n", (UInt)retval, read_offset);
    }
 
    if( whence == 0/*SEEK_SET*/ )
@@ -132,9 +132,9 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
 
    if ( verbose )
    {
-      VG_(printf)("syscall _llseek %d %d ", tid, fd);
+      VG_(printf)("syscall _llseek %d %d ", (int)tid, fd);
       VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", (UInt)offset_high, (UInt)offset_low, result, whence);
-      VG_(printf)("0x%x\n", retval);
+      VG_(printf)("0x%x\n", (UInt)retval);
    }
 
    offset = (offset_high<<32) | offset_low;
@@ -263,12 +263,12 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
    if(verbose){
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
-      VG_(printf)("syscall read %d %d ", tid, fd);
+      VG_(printf)("syscall read %d %d ", (int)tid, fd);
 #ifdef VGA_amd64
-      VG_(printf)("0x%x 0x%x 0x%llx 0x%x\n", curr_offset, curr_len, (ULong)data,
+      VG_(printf)("0x%x 0x%x 0x%llx 0x%x\n", curr_offset, (unsigned)curr_len, (ULong)data,
           *(HChar *)data);
 #else
-      VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, curr_len, (UInt)data,
+      VG_(printf)("0x%x 0x%x 0x%x 0x%x\n", curr_offset, (unsigned)curr_len, (UInt)data,
           *(HChar *)data);
 #endif
    }
@@ -317,12 +317,12 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
    if(verbose){
       //VG_(printf)("taint_offset: 0x%x\ttaint_len: 0x%x\n", taint_offset, taint_len);
       //VG_(printf)("curr_offset : 0x%x\tcurr_len : 0x%x\n", curr_offset, curr_len);
-      VG_(printf)("syscall pread %d %d ", tid, fd);
+      VG_(printf)("syscall pread %d %d ", (int)tid, fd);
 
 #ifdef VGA_amd64
-      VG_(printf)("0x%x 0x%x 0x%llx\n", curr_offset, curr_len, (ULong)data);
+      VG_(printf)("0x%x 0x%x 0x%llx\n", curr_offset, (unsigned)curr_len, (ULong)data);
 #else
-      VG_(printf)("0x%x 0x%x 0x%x\n", curr_offset, curr_len, (UInt)data);
+      VG_(printf)("0x%x 0x%x 0x%x\n", curr_offset, (unsigned)curr_len, (UInt)data);
 #endif
 
    }
@@ -403,7 +403,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 	    } else {
                tainted_fds[tid][fd] = True;
                if ( verbose )
-                  VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+                  VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
                //if ( verbose )
                //   VG_(printf)("%s\n", fdpath + VG_(strlen)(fdpath) - 3);
                read_offset = 0;
@@ -414,7 +414,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 
             tainted_fds[tid][fd] = True;
             if ( verbose )
-               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+               VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
             read_offset = 0;
 
         } else if ( TNT_(clo_file_filter)[0] == '*' &&
@@ -426,12 +426,12 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 
             tainted_fds[tid][fd] = True;
             if ( verbose )
-               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+               VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
             read_offset = 0;
         } else if (TNT_(clo_taint_stdin)) {
             tainted_fds[tid][fd] = True;
             if ( verbose )
-               VG_(printf)("syscall open %d %s %lx %d\n", tid, fdpath, args[1], fd);
+               VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
         } else
             tainted_fds[tid][fd] = False;
     }
@@ -493,7 +493,7 @@ void TNT_(check_fd_access)(ThreadId tid, UInt fd, Int fd_request) {
 #endif
 			const HChar *fnname;
 			TNT_(get_fnname)(tid, &fnname);
-			VG_(printf)("*** Sandbox %s %s (fd: %d) in method %s, but it is not allowed to. ***\n", access_str, fdpath, fd, fnname);
+			VG_(printf)("*** Sandbox %s %s (fd: %d) in method %s, but it is not allowed to. ***\n", access_str, fdpath, (int)fd, fnname);
 			VG_(get_and_pp_StackTrace)(tid, STACK_TRACE_SIZE);
 			VG_(printf)("\n");
 		}
