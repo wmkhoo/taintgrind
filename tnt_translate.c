@@ -5225,10 +5225,15 @@ int shouldUntaint( MCEnv* mce, IRExpr *e )
 	 UInt op = e->Iex.Binop.op;
 
 	 switch (op) {
+	    case Iop_Add32:
 	    case Iop_Add64:
+	    case Iop_And32:
 	    case Iop_And64:
+            case Iop_Shl32:
             case Iop_Shl64:
+            case Iop_Shr32:
             case Iop_Shr64:
+            case Iop_Sub32:
             case Iop_Sub64:
                break;
 	    default:
