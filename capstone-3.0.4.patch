@@ -52563,7 +52563,7 @@ diff -rupN ./capstone-3.0.4/make_capstone.sh ./capstone-3.0.4.patches/make_capst
 +# WARNING: this was auto-generated. Do not change!!!
 +
 +# build static libs only		
-+VGA_=1 VGO_linux=1 VGP_amd64_linux=1 VGA_amd64=1 VGP__linux=1  CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=/local/scratch/lmrs2/zero_mem/valgrind/RELEASE/INST_TEST/valgrind-3.10.1/inst/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh
++VGA_=1 VGO_linux=1 VGP_amd64_linux=1 VGA_amd64=1 VGP__linux=1  CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=`pwd`/../../build/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh
 +
 +	
 \ No newline at end of file

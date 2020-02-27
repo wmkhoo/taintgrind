@@ -31,7 +31,7 @@
 
 // capstone stuff
 #include <inttypes.h>
-#include <capstone/capstone.h>
+#include <capstone.h>
 
 /*
 	as defined in capstone.h
