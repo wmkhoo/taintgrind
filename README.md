@@ -34,20 +34,25 @@ After the container is built, you can run taintgrind by doing
 Installation (from source)
 --------------------------
 
-1. Download [Valgrind](http://valgrind.org)
+1. Install Dependencies (Ubuntu)
+
+
+		~$ apt install -y git wget gcc build-essential automake python
+		
+2. Download [Valgrind](http://valgrind.org)
 
 
 		~$ tar jxvf valgrind-X.X.X.tar.bz2
 		~$ cd valgrind-X.X.X
 		~/valgrind-X.X.X$ 
 
-2. Git clone taintgrind
+3. Git clone taintgrind
 
 
 		~/valgrind-X.X.X$ git clone http://github.com/wmkhoo/taintgrind.git
 		~/valgrind-X.X.X$ cd taintgrind 
 
-3. Run build_taintgrind.sh (to build valgrind, taintgrind and [Capstone](http://github.com/aquynh/capstone))
+4. Run build_taintgrind.sh (to build valgrind, taintgrind and [Capstone](http://github.com/aquynh/capstone))
 
 
 The script does the following:
