@@ -185,7 +185,7 @@ To limit taint to certain bytes, run:
 
 For generating SMT Libv2, see [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
-For limiting taint propagation, see [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with---head=yes-(experimental-feature))
+For limiting taint propagation, see [Limiting taint propagation](https://github.com/wmkhoo/taintgrind/wiki/Limiting-taint-propagation-with-head=yes)
 
 
 Reverse taint analysis
