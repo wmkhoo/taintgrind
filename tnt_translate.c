@@ -472,6 +472,12 @@ static IRExpr *i128_const_zero(void)
 
 /* --------- Defined-if-either-defined --------- */
 
+static IRAtom* mkDifD1 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
+   tl_assert(isShadowAtom(mce,a1));
+   tl_assert(isShadowAtom(mce,a2));
+   return assignNew('V', mce, Ity_I1, binop(Iop_And1, a1, a2));
+}
+
 static IRAtom* mkDifD8 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
    tl_assert(isShadowAtom(mce,a1));
    tl_assert(isShadowAtom(mce,a2));
@@ -509,6 +515,12 @@ static IRAtom* mkDifDV256 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
 }
 
 /* --------- Undefined-if-either-undefined --------- */
+
+static IRAtom* mkUifU1 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
+   tl_assert(isShadowAtom(mce,a1));
+   tl_assert(isShadowAtom(mce,a2));
+   return assignNew('V', mce, Ity_I1, binop(Iop_Or1, a1, a2));
+}
 
 static IRAtom* mkUifU8 ( MCEnv* mce, IRAtom* a1, IRAtom* a2 ) {
    tl_assert(isShadowAtom(mce,a1));
@@ -630,6 +642,14 @@ static IRAtom* mkRight64 ( MCEnv* mce, IRAtom* a1 )
 /* ImproveAND(data, vbits) = data OR vbits.  Defined (0) data 0s give
    defined (0); all other -> undefined (1).
 */
+static IRAtom* mkImproveAND1 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
+{
+   tl_assert(isOriginalAtom(mce, data));
+   tl_assert(isShadowAtom(mce, vbits));
+   tl_assert(sameKindedAtoms(data, vbits));
+   return assignNew('V', mce, Ity_I1, binop(Iop_Or1, data, vbits));
+}
+
 static IRAtom* mkImproveAND8 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
 {
    tl_assert(isOriginalAtom(mce, data));
@@ -681,6 +701,18 @@ static IRAtom* mkImproveANDV256 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
 /* ImproveOR(data, vbits) = ~data OR vbits.  Defined (0) data 1s give
    defined (0); all other -> undefined (1).
 */
+static IRAtom* mkImproveOR1 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
+{
+   tl_assert(isOriginalAtom(mce, data));
+   tl_assert(isShadowAtom(mce, vbits));
+   tl_assert(sameKindedAtoms(data, vbits));
+   return assignNew(
+             'V', mce, Ity_I1,
+             binop(Iop_Or1,
+                   assignNew('V', mce, Ity_I1, unop(Iop_Not1, data)),
+                   vbits) );
+}
+
 static IRAtom* mkImproveOR8 ( MCEnv* mce, IRAtom* data, IRAtom* vbits )
 {
    tl_assert(isOriginalAtom(mce, data));
@@ -2953,10 +2985,10 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
                            IRAtom* atom1, IRAtom* atom2,
                            HowUsed hu/*use HuOth if unknown*/ )
 {
-   IRType  and_or_ty;
-   IRAtom* (*uifu)    (MCEnv*, IRAtom*, IRAtom*);
-   IRAtom* (*difd)    (MCEnv*, IRAtom*, IRAtom*);
-   IRAtom* (*improve) (MCEnv*, IRAtom*, IRAtom*);
+   IRType  and_or_ty = Ity_INVALID;
+   IRAtom* (*uifu)    (MCEnv*, IRAtom*, IRAtom*) = NULL;
+   IRAtom* (*difd)    (MCEnv*, IRAtom*, IRAtom*) = NULL;
+   IRAtom* (*improve) (MCEnv*, IRAtom*, IRAtom*) = NULL;
 
    IRAtom* vatom1 = expr2vbits( mce, atom1, HuOth );
    IRAtom* vatom2 = expr2vbits( mce, atom2, HuOth );
@@ -4098,7 +4130,6 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Add8:
          return mkLeft8(mce, mkUifU8(mce, vatom1,vatom2));
 
-
       ////---- CmpXX64
       case Iop_CmpEQ64: case Iop_CmpNE64:
          if (mce->dlbo.dl_CmpEQ64_CmpNE64 == DLexpensive)
@@ -4198,6 +4229,9 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_And8:
          uifu = mkUifU8; difd = mkDifD8; 
          and_or_ty = Ity_I8; improve = mkImproveAND8; goto do_And_Or;
+      case Iop_And1:
+         uifu = mkUifU1; difd = mkDifD1;
+         and_or_ty = Ity_I1; improve = mkImproveAND1; goto do_And_Or;
 
       case Iop_OrV256:
          uifu = mkUifUV256; difd = mkDifDV256; 
@@ -4217,6 +4251,9 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Or8:
          uifu = mkUifU8; difd = mkDifD8; 
          and_or_ty = Ity_I8; improve = mkImproveOR8; goto do_And_Or;
+      case Iop_Or1:
+         uifu = mkUifU1; difd = mkDifD1;
+         and_or_ty = Ity_I1; improve = mkImproveOR1; goto do_And_Or;
 
       do_And_Or:
          return
@@ -4465,6 +4502,7 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_Neg32Fx4:
       case Iop_RSqrtEst32Fx4:
       case Iop_Log2_32Fx4:
+      case Iop_Exp2_32Fx4:
          return unary32Fx4(mce, vatom);
 
       case Iop_I32UtoF32x2_DEP:
@@ -7166,6 +7204,7 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
 #     elif defined(VGA_amd64)
       mce.dlbo.dl_Add64           = DLauto;
       mce.dlbo.dl_CmpEQ32_CmpNE32 = DLexpensive;
+      mce.dlbo.dl_CmpEQ64_CmpNE64 = DLexpensive;
 #     elif defined(VGA_ppc64le)
       // Needed by (at least) set_AV_CR6() in the front end.
       mce.dlbo.dl_CmpEQ64_CmpNE64 = DLexpensive;
