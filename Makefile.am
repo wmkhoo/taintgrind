@@ -7,6 +7,9 @@ include $(top_srcdir)/Makefile.tool.am
 pkginclude_HEADERS = \
 	taintgrind.h
 
+bin_SCRIPTS = \
+        taintgrind
+
 noinst_HEADERS = \
 	tnt_include.h \
 	tnt_strings.h \

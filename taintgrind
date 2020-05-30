@@ -1,0 +1,11 @@
+#!/bin/bash
+DIR=$(dirname "$0")
+VG=$DIR/valgrind
+
+if test -f "$VG"; then
+    echo $VG --tool=taintgrind $@
+    $VG --tool=taintgrind $@
+else
+    echo "*** This script calls valgrind and must be run after 'make install'"
+    echo "*** Has 'make install' been executed?"
+fi

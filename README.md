@@ -115,6 +115,10 @@ Run with
 
 	../taintgrind$ ../build/bin/valgrind --tool=taintgrind tests/sign32
 
+or simply
+
+	../taintgrind$ ../build/bin/taintgrind tests/sign32
+
 ![Example output](../assets/sign32_cli.png?raw=true)
 
 
@@ -138,7 +142,7 @@ Graph Visualisation
 
 Create a Graphviz dot file with e.g.
 
-	$ valgrind --tool=taintgrind tests/sign32 2>&1 | python log2dot.py > sign32.dot
+	$ taintgrind tests/sign32 2>&1 | python log2dot.py > sign32.dot
 
 Visualise the graph with
 
@@ -156,7 +160,7 @@ Or, for larger graphs
 Tainting file input
 -------------------
 
-	~/valgrind-X.X.X/taintgrind$ ../build/bin/valgrind --tool=taintgrind --help
+	~/valgrind-X.X.X/taintgrind$ ../build/bin/taintgrind --help
 	...
 	user options for Taintgrind:
 	    --file-filter=<full_path>   full path of file to taint [""]
@@ -177,11 +181,11 @@ Run without any parameters, taintgrind will not taint anything and the program o
 
 To taint all contents of a file, run:
 
-	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt gzip -c path/to/test.txt
+	$ taintgrind --file-filter=/path/to/test.txt gzip -c path/to/test.txt
 
 To limit taint to certain bytes, run:
 
-	$ valgrind --tool=taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
+	$ taintgrind --file-filter=/path/to/test.txt --taint-start=0 --taint-len=1 gzip path/to/test.txt
 
 For generating SMT Libv2, see [Generating SMT Libv2 output](https://github.com/wmkhoo/taintgrind/wiki/Generating-SMT-Libv2-output)
 
