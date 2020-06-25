@@ -2941,12 +2941,14 @@ IRAtom* expr2vbits_Triop ( MCEnv* mce,
       case Iop_Sub64Fx2:
       case Iop_Mul64Fx2:
       case Iop_Div64Fx2:
+      case Iop_Scale2_64Fx2:
          return binary64Fx2_w_rm(mce, vatom1, vatom2, vatom3);
 
       case Iop_Add32Fx4:
       case Iop_Sub32Fx4:
       case Iop_Mul32Fx4:
       case Iop_Div32Fx4:
+      case Iop_Scale2_32Fx4:
         return binary32Fx4_w_rm(mce, vatom1, vatom2, vatom3);
 
       case Iop_Add64Fx4:
@@ -4606,8 +4608,8 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_F16toF32:
          return mkPCastTo(mce, Ity_I32, vatom);
 
-      case Iop_Ctz32:
-      case Iop_Ctz64:
+      case Iop_Ctz32: case Iop_CtzNat32:
+      case Iop_Ctz64: case Iop_CtzNat64:
          return expensiveCountTrailingZeroes(mce, op, atom, vatom);
 
       case Iop_Clz32: case Iop_ClzNat32:
