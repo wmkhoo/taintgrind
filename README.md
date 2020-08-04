@@ -106,6 +106,7 @@ A simple example is tests/sign32.c
 	14 }
 
 The TNT_TAINT client request (defined in taintgrind.h) taints a.
+See [Client Requests](https://github.com/wmkhoo/taintgrind/wiki/Client-requests) for more information on the client requests available.
 
 Compile with
 
