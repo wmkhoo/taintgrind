@@ -45,6 +45,7 @@
 #include "pub_tool_stacktrace.h"    // VG_(get_and_pp_StackTrace)
 #include "pub_tool_libcfile.h"      // VG_(readlink)
 #include "pub_tool_addrinfo.h"      // VG_(describe_addr)
+#include "pub_tool_stacktrace.h"    // VG_(get_and_ppStackTrace)
 
 #include "tnt_include.h"
 #include "tnt_strings.h"
@@ -3794,6 +3795,10 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 		}
 		case VG_USERREQ__TAINTGRIND_STOP_PRINT: {
 			TNT_(do_print) = 0;
+			break;
+		}
+		case VG_USERREQ__TAINTGRIND_STACKTRACE: {
+                        VG_(get_and_pp_StackTrace) ( VG_(get_running_tid)(), 10 );
 			break;
 		}
 	}
