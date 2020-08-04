@@ -1504,7 +1504,7 @@ void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *var )
       {
          VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", var, i);
          VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
-         VG_(printf)("(assert (= %s%d a%lx))\n", varname, i, a+i);
+         VG_(printf)("(assert (= %s%d a%lx))\n", var, i, a+i);
       }
    }
 }
