@@ -164,9 +164,11 @@ Tainting file input
 	...
 	user options for Taintgrind:
 	    --file-filter=<full_path>   full path of file to taint [""]
-	    --taint-start=[0,800000]    starting byte to taint (in hex) [0]
-	    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]
-	    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]
+	    --taint-start=[0,800000]    starting file byte to taint (in hex) [0]
+	    --taint-len=[0,800000]      number of file bytes to taint from taint-start (in hex)[800000]
+	    --taint-stdin= no|yes       taint stdin [no]
+	    --taint-network= no|yes     taint network data [no]
+	    --taint-all= no|yes         taint all files, stdin, network. warning: slow! [no]
 	    --tainted-ins-only= no|yes  print tainted instructions only [yes]
 	    --critical-ins-only= no|yes print critical instructions only [no]
 	    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"

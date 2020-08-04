@@ -3856,9 +3856,11 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
 static void tnt_print_usage(void) {
    VG_(printf)(
 "    --file-filter=<full_path>   full path of file to taint [\"\"]\n"
-"    --taint-start=[0,800000]    starting byte to taint (in hex) [0]\n"
-"    --taint-len=[0,800000]      number of bytes to taint from taint-start (in hex)[800000]\n"
-"    --taint-all= no|yes         taint all bytes of all files read. warning: slow! [no]\n"
+"    --taint-start=[0,800000]    starting file byte to taint (in hex) [0]\n"
+"    --taint-len=[0,800000]      number of file bytes to taint from taint-start (in hex)[800000]\n"
+"    --taint-stdin= no|yes       taint stdin [no]\n"
+"    --taint-network= no|yes     taint network data [no]\n"
+"    --taint-all= no|yes         taint all files, stdin, network. warning: slow! [no]\n"
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
 "    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
@@ -3930,6 +3932,11 @@ static void tnt_post_clo_init(void)
 
    if( TNT_(clo_critical_ins_only) )
       TNT_(clo_tainted_ins_only) = True;
+
+   if( TNT_(clo_taint_all) ) {
+      TNT_(clo_taint_stdin) = True;
+      TNT_(clo_taint_network) = True;
+   }
 
    // Assign memory for ti, tv, tt, ri
    ti = (UInt *)VG_(malloc)("clo_post_init", TI_MAX*sizeof(UInt));
