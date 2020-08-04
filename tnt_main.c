@@ -3777,7 +3777,11 @@ Bool TNT_(handle_client_requests) ( ThreadId tid, UWord* arg, UWord* ret ) {
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_IS_TAINTED: {
+#ifdef VG_LITTLEENDIAN
+			*ret = tnt_LOADVn_slow(/*address*/arg[1], /*size in bits*/8*arg[2], /*endianness*/False);
+#else
 			*ret = tnt_LOADVn_slow(/*address*/arg[1], /*size in bits*/8*arg[2], /*endianness*/True);
+#endif
 			break;
 		}
 		case VG_USERREQ__TAINTGRIND_START_PRINT: {
