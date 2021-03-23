@@ -2308,6 +2308,32 @@ IRAtom* unary64F0x2 ( MCEnv* mce, IRAtom* vatomX )
    return at;
 }
 
+/* --- --- ... and ... 16Fx8 versions of the same --- --- */
+
+static
+IRAtom* binary16Fx8 ( MCEnv* mce, IRAtom* vatomX, IRAtom* vatomY )
+{
+   IRAtom* at;
+   tl_assert(isShadowAtom(mce, vatomX));
+   tl_assert(isShadowAtom(mce, vatomY));
+   at = mkUifUV128(mce, vatomX, vatomY);
+   at = assignNew('V', mce, Ity_V128, mkPCast16x8(mce, at));
+   return at;
+}
+
+static
+IRAtom* unary16Fx8 ( MCEnv* mce, IRAtom* vatomX )
+{
+   IRAtom* at;
+   tl_assert(isShadowAtom(mce, vatomX));
+   at = assignNew('V', mce, Ity_V128, mkPCast16x8(mce, vatomX));
+   return at;
+}
+
+/* TODO: remaining versions of 16x4 FP ops when more of the half-precision IR is
+   implemented.
+*/
+
 /* --- --- ... and ... 32Fx2 versions of the same --- --- */
 
 static
@@ -2422,6 +2448,26 @@ IRAtom* binary64Fx4_w_rm ( MCEnv* mce, IRAtom* vRM,
    return t1;
 }
 
+/* --- ... and ... 16Fx8 versions of the same --- */
+
+static
+IRAtom* binary16Fx8_w_rm ( MCEnv* mce, IRAtom* vRM,
+                                       IRAtom* vatomX, IRAtom* vatomY )
+{
+   IRAtom* t1 = binary16Fx8(mce, vatomX, vatomY);
+   // PCast the RM, and widen it to 128 bits
+   IRAtom* t2 = mkPCastTo(mce, Ity_V128, vRM);
+   // Roll it into the result
+   t1 = mkUifUV128(mce, t1, t2);
+   return t1;
+}
+
+/* TODO: remaining versions of 16x4 FP ops when more of the half-precision IR is
+   implemented.
+*/
+
+/* --- ... and ... 32Fx8 versions of the same --- */
+
 static
 IRAtom* binary32Fx8_w_rm ( MCEnv* mce, IRAtom* vRM,
                                        IRAtom* vatomX, IRAtom* vatomY )
@@ -2456,6 +2502,20 @@ IRAtom* unary32Fx4_w_rm ( MCEnv* mce, IRAtom* vRM, IRAtom* vatomX )
 {
    /* Same scheme as unary32Fx4_w_rm. */
    IRAtom* t1 = unary32Fx4(mce, vatomX);
+   // PCast the RM, and widen it to 128 bits
+   IRAtom* t2 = mkPCastTo(mce, Ity_V128, vRM);
+   // Roll it into the result
+   t1 = mkUifUV128(mce, t1, t2);
+   return t1;
+}
+
+/* --- ... and ... 16Fx8 versions of the same --- */
+
+static
+IRAtom* unary16Fx8_w_rm ( MCEnv* mce, IRAtom* vRM, IRAtom* vatomX )
+{
+   /* Same scheme as binaryFx4_w_rm. */
+   IRAtom* t1 = unary16Fx8(mce, vatomX);
    // PCast the RM, and widen it to 128 bits
    IRAtom* t2 = mkPCastTo(mce, Ity_V128, vRM);
    // Roll it into the result
@@ -2927,6 +2987,8 @@ IRAtom* expr2vbits_Triop ( MCEnv* mce,
          //complainIfUndefined(mce, atom2, NULL);
          return assignNew('V', mce, Ity_V128, triop(op, vatom1, atom2, vatom3));
 
+      /* Int 128-bit Integer three arg  */
+      case Iop_2xMultU64Add128CarryOut:
       case Iop_Perm8x16x2:
          /* (V128, V128, V128) -> V128 */
             //complainIfUndefined(mce, atom3, NULL);
@@ -2956,6 +3018,12 @@ IRAtom* expr2vbits_Triop ( MCEnv* mce,
       case Iop_Mul64Fx4:
       case Iop_Div64Fx4:
          return binary64Fx4_w_rm(mce, vatom1, vatom2, vatom3);
+
+      /* TODO: remaining versions of 16x4 FP ops when more of the half-precision
+         IR is implemented.
+      */
+      case Iop_Add16Fx8:
+        return binary16Fx8_w_rm(mce, vatom1, vatom2, vatom3);
 
       case Iop_Add32Fx8:
       case Iop_Sub32Fx8:
@@ -3263,6 +3331,8 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
 
       case Iop_I32StoF32x4:
       case Iop_F32toI32Sx4:
+      case Iop_Sqrt16Fx8:
+         return unary16Fx8_w_rm(mce, vatom1, vatom2);
       case Iop_Sqrt32Fx4:
          return unary32Fx4_w_rm(mce, vatom1, vatom2);
       case Iop_Sqrt64Fx2:
@@ -3484,6 +3554,15 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_Sub128x1:
       case Iop_CmpNEZ128x1:
          return binary128Ix1(mce, vatom1, vatom2);
+
+      case Iop_DivU128:
+      case Iop_DivS128:
+      case Iop_DivU128E:
+      case Iop_DivS128E:
+      case Iop_ModU128:
+      case Iop_ModS128:
+         /* I128 x I128 -> I128 */
+         return mkLazy2(mce, Ity_V128, vatom1, vatom2);
 
       case Iop_QNarrowBin64Sto32Sx4:
       case Iop_QNarrowBin64Uto32Ux4:
@@ -3803,6 +3882,10 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
          //complainIfUndefined(mce, atom2, NULL);
          return assignNew('V', mce, Ity_V128, binop(op, vatom1, atom2));
 
+      case Iop_I128UtoF128:      /* I128 -> F128 */
+      case Iop_I128StoF128:      /* I128 -> F128 */
+         return mkLazy2(mce, Ity_I128, vatom1, vatom2);
+
       case Iop_BCDAdd:
       case Iop_BCDSub:
          return mkLazy2(mce, Ity_V128, vatom1, vatom2);
@@ -3904,8 +3987,13 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_D32toF128:
       case Iop_D64toF128:
       case Iop_D128toF128:
+      case Iop_I128StoD128:
          /* I32(rm) x F32/F64/F128/D32/D64/D128 -> D128/F128 */
          return mkLazy2(mce, Ity_I128, vatom1, vatom2);
+
+      case Iop_SqrtF16:
+         /* I32(rm) x F16 -> F16 */
+         return mkLazy2(mce, Ity_I16, vatom1, vatom2);
 
       case Iop_RoundF32toInt:
       case Iop_SqrtF32:
@@ -3938,6 +4026,7 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
 
       case Iop_F128toI128S:   /* IRRoundingMode(I32) x F128 -> signed I128 */
       case Iop_RndF128:       /* IRRoundingMode(I32) x F128 -> F128 */
+      case Iop_D128toI128S:   /* IRRoundingMode(I32) x D128 -> signed I128 */
          return mkLazy2(mce, Ity_I128, vatom1, vatom2);
 
       case Iop_F128toI64S: /* IRRoundingMode(I32) x F128 -> signed I64  */
@@ -4266,6 +4355,11 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
                       difd(mce, improve(mce, atom1, vatom1),
                                 improve(mce, atom2, vatom2) ) ) );
 
+         return assignNew('V', mce, and_or_ty,
+            difd(mce, uifu(mce, vatom1, vatom2),
+                      difd(mce, improve(mce, atom1, vatom1),
+                                improve(mce, atom2, vatom2) ) ) );
+
       case Iop_Xor8:
          return mkUifU8(mce, vatom1, vatom2);
       case Iop_Xor16:
@@ -4521,6 +4615,10 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_RecipEst32F0x4:
          return unary32F0x4(mce, vatom);
 
+      case Iop_Abs16Fx8:
+      case Iop_Neg16Fx8:
+         return unary16Fx8(mce, vatom);
+
       // These are self-shadowing.
       case Iop_32UtoV128:
       case Iop_64UtoV128:
@@ -4539,11 +4637,13 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_ZeroHI96ofV128:
       case Iop_ZeroHI112ofV128:
       case Iop_ZeroHI120ofV128:
+      case Iop_ReinterpI128asV128:  /* I128 -> V128 */
          return assignNew('V', mce, Ity_V128, unop(op, vatom));
 
       case Iop_F128HItoF64:  /* F128 -> high half of F128 */
       case Iop_D128HItoD64:  /* D128 -> high half of D128 */
          return assignNew('V', mce, Ity_I64, unop(Iop_128HIto64, vatom));
+
       case Iop_F128LOtoF64:  /* F128 -> low  half of F128 */
       case Iop_D128LOtoD64:  /* D128 -> low  half of D128 */
          return assignNew('V', mce, Ity_I64, unop(Iop_128to64, vatom));
@@ -4551,10 +4651,11 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_NegF128:
       case Iop_AbsF128:
       case Iop_RndF128:
-      case Iop_TruncF128toI64S: /* F128 -> I64S */
-      case Iop_TruncF128toI32S: /* F128 -> I32S (result stored in 64-bits) */
-      case Iop_TruncF128toI64U: /* F128 -> I64U */
-      case Iop_TruncF128toI32U: /* F128 -> I32U (result stored in 64-bits) */
+      case Iop_TruncF128toI128S: /* F128 -> I128S */
+      case Iop_TruncF128toI128U: /* F128 -> I128U */
+      case Iop_ReinterpV128asI128:  /* V128 -> I128 */
+      case Iop_ReinterpI128asF128:
+      case Iop_ReinterpF128asI128:
          return mkPCastTo(mce, Ity_I128, vatom);
 
       case Iop_BCD128toI128S:
@@ -4564,6 +4665,16 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_F64toF16x2_DEP:
          // FIXME JRS 2018-Nov-15.  This is surely not correct!
          return vatom;
+
+      case Iop_ReinterpI32asF32:
+      case Iop_ReinterpF32asI32:
+         return assignNew('V', mce, Ity_I32, vatom);
+
+      case Iop_ReinterpF64asI64:
+      case Iop_ReinterpI64asF64:
+      case Iop_ReinterpI64asD64:
+      case Iop_ReinterpD64asI64:
+         return assignNew('V', mce, Ity_I64, vatom);
 
       case Iop_I32StoF128: /* signed I32 -> F128 */
       case Iop_I64StoF128: /* signed I64 -> F128 */
@@ -4607,6 +4718,10 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_AbsF32:
       case Iop_F16toF32:
          return mkPCastTo(mce, Ity_I32, vatom);
+
+      case Iop_AbsF16:
+      case Iop_NegF16:
+         return mkPCastTo(mce, Ity_I16, vatom);
 
       case Iop_Ctz32: case Iop_CtzNat32:
       case Iop_Ctz64: case Iop_CtzNat64:
@@ -4667,6 +4782,7 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
          return assignNew('V', mce, Ity_I32, unop(op, vatom));
 
       // These are self-shadowing.
+      case Iop_1Sto16:
       case Iop_8Sto16:
       case Iop_8Uto16:
       case Iop_32to16:
@@ -4691,12 +4807,6 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_64to1:
          return assignNew('V', mce, Ity_I1, unop(Iop_64to1, vatom));
 
-      case Iop_ReinterpF64asI64:
-      case Iop_ReinterpI64asF64:
-      case Iop_ReinterpI32asF32:
-      case Iop_ReinterpF32asI32:
-      case Iop_ReinterpI64asD64:
-      case Iop_ReinterpD64asI64:
       case Iop_NotV256:
       case Iop_NotV128:
       case Iop_Not64:
@@ -4753,9 +4863,13 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
       case Iop_Ctz32x4:
          return mkPCast32x4(mce, vatom);
 
+      case Iop_TruncF128toI32S: /* F128 -> I32S (result stored in 64-bits) */
+      case Iop_TruncF128toI32U: /* F128 -> I32U (result stored in 64-bits) */
       case Iop_CmpwNEZ32:
          return mkPCastTo(mce, Ity_I32, vatom);
 
+      case Iop_TruncF128toI64S: /* F128 -> I64S */
+      case Iop_TruncF128toI64U: /* F128 -> I64U */
       case Iop_CmpwNEZ64:
          return mkPCastTo(mce, Ity_I64, vatom);
 
@@ -4883,7 +4997,20 @@ IRExpr* expr2vbits_Unop ( MCEnv* mce, IROp op, IRAtom* atom )
 }
 
 
-/* Worker function; do not call directly. */
+/* Worker function; do not call directly.  See comments on
+   expr2vbits_Load for the meaning of |guard|.
+
+   Generates IR to (1) perform a definedness test of |addr|, (2)
+   perform a validity test of |addr|, and (3) return the Vbits for the
+   location indicated by |addr|.  All of this only happens when
+   |guard| is NULL or |guard| evaluates to True at run time.
+
+   If |guard| evaluates to False at run time, the returned value is
+   the IR-mandated 0x55..55 value, and no checks nor shadow loads are
+   performed.
+
+   The definedness of |guard| itself is not checked.  That is assumed
+   to have been done before this point, by the caller. */
 static
 IRAtom* expr2vbits_Load_WRK ( MCEnv* mce,
                               IREndness end, IRType ty,
@@ -5220,7 +5347,7 @@ int shouldUntaint( MCEnv* mce, IRExpr *e )
       case Iex_GetI:
       case Iex_Load:
       case Iex_RdTmp:
-         break;
+         return 0;
 
       case Iex_Qop:
       case Iex_Triop:
@@ -5293,7 +5420,7 @@ int shouldUntaint( MCEnv* mce, IRExpr *e )
 	    case Iop_ShrN32x8:
             case Iop_ShrN64x2:
             case Iop_ShrN64x4:
-               break;
+               return 0;
             default:
                return 1;
          }
@@ -5314,12 +5441,12 @@ int shouldUntaint( MCEnv* mce, IRExpr *e )
             case Iop_64to1:
 	       return 1;
             default:
-               break;
+               return 0;
          }
       }
 
       default:
-         break;
+         return 0;
    }
    return 0;
 }
@@ -7202,14 +7329,22 @@ IRSB* TNT_(instrument)( VgCallbackClosure* closure,
          approximation to the above, and is self-contained.*/
 #     if defined(VGA_x86)
       mce.dlbo.dl_Add32           = DLauto;
+      mce.dlbo.dl_CmpEQ16_CmpNE16 = DLexpensive;
       mce.dlbo.dl_CmpEQ32_CmpNE32 = DLexpensive;
 #     elif defined(VGA_amd64)
+      mce.dlbo.dl_Add32           = DLexpensive;
       mce.dlbo.dl_Add64           = DLauto;
+      mce.dlbo.dl_CmpEQ16_CmpNE16 = DLexpensive;
       mce.dlbo.dl_CmpEQ32_CmpNE32 = DLexpensive;
       mce.dlbo.dl_CmpEQ64_CmpNE64 = DLexpensive;
 #     elif defined(VGA_ppc64le)
       // Needed by (at least) set_AV_CR6() in the front end.
       mce.dlbo.dl_CmpEQ64_CmpNE64 = DLexpensive;
+#     elif defined(VGA_arm64)
+      mce.dlbo.dl_CmpEQ32_CmpNE32 = DLexpensive;
+      mce.dlbo.dl_CmpEQ64_CmpNE64 = DLexpensive;
+#     elif defined(VGA_arm)
+      mce.dlbo.dl_CmpEQ32_CmpNE32 = DLexpensive;
 #     endif
 
       /* preInstrumentationAnalysis() will allocate &mce.tmpHowUsed and then

@@ -286,6 +286,10 @@ case "${host_cpu}" in
         AC_MSG_RESULT([ok (${host_cpu})])
         ARCH_MAX="mips64"
         ;;
+     nanomips)
+        AC_MSG_RESULT([ok (${host_cpu})])
+        ARCH_MAX="nanomips"
+        ;;
 
      *) 
 	AC_MSG_RESULT([no (${host_cpu})])
@@ -784,6 +788,17 @@ case "$ARCH_MAX-$VGCONF_OS" in
         fi
         AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
         ;;
+     nanomips-linux)
+        VGCONF_ARCH_PRI="nanomips"
+        VGCONF_ARCH_SEC=""
+        VGCONF_PLATFORM_PRI_CAPS="NANOMIPS_LINUX"
+        VGCONF_PLATFORM_SEC_CAPS=""
+        valt_load_address_pri_norml="0x58000000"
+        valt_load_address_pri_inner="0x38000000"
+        valt_load_address_sec_norml="0xUNSET"
+        valt_load_address_sec_inner="0xUNSET"
+        AC_MSG_RESULT([ok (${ARCH_MAX}-${VGCONF_OS})])
+        ;;
      x86-solaris)
         VGCONF_ARCH_PRI="x86"
         VGCONF_ARCH_SEC=""
@@ -871,6 +886,8 @@ AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS32,
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xMIPS32_LINUX )
 AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_MIPS64,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX ) 
+AM_CONDITIONAL(VGCONF_ARCHS_INCLUDE_NANOMIPS,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xNANOMIPS_LINUX )
 
 # Set up VGCONF_PLATFORMS_INCLUDE_<platform>.  Either one or two of these
 # become defined.
@@ -899,6 +916,8 @@ AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS32_LINUX,
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xMIPS32_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_MIPS64_LINUX,
                test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX)
+AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_NANOMIPS_LINUX,
+               test x$VGCONF_PLATFORM_PRI_CAPS = xNANOMIPS_LINUX)
 AM_CONDITIONAL(VGCONF_PLATFORMS_INCLUDE_X86_DARWIN,   
                test x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN \
                  -o x$VGCONF_PLATFORM_SEC_CAPS = xX86_DARWIN)
@@ -924,7 +943,8 @@ AM_CONDITIONAL(VGCONF_OS_IS_LINUX,
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xARM64_LINUX \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xS390X_LINUX \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
-                 -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX)
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX \
+                 -o x$VGCONF_PLATFORM_PRI_CAPS = xNANOMIPS_LINUX)
 AM_CONDITIONAL(VGCONF_OS_IS_DARWIN,
                test x$VGCONF_PLATFORM_PRI_CAPS = xX86_DARWIN \
                  -o x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_DARWIN)
@@ -995,6 +1015,30 @@ AC_ARG_WITH(tmpdir,
 AC_DEFINE_UNQUOTED(VG_TMPDIR, "$tmpdir", [Temporary files directory])
 AC_SUBST(VG_TMPDIR, [$tmpdir])
 
+#----------------------------------------------------------------------------
+# Detect xcode path
+#----------------------------------------------------------------------------
+AM_COND_IF([VGCONF_OS_IS_DARWIN],
+[AC_CHECK_PROG([XCRUN], [xcrun], [yes], [no])
+AC_MSG_CHECKING([for xcode sdk include path])
+AC_ARG_WITH(xcodedir,
+   [  --with-xcode-path=PATH      Specify path for xcode sdk includes],
+   [xcodedir="$withval"],
+   [
+      if test "x$XCRUN" != "xno" -a ! -d /usr/include; then
+         xcrundir=`xcrun --sdk macosx --show-sdk-path`
+         if test -z "$xcrundir"; then
+            xcodedir="/usr/include"
+         else
+            xcodedir="$xcrundir/usr/include"
+         fi
+      else
+         xcodedir="/usr/include"
+      fi
+   ])
+AC_MSG_RESULT([$xcodedir])
+AC_DEFINE_UNQUOTED(XCODE_DIR, "$xcodedir", [xcode sdk include directory])
+AC_SUBST(XCODE_DIR, [$xcodedir])])
 
 #----------------------------------------------------------------------------
 # Libc and suppressions
@@ -1122,9 +1166,6 @@ if test "$VGCONF_OS" != "solaris"; then
     # add the suppressions antidisirregardless.
     DEFAULT_SUPP="xfree-4.supp ${DEFAULT_SUPP}"
     DEFAULT_SUPP="xfree-3.supp ${DEFAULT_SUPP}"
-
-    # Add glibc and X11 suppressions for exp-sgcheck
-    DEFAULT_SUPP="exp-sgcheck.supp ${DEFAULT_SUPP}"
 fi
 
 
@@ -1414,7 +1455,9 @@ AC_HWCAP_CONTAINS_FLAG([arch_2_05],[HWCAP_HAS_ISA_2_05])
 AC_HWCAP_CONTAINS_FLAG([arch_2_06],[HWCAP_HAS_ISA_2_06])
 AC_HWCAP_CONTAINS_FLAG([arch_2_07],[HWCAP_HAS_ISA_2_07])
 AC_HWCAP_CONTAINS_FLAG([arch_3_00],[HWCAP_HAS_ISA_3_00])
+AC_HWCAP_CONTAINS_FLAG([arch_3_1],[HWCAP_HAS_ISA_3_1])
 AC_HWCAP_CONTAINS_FLAG([htm],[HWCAP_HAS_HTM])
+AC_HWCAP_CONTAINS_FLAG([mma],[HWCAP_HAS_MMA])
 
 # ISA Levels
 AM_CONDITIONAL(HAS_ISA_2_05, [test x$HWCAP_HAS_ISA_2_05 = xyes])
@@ -1597,8 +1640,42 @@ ac_asm_have_isa_3_00=no
 AC_MSG_RESULT([no])
 ])
 
+# xscvhpdp checking
+AC_MSG_CHECKING([that assembler knows xscvhpdp ])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+]], [[
+  __asm__ __volatile__("xscvhpdp 1,2 ");
+]])], [
+ac_asm_have_xscvhpdp=yes
+AC_MSG_RESULT([yes])
+], [
+ac_asm_have_xscvhpdp=no
+AC_MSG_RESULT([no])
+])
+
+# isa 3.01 checking
+AC_MSG_CHECKING([that assembler knows ISA 3.1 ])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+]], [[
+  __asm__ __volatile__("brh 1,2 ");
+]])], [
+ac_asm_have_isa_3_1=yes
+AC_MSG_RESULT([yes])
+], [
+ac_asm_have_isa_3_1=no
+AC_MSG_RESULT([no])
+])
+
+
 AM_CONDITIONAL(HAS_ISA_3_00, [test x$ac_asm_have_isa_3_00 = xyes \
                              -a x$HWCAP_HAS_ISA_3_00 = xyes])
+
+AM_CONDITIONAL(HAS_XSCVHPDP, [test x$ac_asm_have_xscvhpdp = xyes])
+
+AM_CONDITIONAL(HAS_ISA_3_1, [test x$ac_asm_have_isa_3_1 = xyes \
+                             -a x$HWCAP_HAS_ISA_3_1 = xyes])
 
 # Check for pthread_create@GLIBC2.0
 AC_MSG_CHECKING([for pthread_create@GLIBC2.0()])
@@ -1790,6 +1867,8 @@ case "${host_cpu}" in
           AC_SUBST(FLAG_M64)
         fi
         ;;
+    nanomips*)
+        ;;
     *)
         # does this compiler support -m32 ?
         AC_MSG_CHECKING([if gcc accepts -m32])
@@ -1831,6 +1910,7 @@ case "${host_cpu}" in
         AC_SUBST(FLAG_M64)
         ;;
 esac
+
 
 ARCH=$(echo "$CFLAGS" | grep -E -e '-march=@<:@^ @:>@+' -e '-mips@<:@^ +@:>@')
 if test -z "$ARCH"; then
@@ -1920,6 +2000,43 @@ AC_MSG_RESULT([yes])
 ], [
 AC_MSG_RESULT([no])
 ])
+
+# We enter the code block below in the following case:
+# Target architecture is set to mips64, the desired abi
+# was not specified and the compiler's default abi setting
+# is neither n32 nor n64.
+# Probe for and set the abi to either n64 or n32, in that order,
+# which is required for a mips64 build of valgrind.
+if test "$ARCH_MAX" = "mips64" -a "x$VGCONF_ABI" = "x"; then
+  safe_CFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS -mabi=64 -Werror"
+  AC_MSG_CHECKING([if gcc is n64 capable])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
+      return 0;
+  ]])], [
+  VGCONF_ABI=64
+  AC_MSG_RESULT([yes])
+  ], [
+  AC_MSG_RESULT([no])
+  ])
+  CFLAGS=$safe_CFLAGS
+
+  if test "x$VGCONF_ABI" = "x"; then
+    safe_CFLAGS=$CFLAGS
+    CFLAGS="$CFLAGS -mabi=n32 -Werror"
+    AC_MSG_CHECKING([if gcc is n32 capable])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[
+        return 0;
+    ]])], [
+    VGCONF_ABI=N32
+    FLAG_M64="-march=mips64r2 -mabi=n32"
+    AC_MSG_RESULT([yes])
+    ], [
+    AC_MSG_RESULT([no])
+    ])
+    CFLAGS=$safe_CFLAGS
+  fi
+fi
 
 AM_CONDITIONAL([VGCONF_HAVE_ABI],
                [test x$VGCONF_ABI != x])
@@ -2101,6 +2218,7 @@ AC_GCC_WARNING_SUBST_NO([unused-function], [FLAG_W_NO_UNUSED_FUNCTION])
 AC_GCC_WARNING_SUBST_NO([static-local-in-inline], [FLAG_W_NO_STATIC_LOCAL_IN_INLINE])
 AC_GCC_WARNING_SUBST_NO([mismatched-new-delete], [FLAG_W_NO_MISMATCHED_NEW_DELETE])
 AC_GCC_WARNING_SUBST_NO([infinite-recursion], [FLAG_W_NO_INFINITE_RECURSION])
+
 AC_GCC_WARNING_SUBST([write-strings], [FLAG_W_WRITE_STRINGS])
 AC_GCC_WARNING_SUBST([empty-body], [FLAG_W_EMPTY_BODY])
 AC_GCC_WARNING_SUBST([format], [FLAG_W_FORMAT])
@@ -2184,6 +2302,54 @@ CXXFLAGS=$safe_CXXFLAGS
 AC_LANG(C)
 
 AC_SUBST(FLAG_FALIGNED_NEW)
+
+# does this compiler support -fsized-deallocation ?
+AC_MSG_CHECKING([if g++ accepts -fsized-deallocation])
+
+safe_CXXFLAGS=$CXXFLAGS
+CXXFLAGS="-fsized-deallocation -Werror"
+
+AC_LANG(C++)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  return 0;
+]])], [
+FLAG_FSIZED_DEALLOCATION="-fsized-deallocation"
+ac_have_sized_deallocation=yes
+AC_MSG_RESULT([yes])
+], [
+FLAG_FSIZED_DEALLOCATION=""
+ac_have_sized_deallocation=no
+AC_MSG_RESULT([no])
+])
+CXXFLAGS=$safe_CXXFLAGS
+AC_LANG(C)
+
+AC_SUBST(FLAG_FSIZED_DEALLOCATION)
+AM_CONDITIONAL([HAVE_FSIZED_DEALLOCATION], [test x$ac_have_sized_deallocation = xyes])
+
+# does this compiler support C++17 aligned new/delete?
+AC_MSG_CHECKING([if g++ supports aligned new and delete])
+
+safe_CXXFLAGS=$CXXFLAGS
+CXXFLAGS="-std=c++17"
+
+AC_LANG(C++)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <cstdlib>
+#include <new>
+]], [[
+  operator delete(nullptr, std::align_val_t(64U));
+]])], [
+ac_have_aligned_cxx_alloc=yes
+AC_MSG_RESULT([yes])
+], [
+ac_have_aligned_cxx_alloc=no
+AC_MSG_RESULT([no])
+])
+CXXFLAGS=$safe_CXXFLAGS
+AC_LANG(C)
+
+AM_CONDITIONAL([HAVE_ALIGNED_CXX_ALLOC], [test x$ac_have_aligned_cxx_alloc = xyes])
 
 # does this compiler support -fno-stack-protector ?
 AC_MSG_CHECKING([if gcc accepts -fno-stack-protector])
@@ -2952,6 +3118,26 @@ AC_MSG_RESULT([no])
 
 AM_CONDITIONAL(BUILD_RDRAND_TESTS, test x$ac_have_as_rdrand = xyes)
 
+# does the amd64 assembler understand the RDSEED instruction?
+# Note, this doesn't generate a C-level symbol.  It generates a
+# automake-level symbol (BUILD_RDSEED_TESTS), used in test Makefile.am's
+AC_MSG_CHECKING([if amd64 assembler knows the RDSEED instruction])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  do {
+    asm ("rdseed %r14");
+    asm ("rdseed %r14d");
+    asm ("rdseed %r14w");
+  } while (0)
+]])], [
+ac_have_as_rdseed=yes
+AC_MSG_RESULT([yes])
+], [
+ac_have_as_rdseed=no
+AC_MSG_RESULT([no])
+])
+
+AM_CONDITIONAL(BUILD_RDSEED_TESTS, test x$ac_have_as_rdseed = xyes)
 
 # does the amd64 assembler understand the F16C instructions (VCVTPH2PS and
 # VCVTPS2PH) ?
@@ -3050,6 +3236,56 @@ AC_MSG_RESULT([no])
 CFLAGS="$save_CFLAGS"
 
 AM_CONDITIONAL(BUILD_ARMV8_CRC_TESTS, test x$ac_have_armv8_crc_feature = xyes)
+
+
+# Does the C compiler support the armv81 flag and the assembler v8.1 instructions
+# Note, this doesn't generate a C-level symbol.  It generates a
+# automake-level symbol (BUILD_ARMV81_TESTS), used in test Makefile.am's
+AC_MSG_CHECKING([if gcc supports the armv81 feature flag and assembler supports v8.1 instructions])
+
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -march=armv8.1-a -Werror"
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+int main()
+{
+    __asm__ __volatile__("ldadd x0, x1, [x2]" ::: "memory");
+    return 0;
+}
+]])], [
+ac_have_armv81_feature=yes
+AC_MSG_RESULT([yes])
+], [
+ac_have_armv81_feature=no
+AC_MSG_RESULT([no])
+])
+CFLAGS="$save_CFLAGS"
+
+AM_CONDITIONAL(BUILD_ARMV81_TESTS, test x$ac_have_armv81_feature = xyes)
+
+
+# Does the C compiler support the armv82 flag and the assembler v8.2 instructions
+# Note, this doesn't generate a C-level symbol.  It generates a
+# automake-level symbol (BUILD_ARMV82_TESTS), used in test Makefile.am's
+AC_MSG_CHECKING([if gcc supports the armv82 feature flag and assembler supports v8.2 instructions])
+
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -march=armv8.2-a+fp16 -Werror"
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+int main()
+{
+    __asm__ __volatile__("faddp h0, v1.2h");
+    return 0;
+}
+]])], [
+ac_have_armv82_feature=yes
+AC_MSG_RESULT([yes])
+], [
+ac_have_armv82_feature=no
+AC_MSG_RESULT([no])
+])
+CFLAGS="$save_CFLAGS"
+
+AM_CONDITIONAL(BUILD_ARMV82_TESTS, test x$ac_have_armv82_feature = xyes)
 
 
 # XXX JRS 2010 Oct 13: what is this for?  For sure, we don't need this
@@ -4145,6 +4381,7 @@ AC_CHECK_FUNCS([     \
         klogctl      \
         mallinfo     \
         memchr       \
+        memfd_create \
         memset       \
         mkdir        \
         mremap       \
@@ -4170,6 +4407,11 @@ AC_CHECK_FUNCS([     \
         utimensat    \
         process_vm_readv  \
         process_vm_writev \
+        copy_file_range \
+        preadv \
+        pwritev \
+        preadv2 \
+        pwritev2 \
         ])
 
 # AC_CHECK_LIB adds any library found to the variable LIBS, and links these
@@ -4185,11 +4427,20 @@ AM_CONDITIONAL([HAVE_PTHREAD_SPINLOCK],
                [test x$ac_cv_func_pthread_spin_lock = xyes])
 AM_CONDITIONAL([HAVE_PTHREAD_SETNAME_NP],
                [test x$ac_cv_func_pthread_setname_np = xyes])
+AM_CONDITIONAL([HAVE_COPY_FILE_RANGE],
+               [test x$ac_cv_func_copy_file_range = xyes])
+AM_CONDITIONAL([HAVE_PREADV_PWRITEV],
+               [test x$ac_cv_func_preadv = xyes && test x$ac_cv_func_pwritev = xyes])
+AM_CONDITIONAL([HAVE_PREADV2_PWRITEV2],
+               [test x$ac_cv_func_preadv2 = xyes && test x$ac_cv_func_pwritev2 = xyes])
+AM_CONDITIONAL([HAVE_MEMFD_CREATE],
+               [test x$ac_cv_func_memfd_create = xyes])
 
 if test x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
-     -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX ; then
+     -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS64_LINUX \
+     -o x$VGCONF_PLATFORM_PRI_CAPS = xNANOMIPS_LINUX; then
   AC_DEFINE([DISABLE_PTHREAD_SPINLOCK_INTERCEPT], 1,
-            [Disable intercept pthread_spin_lock() on MIPS32 and MIPS64.])
+            [Disable intercept pthread_spin_lock() on MIPS32, MIPS64 and nanoMIPS.])
 fi
 
 #----------------------------------------------------------------------------
@@ -4208,6 +4459,7 @@ if test x$VGCONF_PLATFORM_PRI_CAPS = xX86_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xPPC32_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xARM_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xMIPS32_LINUX \
+     -o x$VGCONF_PLATFORM_PRI_CAPS = xNANOMIPS_LINUX \
      -o x$VGCONF_PLATFORM_PRI_CAPS = xX86_SOLARIS ; then
   mflag_primary=$FLAG_M32
 elif test x$VGCONF_PLATFORM_PRI_CAPS = xAMD64_LINUX \
