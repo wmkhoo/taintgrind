@@ -52489,69 +52489,6 @@ diff -rupN ./capstone-3.0.4/cs.c.orig ./capstone-3.0.4.patches/cs.c.orig
 +
 +	return -1;
 +}
-diff -rupN ./capstone-3.0.4/cs.c.rej ./capstone-3.0.4.patches/cs.c.rej
---- ./capstone-3.0.4/cs.c.rej	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/cs.c.rej	2016-12-20 10:40:58.732259617 +0000
-@@ -0,0 +1,59 @@
-+--- capstone-3.0.4/cs.c	2016-01-19 13:42:41.000000000 +0000
-++++ capstone.patches/cs.c	2016-04-14 14:24:42.000000000 +0100
-+@@ -17,6 +17,11 @@
-+ #include "utils.h"
-+ #include "MCRegisterInfo.h"
-+ 
-++#if defined(CAPSTONE_SECRETGRIND)
-++#	include "VG_defines.h"
-++#endif
-++
-++
-+ #if !defined(CAPSTONE_HAS_OSXKERNEL) && !defined(CAPSTONE_DIET)
-+ #define INSN_CACHE_SIZE 32
-+ #else
-+@@ -78,14 +83,22 @@
-+ 
-+ unsigned int all_arch = 0;
-+ 
-+-#ifdef CAPSTONE_USE_SYS_DYN_MEM
-+-#ifndef CAPSTONE_HAS_OSXKERNEL
-++#if CAPSTONE_SECRETGRIND
-++cs_malloc_t cs_mem_malloc = vg_malloc;
-++cs_calloc_t cs_mem_calloc = vg_calloc;
-++cs_realloc_t cs_mem_realloc = vg_realloc;
-++cs_free_t cs_mem_free = vg_free;
-++cs_vsnprintf_t cs_vsnprintf = vg_vsnprintf;
-++#else
-++
-++#	ifdef CAPSTONE_USE_SYS_DYN_MEM
-++#		ifndef CAPSTONE_HAS_OSXKERNEL
-+ cs_malloc_t cs_mem_malloc = malloc;
-+ cs_calloc_t cs_mem_calloc = calloc;
-+ cs_realloc_t cs_mem_realloc = realloc;
-+ cs_free_t cs_mem_free = free;
-+ cs_vsnprintf_t cs_vsnprintf = vsnprintf;
-+-#else
-++#		else
-+ extern void* kern_os_malloc(size_t size);
-+ extern void kern_os_free(void* addr);
-+ extern void* kern_os_realloc(void* addr, size_t nsize);
-+@@ -100,14 +113,15 @@
-+ cs_realloc_t cs_mem_realloc = kern_os_realloc;
-+ cs_free_t cs_mem_free = kern_os_free;
-+ cs_vsnprintf_t cs_vsnprintf = vsnprintf;
-+-#endif
-+-#else
-++#		endif
-++#	else
-+ cs_malloc_t cs_mem_malloc = NULL;
-+ cs_calloc_t cs_mem_calloc = NULL;
-+ cs_realloc_t cs_mem_realloc = NULL;
-+ cs_free_t cs_mem_free = NULL;
-+ cs_vsnprintf_t cs_vsnprintf = NULL;
-+-#endif
-++#	endif
-++#endif	// CAPSTONE_SECRETGRIND
-+ 
-+ CAPSTONE_EXPORT
-+ unsigned int cs_version(int *major, int *minor)
 diff -rupN ./capstone-3.0.4/make_capstone.sh ./capstone-3.0.4.patches/make_capstone.sh
 --- ./capstone-3.0.4/make_capstone.sh	1970-01-01 01:00:00.000000000 +0100
 +++ ./capstone-3.0.4.patches/make_capstone.sh	2016-12-20 10:41:36.884624221 +0000
@@ -52570,7 +52507,7 @@ diff -rupN ./capstone-3.0.4/make_capstone.sh ./capstone-3.0.4.patches/make_capst
 diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
 --- ./capstone-3.0.4/Makefile	2015-07-15 08:44:42.000000000 +0100
 +++ ./capstone-3.0.4.patches/Makefile	2016-12-20 10:40:58.732259617 +0000
-@@ -33,6 +33,70 @@ else
+@@ -33,6 +33,80 @@ else
  CFLAGS ?= -O3
  endif
  
@@ -52597,14 +52534,19 @@ diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
 +	# get the architacture- check pub_tool_basics.h in valgrind	
 +	ifdef VGA_amd64
 +		CFLAGS += -DVGA_amd64=1
++		ARCH = amd64
 +	else ifdef VGA_x86
 +		CFLAGS += -DVGA_x86=1
++		ARCH = x86
 +	else ifdef VGA_arm
 +		CFLAGS += -DVGA_arm=1
++		ARCH = arm
 +	else ifdef VGA_arm64
 +		CFLAGS += -DVGA_arm64=1
++		ARCH = arm64
 +	else ifdef VGA_mips32
 +		CFLAGS += -DVGA_mips32=1
++		ARCH = mips32
 +		
 +		ifdef _MIPSEL
 +			CFLAGS += -D_MIPSEL=1
@@ -52616,6 +52558,7 @@ diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
 +		
 +	else ifdef VGA_mips64
 +		CFLAGS += -DVGA_mips64=1
++		ARCH = mips64
 +		
 +		ifdef _MIPSEL
 +			CFLAGS += -D_MIPSEL=1
@@ -52627,12 +52570,16 @@ diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
 +		
 +	else ifdef VGA_ppc64le
 +		CFLAGS += -DVGA_ppc64le=1
++		ARCH = ppc64le
 +	else ifdef VGA_ppc32
 +		CFLAGS += -DVGA_ppc32=1
++		ARCH = ppc32
 +	else ifdef VGA_ppc64be
 +		CFLAGS += -DVGA_ppc64be=1
++		ARCH = ppc64be
 +	else ifdef VGA_s390x
 +		CFLAGS += -DVGA_s390x=1
++		ARCH = s390x
 +	endif
 +	
 +	
@@ -52641,14 +52588,15 @@ diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
  ifneq (,$(findstring yes,$(CAPSTONE_X86_ATT_DISABLE)))
  CFLAGS += -DCAPSTONE_X86_ATT_DISABLE
  endif
-@@ -50,6 +114,7 @@ endif
- CFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
- LDFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
- 
-+
- PREFIX ?= /usr
- DESTDIR ?=
- ifndef BUILDDIR
+@@ -81,7 +156,7 @@ INSTALL_BIN ?= install
+ INSTALL_DATA ?= $(INSTALL_BIN) -m0644
+ INSTALL_LIB ?= $(INSTALL_BIN) -m0755
+
+-LIBNAME = capstone
++LIBNAME = capstone-$(ARCH)
+
+
+ DEP_ARM =
 diff -rupN ./capstone-3.0.4/Makefile.orig ./capstone-3.0.4.patches/Makefile.orig
 --- ./capstone-3.0.4/Makefile.orig	1970-01-01 01:00:00.000000000 +0100
 +++ ./capstone-3.0.4.patches/Makefile.orig	2015-07-15 08:44:42.000000000 +0100

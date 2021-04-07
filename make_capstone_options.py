@@ -32,6 +32,12 @@ def get_options(parser):
 					default = None, 
 					help='the Capstone makefile to output')
 				
+	parser.add_option("--arch", 
+					action='store',
+					dest='arch',
+					default = None, 
+					help='architecture to build')
+				
 	parser.add_option("-v", "--verbose",
 					action="store_true", 
 					dest="verbose")
@@ -63,33 +69,33 @@ def append_tailing_slash(indir):
 		indir += '/'
 	return indir
 
-def get_flags(infile):
-	flags = "" # "VGO_linux=1 VGA_amd64=1"
-	flagstable = dict()
-	
-	# read content
-	content = readfromfile(infile)
-	
-	# get VGO flags = OS flags
-	vgoList = re.findall(r'-DVGO_[a-z,A-Z,0-9]*=\d', content) # eg -DVGO_linux=1
-	for vgo in vgoList:
-		flagstable[ vgo[2:] ] = 1
-
-	# get VGA flags = architecture flags
-	vgaList = re.findall(r'-DVGA_[a-z,A-Z,0-9]*=\d', content) # eg -DVGA_amd64=1
-	for vga in vgaList:
-		flagstable[ vga[2:] ] = 1
-	
-	# get VGP flags. Not sure what they are. We don't really need them at the moment anyway since the compilation works wihtout them
-	# I put them anyway...
-	vgpList = re.findall(r'-DVGP_[a-z,A-Z,0-9,_]*=\d', content) # eg -DVGP_amd64_linux=1
-	for vgp in vgpList:
-		flagstable[ vgp[2:] ] = 1
-		
-	for key in flagstable:
-		flags += key + " "
-		
-	return flags
+#def get_flags(infile):
+#	flags = "" # "VGO_linux=1 VGA_amd64=1"
+#	flagstable = dict()
+#	
+#	# read content
+#	content = readfromfile(infile)
+#	
+#	# get VGO flags = OS flags
+#	vgoList = re.findall(r'-DVGO_[a-z,A-Z,0-9]*=\d', content) # eg -DVGO_linux=1
+#	for vgo in vgoList:
+#		flagstable[ vgo[2:] ] = 1
+#
+#	# get VGA flags = architecture flags
+#	vgaList = re.findall(r'-DVGA_[a-z,A-Z,0-9]*=\d', content) # eg -DVGA_amd64=1
+#	for vga in vgaList:
+#		flagstable[ vga[2:] ] = 1
+#	
+#	# get VGP flags. Not sure what they are. We don't really need them at the moment anyway since the compilation works wihtout them
+#	# I put them anyway...
+#	vgpList = re.findall(r'-DVGP_[a-z,A-Z,0-9,_]*=\d', content) # eg -DVGP_amd64_linux=1
+#	for vgp in vgpList:
+#		flagstable[ vgp[2:] ] = 1
+#		
+#	for key in flagstable:
+#		flags += key + " "
+#		
+#	return flags
 
 def readfromfile(filename):
 	with open(filename, "r") as f:
@@ -104,6 +110,7 @@ def main(options):
 	vginstdir = os.path.realpath(options.vginstdir)
 	capstonedir = os.path.realpath(options.capstonedir)
 	outmakefile = options.outmakefile
+        arch = options.arch
 		
 	# folders exists?
 	if not os.path.isdir(vginstdir):
@@ -131,7 +138,7 @@ def main(options):
 	# Well, I've decided it's just simpler to compile it all... TODO
 	
 	# I extract any flags that looks like -DVGO_***=1, eg -DVGO_linux=1 and -DVGA_***=1
-	flags = get_flags("../Makefile")
+	flags = "VGO_linux=1 VGA_" + arch + "=1" #"../Makefile")
 	
 	# file content. 
 	# originally I used this to install. I've changed to a simple copy so it does not require root
@@ -149,6 +156,11 @@ def main(options):
 %s CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=%s CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh
 
 	""" % (flags, vginstdir_incval)
+
+        # Special case: If we're cross-compiling x86 on amd64
+        import platform
+        if arch == "x86" and "x86_64" in platform.platform():
+            content = content.replace("make.sh", "make.sh nix32")
 
 	#print content
 	

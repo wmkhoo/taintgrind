@@ -8,7 +8,7 @@
 ##------------------------------------------------------------##
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([Valgrind],[3.15.0],[valgrind-users@lists.sourceforge.net])
+AC_INIT([Valgrind],[3.17.0],[valgrind-users@lists.sourceforge.net])
 AC_CONFIG_SRCDIR(tnt_main.c)
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -598,9 +598,9 @@ case "$ARCH_MAX-$VGCONF_OS" in
            valt_load_address_pri_inner="0x38000000"
 	else
            VGCONF_ARCH_PRI="amd64"
-           VGCONF_ARCH_SEC=""
+           VGCONF_ARCH_SEC="x86"
 	   VGCONF_PLATFORM_PRI_CAPS="AMD64_LINUX"
-	   VGCONF_PLATFORM_SEC_CAPS=""
+	   VGCONF_PLATFORM_SEC_CAPS="X86_LINUX"
            valt_load_address_pri_norml="0x58000000"
            valt_load_address_pri_inner="0x38000000"
            valt_load_address_sec_norml="0x58000000"

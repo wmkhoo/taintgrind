@@ -9,15 +9,17 @@ include $(top_srcdir)/Makefile.all.am
 
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
-	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a
+	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
+	./capstone-3.0.4/libcapstone-@VGCONF_ARCH_PRI@.a
 if VGCONF_HAVE_PLATFORM_SEC
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
-	../VEX/libvex-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a
+	../VEX/libvex-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
+	./capstone-3.0.4/libcapstone-@VGCONF_ARCH_SEC@.a
 endif
 
 
-TOOL_LDADD_COMMON = -lgcc -lcapstone -L./capstone-3.0.4/
+TOOL_LDADD_COMMON = -lgcc
 TOOL_LDADD_@VGCONF_PLATFORM_PRI_CAPS@ = \
 	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@) $(TOOL_LDADD_COMMON)
 if VGCONF_HAVE_PLATFORM_SEC
