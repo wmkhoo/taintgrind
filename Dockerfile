@@ -1,19 +1,14 @@
 FROM ubuntu:bionic
 
-RUN apt-get update
-RUN apt-get install -y git wget gcc build-essential automake python
+RUN apt update
+RUN apt install -y git wget gcc build-essential automake python gcc-multilib
 RUN mkdir /code
 
 # build, install valgrind
 RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.17.0.tar.bz2
 RUN cd /code && \
     tar jxf /code/valgrind.tar.bz2 && \
-    mv valgrind-3.16.0 valgrind
-RUN cd /code/valgrind && \
-    ./autogen.sh && \
-    ./configure --prefix=`pwd`/build && \
-    make && \
-    make install
+    mv valgrind-3.17.0 valgrind
 
 # clone taintgrind
 RUN cd /code/valgrind && \
@@ -21,19 +16,7 @@ RUN cd /code/valgrind && \
 
 # build capstone
 RUN cd /code/valgrind/taintgrind && \
-    wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone.tar.gz && \
-    tar xf capstone.tar.gz && \
-    sh configure_capstone.sh `pwd`/../build && \
-    cd capstone-3.0.4 && \
-    sh make_capstone.sh
-
-# build taintgrind
-RUN cd /code/valgrind/taintgrind && \
-    ../autogen.sh && \
-    ./configure --prefix=`pwd`/../build && \
-    make && \
-    make install && \
-    make check
+    ./build_taintgrind.sh
 
 # dispatch via entrypoint script
 # recommend mapping the /pwd volume, probably like (for ELF file):
