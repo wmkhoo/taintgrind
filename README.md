@@ -9,14 +9,6 @@ Taintgrind: a Valgrind taint analysis tool
 
 2018-10-17 Support for Valgrind 3.14.0, x86\_linux, amd64\_linux, arm\_linux [v3.14.0](https://github.com/wmkhoo/taintgrind/releases/tag/v3.14.0)
 
-2017-08-10 Support for Valgrind 3.13.0, x86\_linux and amd64\_linux
-
-2015-10-06 Support for Valgrind 3.11.0, x86\_linux and amd64\_linux
-
-2014-09-15 Support for Valgrind 3.10.0, x86\_linux and amd64\_linux
-
-2013-11-18 Currently supporting: Valgrind 3.9.0, x86\_linux and amd64\_linux
-
 
 Installation (using Docker)
 ---------------------------
@@ -39,8 +31,10 @@ Installation (from source)
 1. Install Dependencies (Ubuntu)
 
 
-		~$ apt install -y git wget gcc build-essential automake python
+		~$ apt install -y git wget gcc build-essential automake python gcc-multilib
 		
+gcc-multilib is optional, but needed for analysing cross-compiled x86 binaries on amd64		
+
 2. Download [Valgrind](http://valgrind.org)
 
 
