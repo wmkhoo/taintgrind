@@ -19,21 +19,15 @@ cd ../ && \
 VGCONF_ARCH_PRI=$(grep VGCONF_ARCH_PRI Makefile | sed 's/VGCONF_ARCH_PRI = //g')
 VGCONF_ARCH_SEC=$(grep VGCONF_ARCH_SEC Makefile | sed 's/VGCONF_ARCH_SEC = //g')
 
-# build capstone
-cd taintgrind #&& \
-    wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone.tar.gz && \
-tar xf capstone.tar.gz
+# Download and extract capstone
+cd taintgrind
+CAPSTONE_VERSION=$(grep 'CAPSTONE_VERSION = ' Makefile.tool.am | sed 's/CAPSTONE_VERSION = //g')
+echo CAPSTONE_VERSION
+echo $CAPSTONE_VERSION
+wget https://github.com/aquynh/capstone/archive/$CAPSTONE_VERSION.tar.gz -O capstone.tar.gz && \
+    tar xf capstone.tar.gz
 
 # Patch capstone
-CAPSTONE_VERSION="3.0.4"
-
-#- 1 Apply patches
-#==================
-# guide to patches http://www.cyberciti.biz/faq/appy-patch-file-using-patch-command/
-# patches were created with
-# diff -rupN ./capstone/ ./capstone.patches/ > capstone.patch
-# then I removed the Makefile one and the VG_define coz it fails or complains
-
 patch -p1 < ./capstone-$CAPSTONE_VERSION.patch
 retval=$?
 if [ $retval -ne 0 ]; then
@@ -45,7 +39,7 @@ echo VGCONF_ARCH_PRI
 echo $VGCONF_ARCH_PRI
 if [ -n "$VGCONF_ARCH_PRI" ]; then
     sh configure_capstone.sh `pwd`/../build $VGCONF_ARCH_PRI && \
-    cd capstone-3.0.4 && \
+    cd capstone-$CAPSTONE_VERSION && \
     sh make_capstone.sh && \
     cd ..
 else
@@ -57,7 +51,7 @@ echo VGCONF_ARCH_SEC
 echo $VGCONF_ARCH_SEC
 if [ -n "$VGCONF_ARCH_SEC" ]; then
     sh configure_capstone.sh `pwd`/../build $VGCONF_ARCH_SEC && \
-    cd capstone-3.0.4 && \
+    cd capstone-$CAPSTONE_VERSION && \
     sh make_capstone.sh && \
     cd ..
 fi
