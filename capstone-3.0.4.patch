@@ -1,6 +1,6 @@
 diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64BaseInfo.c ./capstone-3.0.4.patches/arch/AArch64/AArch64BaseInfo.c
---- ./capstone-3.0.4/arch/AArch64/AArch64BaseInfo.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/AArch64/AArch64BaseInfo.c	2016-12-20 10:40:58.688259197 +0000
+--- ./capstone-3.0.4/arch/AArch64/AArch64BaseInfo.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/AArch64/AArch64BaseInfo.c	2021-04-08 13:39:03.398782612 +0800
 @@ -27,6 +27,10 @@
  
  #include "AArch64BaseInfo.h"
@@ -61,8 +61,8 @@ diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64BaseInfo.c ./capstone-3.0.4.patc
  
  	cs_mem_free(Op1S);
 diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64Disassembler.c ./capstone-3.0.4.patches/arch/AArch64/AArch64Disassembler.c
---- ./capstone-3.0.4/arch/AArch64/AArch64Disassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/AArch64/AArch64Disassembler.c	2016-12-20 10:40:58.692259235 +0000
+--- ./capstone-3.0.4/arch/AArch64/AArch64Disassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/AArch64/AArch64Disassembler.c	2021-04-08 13:39:03.398782612 +0800
 @@ -33,6 +33,9 @@
  #include "AArch64BaseInfo.h"
  #include "AArch64AddressingModes.h"
@@ -83,8 +83,8 @@ diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64Disassembler.c ./capstone-3.0.4.
  			MI->flat_insn->detail->arm64.operands[i].vector_index = -1;
  	}
 diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64InstPrinter.c ./capstone-3.0.4.patches/arch/AArch64/AArch64InstPrinter.c
---- ./capstone-3.0.4/arch/AArch64/AArch64InstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/AArch64/AArch64InstPrinter.c	2016-12-20 10:40:58.696259272 +0000
+--- ./capstone-3.0.4/arch/AArch64/AArch64InstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/AArch64/AArch64InstPrinter.c	2021-04-08 13:39:03.398782612 +0800
 @@ -31,13 +31,16 @@
  #include "AArch64Mapping.h"
  #include "AArch64AddressingModes.h"
@@ -122,8 +122,8 @@ diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64InstPrinter.c ./capstone-3.0.4.p
  }
  
 diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64Mapping.c ./capstone-3.0.4.patches/arch/AArch64/AArch64Mapping.c
---- ./capstone-3.0.4/arch/AArch64/AArch64Mapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/AArch64/AArch64Mapping.c	2016-12-20 10:40:58.700259310 +0000
+--- ./capstone-3.0.4/arch/AArch64/AArch64Mapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/AArch64/AArch64Mapping.c	2021-04-08 13:39:03.398782612 +0800
 @@ -13,6 +13,10 @@
  #define GET_INSTRINFO_ENUM
  #include "AArch64GenInstrInfo.inc"
@@ -153,8 +153,8 @@ diff -rupN ./capstone-3.0.4/arch/AArch64/AArch64Mapping.c ./capstone-3.0.4.patch
  
  			insn->detail->arm64.update_flags = cs_reg_write((csh)&handle, insn, ARM64_REG_NZCV);
 diff -rupN ./capstone-3.0.4/arch/ARM/ARMDisassembler.c ./capstone-3.0.4.patches/arch/ARM/ARMDisassembler.c
---- ./capstone-3.0.4/arch/ARM/ARMDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/ARM/ARMDisassembler.c	2016-12-20 10:40:58.700259310 +0000
+--- ./capstone-3.0.4/arch/ARM/ARMDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/ARM/ARMDisassembler.c	2021-04-08 13:39:03.402782609 +0800
 @@ -42,6 +42,11 @@
  #define GET_INSTRINFO_ENUM
  #include "ARMGenInstrInfo.inc"
@@ -207,8 +207,8 @@ diff -rupN ./capstone-3.0.4/arch/ARM/ARMDisassembler.c ./capstone-3.0.4.patches/
  	if (ud->big_endian)
  		insn32 = (bytes[3] <<  24) |
 diff -rupN ./capstone-3.0.4/arch/ARM/ARMInstPrinter.c ./capstone-3.0.4.patches/arch/ARM/ARMInstPrinter.c
---- ./capstone-3.0.4/arch/ARM/ARMInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/ARM/ARMInstPrinter.c	2016-12-20 10:40:58.704259349 +0000
+--- ./capstone-3.0.4/arch/ARM/ARMInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/ARM/ARMInstPrinter.c	2021-04-08 13:39:03.402782609 +0800
 @@ -34,6 +34,11 @@
  #define GET_SUBTARGETINFO_ENUM
  #include "ARMGenSubtargetInfo.inc"
@@ -242,8 +242,8 @@ diff -rupN ./capstone-3.0.4/arch/ARM/ARMInstPrinter.c ./capstone-3.0.4.patches/a
  				// we have to update regs_write array as well
  				for (j = 0; j < ARR_SIZE(insn->detail->regs_write); j++) {
 diff -rupN ./capstone-3.0.4/arch/ARM/ARMMapping.c ./capstone-3.0.4.patches/arch/ARM/ARMMapping.c
---- ./capstone-3.0.4/arch/ARM/ARMMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/ARM/ARMMapping.c	2016-12-20 10:40:58.704259349 +0000
+--- ./capstone-3.0.4/arch/ARM/ARMMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/ARM/ARMMapping.c	2021-04-08 13:39:03.402782609 +0800
 @@ -13,6 +13,10 @@
  #define GET_INSTRINFO_ENUM
  #include "ARMGenInstrInfo.inc"
@@ -273,8 +273,8 @@ diff -rupN ./capstone-3.0.4/arch/ARM/ARMMapping.c ./capstone-3.0.4.patches/arch/
  
  			insn->detail->arm.update_flags = cs_reg_write((csh)&handle, insn, ARM_REG_CPSR);
 diff -rupN ./capstone-3.0.4/arch/Mips/MipsDisassembler.c ./capstone-3.0.4.patches/arch/Mips/MipsDisassembler.c
---- ./capstone-3.0.4/arch/Mips/MipsDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Mips/MipsDisassembler.c	2016-12-20 10:40:58.708259388 +0000
+--- ./capstone-3.0.4/arch/Mips/MipsDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Mips/MipsDisassembler.c	2021-04-08 13:39:03.402782609 +0800
 @@ -38,6 +38,10 @@
  #include "../../MCRegisterInfo.h"
  #include "../../MCDisassembler.h"
@@ -314,8 +314,8 @@ diff -rupN ./capstone-3.0.4/arch/Mips/MipsDisassembler.c ./capstone-3.0.4.patche
  
  	// Calling the auto-generated decoder function.
 diff -rupN ./capstone-3.0.4/arch/Mips/MipsMapping.c ./capstone-3.0.4.patches/arch/Mips/MipsMapping.c
---- ./capstone-3.0.4/arch/Mips/MipsMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Mips/MipsMapping.c	2016-12-20 10:40:58.708259388 +0000
+--- ./capstone-3.0.4/arch/Mips/MipsMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Mips/MipsMapping.c	2021-04-08 13:39:03.402782609 +0800
 @@ -10,6 +10,10 @@
  
  #include "MipsMapping.h"
@@ -345,8 +345,8 @@ diff -rupN ./capstone-3.0.4/arch/Mips/MipsMapping.c ./capstone-3.0.4.patches/arc
  
  			if (insns[i].branch || insns[i].indirect_branch) {
 diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCDisassembler.c ./capstone-3.0.4.patches/arch/PowerPC/PPCDisassembler.c
---- ./capstone-3.0.4/arch/PowerPC/PPCDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/PowerPC/PPCDisassembler.c	2016-12-20 10:40:58.708259388 +0000
+--- ./capstone-3.0.4/arch/PowerPC/PPCDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/PowerPC/PPCDisassembler.c	2021-04-08 13:39:03.402782609 +0800
 @@ -26,6 +26,10 @@
  #include "../../MCDisassembler.h"
  #include "../../MathExtras.h"
@@ -368,8 +368,8 @@ diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCDisassembler.c ./capstone-3.0.4.patc
  
  	result = decodeInstruction_4(DecoderTable32, MI, insn, Address, 4);
 diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCInstPrinter.c ./capstone-3.0.4.patches/arch/PowerPC/PPCInstPrinter.c
---- ./capstone-3.0.4/arch/PowerPC/PPCInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/PowerPC/PPCInstPrinter.c	2016-12-20 10:40:58.708259388 +0000
+--- ./capstone-3.0.4/arch/PowerPC/PPCInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/PowerPC/PPCInstPrinter.c	2021-04-08 13:39:03.406782605 +0800
 @@ -29,6 +29,10 @@
  #include "../../MathExtras.h"
  #include "PPCMapping.h"
@@ -427,8 +427,8 @@ diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCInstPrinter.c ./capstone-3.0.4.patch
  			case PPC_PRED_LT:
  			case PPC_PRED_LE:
 diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCMapping.c ./capstone-3.0.4.patches/arch/PowerPC/PPCMapping.c
---- ./capstone-3.0.4/arch/PowerPC/PPCMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/PowerPC/PPCMapping.c	2016-12-20 10:40:58.712259426 +0000
+--- ./capstone-3.0.4/arch/PowerPC/PPCMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/PowerPC/PPCMapping.c	2021-04-08 13:39:03.406782605 +0800
 @@ -10,6 +10,10 @@
  
  #include "PPCMapping.h"
@@ -467,8 +467,8 @@ diff -rupN ./capstone-3.0.4/arch/PowerPC/PPCMapping.c ./capstone-3.0.4.patches/a
  			alias->cc = alias_insn_name_maps[i].cc;
  			return true;
 diff -rupN ./capstone-3.0.4/arch/Sparc/SparcDisassembler.c ./capstone-3.0.4.patches/arch/Sparc/SparcDisassembler.c
---- ./capstone-3.0.4/arch/Sparc/SparcDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Sparc/SparcDisassembler.c	2016-12-20 10:40:58.712259426 +0000
+--- ./capstone-3.0.4/arch/Sparc/SparcDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Sparc/SparcDisassembler.c	2021-04-08 13:39:03.410782602 +0800
 @@ -26,6 +26,9 @@
  #include "../../MCDisassembler.h"
  #include "../../MathExtras.h"
@@ -498,8 +498,8 @@ diff -rupN ./capstone-3.0.4/arch/Sparc/SparcDisassembler.c ./capstone-3.0.4.patc
  
  	Result = decodeInstruction_4(DecoderTableSparc32, MI, Insn, address,
 diff -rupN ./capstone-3.0.4/arch/Sparc/SparcGenAsmWriter.inc ./capstone-3.0.4.patches/arch/Sparc/SparcGenAsmWriter.inc
---- ./capstone-3.0.4/arch/Sparc/SparcGenAsmWriter.inc	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Sparc/SparcGenAsmWriter.inc	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/Sparc/SparcGenAsmWriter.inc	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Sparc/SparcGenAsmWriter.inc	2021-04-08 13:39:03.410782602 +0800
 @@ -5681,9 +5681,9 @@ static char *printAliasInstr(MCInst *MI,
    SStream_concat0(OS, AsmMnem);
    if (*AsmOps) {
@@ -513,8 +513,8 @@ diff -rupN ./capstone-3.0.4/arch/Sparc/SparcGenAsmWriter.inc ./capstone-3.0.4.pa
      for (c = AsmOps; *c; c++) {
        if (*c == '$') {
 diff -rupN ./capstone-3.0.4/arch/Sparc/SparcInstPrinter.c ./capstone-3.0.4.patches/arch/Sparc/SparcInstPrinter.c
---- ./capstone-3.0.4/arch/Sparc/SparcInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Sparc/SparcInstPrinter.c	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/Sparc/SparcInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Sparc/SparcInstPrinter.c	2021-04-08 13:39:03.410782602 +0800
 @@ -34,6 +34,10 @@
  
  #include "Sparc.h"
@@ -550,8 +550,8 @@ diff -rupN ./capstone-3.0.4/arch/Sparc/SparcInstPrinter.c ./capstone-3.0.4.patch
  			*p = '\0';	// now instr only has instruction mnemonic
  		MCInst_setOpcodePub(MI, Sparc_map_insn(instr));
 diff -rupN ./capstone-3.0.4/arch/Sparc/SparcMapping.c ./capstone-3.0.4.patches/arch/Sparc/SparcMapping.c
---- ./capstone-3.0.4/arch/Sparc/SparcMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/Sparc/SparcMapping.c	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/Sparc/SparcMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/Sparc/SparcMapping.c	2021-04-08 13:39:03.414782599 +0800
 @@ -10,6 +10,10 @@
  
  #include "SparcMapping.h"
@@ -597,8 +597,8 @@ diff -rupN ./capstone-3.0.4/arch/Sparc/SparcMapping.c ./capstone-3.0.4.patches/a
  		}
  	}
 diff -rupN ./capstone-3.0.4/arch/SystemZ/SystemZDisassembler.c ./capstone-3.0.4.patches/arch/SystemZ/SystemZDisassembler.c
---- ./capstone-3.0.4/arch/SystemZ/SystemZDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/SystemZ/SystemZDisassembler.c	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/SystemZ/SystemZDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/SystemZ/SystemZDisassembler.c	2021-04-08 13:39:03.414782599 +0800
 @@ -28,6 +28,10 @@
  
  #include "SystemZMCTargetDesc.h"
@@ -624,8 +624,8 @@ diff -rupN ./capstone-3.0.4/arch/SystemZ/SystemZDisassembler.c ./capstone-3.0.4.
  	// Construct the instruction.
  	Inst = 0;
 diff -rupN ./capstone-3.0.4/arch/SystemZ/SystemZMapping.c ./capstone-3.0.4.patches/arch/SystemZ/SystemZMapping.c
---- ./capstone-3.0.4/arch/SystemZ/SystemZMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/SystemZ/SystemZMapping.c	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/SystemZ/SystemZMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/SystemZ/SystemZMapping.c	2021-04-08 13:39:03.414782599 +0800
 @@ -10,6 +10,10 @@
  
  #include "SystemZMapping.h"
@@ -655,8 +655,8 @@ diff -rupN ./capstone-3.0.4/arch/SystemZ/SystemZMapping.c ./capstone-3.0.4.patch
  
  			if (insns[i].branch || insns[i].indirect_branch) {
 diff -rupN ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c
---- ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c	2016-12-20 10:40:58.716259463 +0000
+--- ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c	2021-04-08 13:39:03.414782599 +0800
 @@ -38,6 +38,9 @@
  #include "X86Mapping.h"
  #include "X86BaseInfo.h"
@@ -686,8 +686,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c ./capstone-3.0.4.patche
  			MI->flat_insn->detail->x86.operands[0].type = X86_OP_REG;
  			MI->flat_insn->detail->x86.operands[0].reg = reg;
 diff -rupN ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c.orig ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c.orig
---- ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c.orig	2015-07-15 08:44:42.000000000 +0100
+--- ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/arch/X86/X86ATTInstPrinter.c.orig	2021-04-08 13:39:03.418782596 +0800
 @@ -0,0 +1,886 @@
 +//===-- X86ATTInstPrinter.cpp - AT&T assembly instruction printing --------===//
 +//
@@ -1576,8 +1576,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86ATTInstPrinter.c.orig ./capstone-3.0.4.p
 +
 +#endif
 diff -rupN ./capstone-3.0.4/arch/X86/X86Disassembler.c ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c
---- ./capstone-3.0.4/arch/X86/X86Disassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c	2016-12-20 10:40:58.720259501 +0000
+--- ./capstone-3.0.4/arch/X86/X86Disassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c	2021-04-08 13:39:03.418782596 +0800
 @@ -31,6 +31,10 @@
  #include "../../utils.h"
  #include "X86Mapping.h"
@@ -1621,8 +1621,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86Disassembler.c ./capstone-3.0.4.patches/
  
  	if (handle->mode & CS_MODE_16)
 diff -rupN ./capstone-3.0.4/arch/X86/X86Disassembler.c.orig ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c.orig
---- ./capstone-3.0.4/arch/X86/X86Disassembler.c.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c.orig	2015-07-15 08:44:42.000000000 +0100
+--- ./capstone-3.0.4/arch/X86/X86Disassembler.c.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/arch/X86/X86Disassembler.c.orig	2021-04-08 13:39:03.418782596 +0800
 @@ -0,0 +1,848 @@
 +//===-- X86Disassembler.cpp - Disassembler for x86 and x86_64 -------------===//
 +//
@@ -2473,8 +2473,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86Disassembler.c.orig ./capstone-3.0.4.pat
 +
 +#endif
 diff -rupN ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c
---- ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c	2016-12-20 10:40:58.720259501 +0000
+--- ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c	2021-04-08 13:39:03.418782596 +0800
 @@ -36,6 +36,10 @@
  
  #include "X86Mapping.h"
@@ -2496,8 +2496,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c ./capstone-3.0.4.patc
  			MI->flat_insn->detail->x86.operands[0].type = X86_OP_REG;
  			MI->flat_insn->detail->x86.operands[0].reg = reg;
 diff -rupN ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c.orig ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c.orig
---- ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c.orig	2015-07-15 08:44:42.000000000 +0100
+--- ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/arch/X86/X86IntelInstPrinter.c.orig	2021-04-08 13:39:03.418782596 +0800
 @@ -0,0 +1,825 @@
 +//===-- X86IntelInstPrinter.cpp - Intel assembly instruction printing -----===//
 +//
@@ -3325,8 +3325,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86IntelInstPrinter.c.orig ./capstone-3.0.4
 +
 +#endif
 diff -rupN ./capstone-3.0.4/arch/X86/X86Mapping.c ./capstone-3.0.4.patches/arch/X86/X86Mapping.c
---- ./capstone-3.0.4/arch/X86/X86Mapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86Mapping.c	2016-12-20 10:40:58.728259579 +0000
+--- ./capstone-3.0.4/arch/X86/X86Mapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/X86/X86Mapping.c	2021-04-08 13:39:03.418782596 +0800
 @@ -10,6 +10,9 @@
  
  #include "../../utils.h"
@@ -3387,8 +3387,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86Mapping.c ./capstone-3.0.4.patches/arch/
  	return res;
  }
 diff -rupN ./capstone-3.0.4/arch/X86/X86Mapping.c.orig ./capstone-3.0.4.patches/arch/X86/X86Mapping.c.orig
---- ./capstone-3.0.4/arch/X86/X86Mapping.c.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/X86/X86Mapping.c.orig	2015-07-15 08:44:42.000000000 +0100
+--- ./capstone-3.0.4/arch/X86/X86Mapping.c.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/arch/X86/X86Mapping.c.orig	2021-04-08 13:39:03.442782576 +0800
 @@ -0,0 +1,47721 @@
 +/* Capstone Disassembly Engine */
 +/* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2014 */
@@ -51112,8 +51112,8 @@ diff -rupN ./capstone-3.0.4/arch/X86/X86Mapping.c.orig ./capstone-3.0.4.patches/
 +
 +#endif
 diff -rupN ./capstone-3.0.4/arch/XCore/XCoreDisassembler.c ./capstone-3.0.4.patches/arch/XCore/XCoreDisassembler.c
---- ./capstone-3.0.4/arch/XCore/XCoreDisassembler.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/XCore/XCoreDisassembler.c	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/arch/XCore/XCoreDisassembler.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/XCore/XCoreDisassembler.c	2021-04-08 13:39:03.442782576 +0800
 @@ -26,6 +26,10 @@
  #include "../../MCDisassembler.h"
  #include "../../MathExtras.h"
@@ -51135,8 +51135,8 @@ diff -rupN ./capstone-3.0.4/arch/XCore/XCoreDisassembler.c ./capstone-3.0.4.patc
  
  	// Calling the auto-generated decoder function.
 diff -rupN ./capstone-3.0.4/arch/XCore/XCoreGenAsmWriter.inc ./capstone-3.0.4.patches/arch/XCore/XCoreGenAsmWriter.inc
---- ./capstone-3.0.4/arch/XCore/XCoreGenAsmWriter.inc	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/XCore/XCoreGenAsmWriter.inc	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/arch/XCore/XCoreGenAsmWriter.inc	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/XCore/XCoreGenAsmWriter.inc	2021-04-08 13:39:03.442782576 +0800
 @@ -422,7 +422,7 @@ static void printInstruction(MCInst *MI,
  #endif
  
@@ -51147,8 +51147,8 @@ diff -rupN ./capstone-3.0.4/arch/XCore/XCoreGenAsmWriter.inc ./capstone-3.0.4.pa
    }
  
 diff -rupN ./capstone-3.0.4/arch/XCore/XCoreInstPrinter.c ./capstone-3.0.4.patches/arch/XCore/XCoreInstPrinter.c
---- ./capstone-3.0.4/arch/XCore/XCoreInstPrinter.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/XCore/XCoreInstPrinter.c	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/arch/XCore/XCoreInstPrinter.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/XCore/XCoreInstPrinter.c	2021-04-08 13:39:03.442782576 +0800
 @@ -29,6 +29,10 @@
  #include "../../MathExtras.h"
  #include "XCoreMapping.h"
@@ -51197,8 +51197,8 @@ diff -rupN ./capstone-3.0.4/arch/XCore/XCoreInstPrinter.c ./capstone-3.0.4.patch
  							}
  						}
 diff -rupN ./capstone-3.0.4/arch/XCore/XCoreMapping.c ./capstone-3.0.4.patches/arch/XCore/XCoreMapping.c
---- ./capstone-3.0.4/arch/XCore/XCoreMapping.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/arch/XCore/XCoreMapping.c	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/arch/XCore/XCoreMapping.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/arch/XCore/XCoreMapping.c	2021-04-08 13:39:03.442782576 +0800
 @@ -10,6 +10,10 @@
  
  #include "XCoreMapping.h"
@@ -51236,98 +51236,9 @@ diff -rupN ./capstone-3.0.4/arch/XCore/XCoreMapping.c ./capstone-3.0.4.patches/a
  			insn->detail->groups_count = (uint8_t)count_positive(insns[i].groups);
  
  			if (insns[i].branch || insns[i].indirect_branch) {
-diff -rupN ./capstone-3.0.4/clean_capstone.sh ./capstone-3.0.4.patches/clean_capstone.sh
---- ./capstone-3.0.4/clean_capstone.sh	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/clean_capstone.sh	2016-12-20 10:40:58.732259617 +0000
-@@ -0,0 +1,39 @@
-+#!/bin/sh
-+if [ $# -ne 1 ]
-+then
-+  echo "Error in $0 - Invalid Argument Count"
-+  echo "Usage: $0 <VALGRIND_INST_DIR>"
-+  exit
-+fi
-+
-+# current command: sh compile_capstone.sh ~/zero_mem/VALGRIND/valgrind/valgrind-3.10.1/inst/include/
-+
-+#0 TODO: capstone but be compile now and its header directory added to valgrind -- except if we just install it normally...
-+
-+#-0 added the file VG_defines.h
-+
-+#1- download it
-+#	git clone https://github.com/aquynh/capstone.git
-+
-+#TODO:cd capstone
-+
-+#2- patch files:
-+	# file changed:
-+	#	- cs.c
-+	#	-
-+	# patch created with http://www.cyberciti.biz/faq/appy-patch-file-using-patch-command/
-+	
-+	# patch the Makefile for the CFLAGS -- take as input the -L
-+	
-+	# patch the files that use libc, instead use valgrind versions -- both include and code
-+VG_INSTDIR=$1
-+
-+# grab certain necessary variables from valgrind Makefile: TODO automaticaly
-+VALG_ARCH="VGO_linux=1 VGA_amd64=1"	# -DVGO_linux=1
-+# also pass the relevant CAPSTONE_ARCHS="arm aarch64 x86" as parameter so we don't compile useless stuff
-+# VGA_arm64 is aarch64, ... so check the Makefile of capstone the stuff I've added + the mapping to the ones in Makefile of valgrind
-+# mips is VGA_mips32
-+# then add CAPSTONE_ARCHS="arm aarch64 x86" to the stuff below. Currently I compile all for simplicity and to make sure it all compiles fine
-+
-+#3- clean all
-+VGO_linux=1 VGA_amd64=1 CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=$VG_INSTDIR/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no make clean
-diff -rupN ./capstone-3.0.4/compile_capstone.sh ./capstone-3.0.4.patches/compile_capstone.sh
---- ./capstone-3.0.4/compile_capstone.sh	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/compile_capstone.sh	2016-12-20 10:40:58.732259617 +0000
-@@ -0,0 +1,42 @@
-+#!/bin/sh
-+if [ $# -ne 1 ]
-+then
-+  echo "Error in $0 - Invalid Argument Count"
-+  echo "Usage: $0 <VALGRIND_HEADER_DIR>"
-+  exit
-+fi
-+
-+# current command: sh compile_capstone.sh ~/zero_mem/VALGRIND/valgrind/valgrind-3.10.1/inst/include/
-+
-+#0 TODO: capstone but be compile now and its header directory added to valgrind -- except if we just install it normally...
-+
-+#-0 added the file VG_defines.h
-+
-+#1- download it
-+#	git clone https://github.com/aquynh/capstone.git
-+
-+#TODO:cd capstone
-+
-+#2- patch files:
-+	# file changed:
-+	#	- cs.c
-+	#	-
-+	# patch created with http://www.cyberciti.biz/faq/appy-patch-file-using-patch-command/
-+	
-+	# patch the Makefile for the CFLAGS -- take as input the -L
-+	
-+	# patch the files that use libc, instead use valgrind versions -- both include and code
-+	
-+VG_INSTDIR=$1
-+# grab certain necessary variables from valgrind Makefile: TODO automaticaly
-+VALG_ARCH="VGO_linux=1 VGA_amd64=1"	# -DVGO_linux=1
-+# also pass the relevant CAPSTONE_ARCHS="arm aarch64 x86" as parameter so we don't compile useless stuff
-+# VGA_arm64 is aarch64, ... so check the Makefile of capstone the stuff I've added + the mapping to the ones in Makefile of valgrind
-+# mips is VGA_mips32
-+# then add CAPSTONE_ARCHS="arm aarch64 x86" to the stuff below. Currently I compile all for simplicity and to make sure it all compiles fine
-+
-+#3- build only the static libs to use with valgrind/taintgrind, and not the tests
-+VGO_linux=1 VGA_amd64=1 CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=$VG_INSTDIR/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh
-+
-+#4 install it
-+sudo VGO_linux=1 VGA_amd64=1 CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=$VG_INSTDIR/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh install
 diff -rupN ./capstone-3.0.4/cs.c ./capstone-3.0.4.patches/cs.c
---- ./capstone-3.0.4/cs.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/cs.c	2016-12-20 11:02:49.504903691 +0000
+--- ./capstone-3.0.4/cs.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/cs.c	2021-04-08 13:39:03.442782576 +0800
 @@ -17,6 +17,10 @@
  #include "utils.h"
  #include "MCRegisterInfo.h"
@@ -51436,8 +51347,8 @@ diff -rupN ./capstone-3.0.4/cs.c ./capstone-3.0.4.patches/cs.c
  		skipdata_opstr(insn->op_str, *code, skipdata_bytes);
  
 diff -rupN ./capstone-3.0.4/cs.c.orig ./capstone-3.0.4.patches/cs.c.orig
---- ./capstone-3.0.4/cs.c.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/cs.c.orig	2015-07-15 08:44:42.000000000 +0100
+--- ./capstone-3.0.4/cs.c.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/cs.c.orig	2021-04-08 13:39:03.446782573 +0800
 @@ -0,0 +1,1050 @@
 +/* Capstone Disassembly Engine */
 +/* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2014 */
@@ -52489,587 +52400,898 @@ diff -rupN ./capstone-3.0.4/cs.c.orig ./capstone-3.0.4.patches/cs.c.orig
 +
 +	return -1;
 +}
-diff -rupN ./capstone-3.0.4/make_capstone.sh ./capstone-3.0.4.patches/make_capstone.sh
---- ./capstone-3.0.4/make_capstone.sh	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/make_capstone.sh	2016-12-20 10:41:36.884624221 +0000
-@@ -0,0 +1,10 @@
+diff -rupN ./capstone-3.0.4/Makefile.am ./capstone-3.0.4.patches/Makefile.am
+--- ./capstone-3.0.4/Makefile.am	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/Makefile.am	2021-04-16 12:15:15.655760299 +0800
+@@ -0,0 +1,68 @@
++include $(top_srcdir)/Makefile.all.am
++#include ../Makefile.tool.am
 +
-+
-+#!/bin/sh
-+		
-+# WARNING: this was auto-generated. Do not change!!!
-+
-+# build static libs only		
-+VGA_=1 VGO_linux=1 VGP_amd64_linux=1 VGA_amd64=1 VGP__linux=1  CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=`pwd`/../../build/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no ./make.sh
-+
-+	
-\ No newline at end of file
-diff -rupN ./capstone-3.0.4/Makefile ./capstone-3.0.4.patches/Makefile
---- ./capstone-3.0.4/Makefile	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/Makefile	2016-12-20 10:40:58.732259617 +0000
-@@ -33,6 +33,80 @@ else
- CFLAGS ?= -O3
- endif
- 
-+ifeq (,$(findstring yes,$(CAPSTONE_SECRETGRIND)))
-+	# add options used for valgrind modules, esepcially the stack protectors (canaries)
-+	CFLAGS += -fno-omit-frame-pointer -fno-stack-protector
-+	
-+	# get the header dir
-+	ifndef CAPTSTONE_SECRETGRIND_HEADER_DIR
-+		**** ERROR: Plz define CAPTSTONE_SECRETGRIND_HEADER_DIR ****
-+	else
-+		CFLAGS += -DCAPSTONE_SECRETGRIND -I$(CAPTSTONE_SECRETGRIND_HEADER_DIR)
-+	endif
-+	
-+	# get the platform - check pub_tool_basics.h in valgrind
-+	ifdef VGO_linux
-+		CFLAGS += -DVGO_linux=1
-+	else ifdef VGO_darwin
-+		CFLAGS += -DVGO_darwin=1
-+	else
-+		**** ERROR: Plz define VGO_linux=1 or DVGO_darwin=1 ****
-+	endif
-+	
-+	# get the architacture- check pub_tool_basics.h in valgrind	
-+	ifdef VGA_amd64
-+		CFLAGS += -DVGA_amd64=1
-+		ARCH = amd64
-+	else ifdef VGA_x86
-+		CFLAGS += -DVGA_x86=1
-+		ARCH = x86
-+	else ifdef VGA_arm
-+		CFLAGS += -DVGA_arm=1
-+		ARCH = arm
-+	else ifdef VGA_arm64
-+		CFLAGS += -DVGA_arm64=1
-+		ARCH = arm64
-+	else ifdef VGA_mips32
-+		CFLAGS += -DVGA_mips32=1
-+		ARCH = mips32
-+		
-+		ifdef _MIPSEL
-+			CFLAGS += -D_MIPSEL=1
-+		else ifdef _MIPSEB
-+			CFLAGS += -D_MIPSEB=1
-+		else
-+			**** ERROR: something is missing here!
-+		endif
-+		
-+	else ifdef VGA_mips64
-+		CFLAGS += -DVGA_mips64=1
-+		ARCH = mips64
-+		
-+		ifdef _MIPSEL
-+			CFLAGS += -D_MIPSEL=1
-+		else ifdef _MIPSEB
-+			CFLAGS += -D_MIPSEB=1
-+		else
-+			**** ERROR: something is missing here!
-+		endif
-+		
-+	else ifdef VGA_ppc64le
-+		CFLAGS += -DVGA_ppc64le=1
-+		ARCH = ppc64le
-+	else ifdef VGA_ppc32
-+		CFLAGS += -DVGA_ppc32=1
-+		ARCH = ppc32
-+	else ifdef VGA_ppc64be
-+		CFLAGS += -DVGA_ppc64be=1
-+		ARCH = ppc64be
-+	else ifdef VGA_s390x
-+		CFLAGS += -DVGA_s390x=1
-+		ARCH = s390x
-+	endif
-+	
-+	
++noinst_LIBRARIES = libcapstone-@VGCONF_ARCH_PRI@.a
++if VGCONF_HAVE_PLATFORM_SEC
++noinst_LIBRARIES += libcapstone-@VGCONF_ARCH_SEC@.a
 +endif
 +
- ifneq (,$(findstring yes,$(CAPSTONE_X86_ATT_DISABLE)))
- CFLAGS += -DCAPSTONE_X86_ATT_DISABLE
- endif
-@@ -81,7 +156,7 @@ INSTALL_BIN ?= install
- INSTALL_DATA ?= $(INSTALL_BIN) -m0644
- INSTALL_LIB ?= $(INSTALL_BIN) -m0755
-
--LIBNAME = capstone
-+LIBNAME = capstone-$(ARCH)
-
-
- DEP_ARM =
++LIBCAPSTONE_SOURCES_COMMON = \
++	cs.c utils.c SStream.c MCInstrDesc.c MCRegisterInfo.c \
++	arch/X86/X86DisassemblerDecoder.c \
++	arch/X86/X86Disassembler.c \
++	arch/X86/X86IntelInstPrinter.c \
++	arch/X86/X86ATTInstPrinter.c \
++	arch/X86/X86Mapping.c \
++	arch/X86/X86Module.c \
++	arch/ARM/ARMDisassembler.c \
++	arch/ARM/ARMInstPrinter.c \
++	arch/ARM/ARMMapping.c \
++	arch/ARM/ARMModule.c \
++	arch/AArch64/AArch64BaseInfo.c \
++	arch/AArch64/AArch64Disassembler.c \
++	arch/AArch64/AArch64InstPrinter.c \
++	arch/AArch64/AArch64Mapping.c \
++	arch/AArch64/AArch64Module.c \
++	arch/Mips/MipsDisassembler.c \
++	arch/Mips/MipsInstPrinter.c \
++	arch/Mips/MipsMapping.c \
++	arch/Mips/MipsModule.c \
++	arch/PowerPC/PPCDisassembler.c \
++	arch/PowerPC/PPCInstPrinter.c \
++	arch/PowerPC/PPCMapping.c \
++	arch/PowerPC/PPCModule.c \
++	arch/Sparc/SparcDisassembler.c \
++	arch/Sparc/SparcInstPrinter.c \
++	arch/Sparc/SparcMapping.c \
++	arch/Sparc/SparcModule.c \
++	arch/SystemZ/SystemZDisassembler.c \
++	arch/SystemZ/SystemZInstPrinter.c \
++	arch/SystemZ/SystemZMapping.c \
++	arch/SystemZ/SystemZModule.c \
++	arch/SystemZ/SystemZMCTargetDesc.c \
++	arch/XCore/XCoreDisassembler.c \
++	arch/XCore/XCoreInstPrinter.c \
++	arch/XCore/XCoreMapping.c \
++	arch/XCore/XCoreModule.c \
++	MCInst.c
++
++libcapstone_@VGCONF_ARCH_PRI@_a_SOURCES = $(LIBCAPSTONE_SOURCES_COMMON)
++if VGCONF_HAVE_PLATFORM_SEC
++libcapstone_@VGCONF_ARCH_SEC@_a_SOURCES = $(LIBCAPSTONE_SOURCES_COMMON)
++endif
++
++libcapstone_@VGCONF_ARCH_PRI@_a_CPPFLAGS     = \
++        $(AM_CPPFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
++libcapstone_@VGCONF_ARCH_PRI@_a_CFLAGS       = \
++        $(AM_CFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) -O2 -I./include -I../../include -I../../VEX/pub -DCAPSTONE_SECRETGRIND -DCAPSTONE_USE_SYS_DYN_MEM  -DCAPSTONE_HAS_ARM -DCAPSTONE_HAS_ARM64 -DCAPSTONE_HAS_MIPS -DCAPSTONE_HAS_POWERPC -DCAPSTONE_HAS_SPARC -DCAPSTONE_HAS_SYSZ -DCAPSTONE_HAS_X86 -DCAPSTONE_HAS_XCORE
++libcapstone_@VGCONF_ARCH_PRI@_a_DEPENDENCIES = \
++        $(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@)
++
++if VGCONF_HAVE_PLATFORM_SEC
++libcapstone_@VGCONF_ARCH_SEC@_a_CPPFLAGS     = \
++	$(AM_CPPFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
++libcapstone_@VGCONF_ARCH_SEC@_a_CFLAGS       = \
++	$(AM_CFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) -O2 -I./include -I../../include -I../../VEX/pub -DCAPSTONE_SECRETGRIND -DCAPSTONE_USE_SYS_DYN_MEM  -DCAPSTONE_HAS_ARM -DCAPSTONE_HAS_ARM64 -DCAPSTONE_HAS_MIPS -DCAPSTONE_HAS_POWERPC -DCAPSTONE_HAS_SPARC -DCAPSTONE_HAS_SYSZ -DCAPSTONE_HAS_X86 -DCAPSTONE_HAS_XCORE
++libcapstone_@VGCONF_ARCH_SEC@_a_DEPENDENCIES = \
++	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@)
++endif
 diff -rupN ./capstone-3.0.4/Makefile.orig ./capstone-3.0.4.patches/Makefile.orig
---- ./capstone-3.0.4/Makefile.orig	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/Makefile.orig	2015-07-15 08:44:42.000000000 +0100
-@@ -0,0 +1,466 @@
-+# Capstone Disassembly Engine
-+# By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2014
-+
-+include config.mk
-+include pkgconfig.mk	# package version
-+include functions.mk
-+
-+# Verbose output?
-+V ?= 0
-+
-+ifeq ($(PKG_EXTRA),)
-+PKG_VERSION = $(PKG_MAJOR).$(PKG_MINOR)
-+else
-+PKG_VERSION = $(PKG_MAJOR).$(PKG_MINOR).$(PKG_EXTRA)
-+endif
-+
-+ifeq ($(CROSS),)
-+CC ?= cc
-+AR ?= ar
-+RANLIB ?= ranlib
-+STRIP ?= strip
-+else
-+CC = $(CROSS)gcc
-+AR = $(CROSS)ar
-+RANLIB = $(CROSS)ranlib
-+STRIP = $(CROSS)strip
-+endif
-+
-+ifneq (,$(findstring yes,$(CAPSTONE_DIET)))
-+CFLAGS ?= -Os
-+CFLAGS += -DCAPSTONE_DIET
-+else
-+CFLAGS ?= -O3
-+endif
-+
-+ifneq (,$(findstring yes,$(CAPSTONE_X86_ATT_DISABLE)))
-+CFLAGS += -DCAPSTONE_X86_ATT_DISABLE
-+endif
-+
-+CFLAGS += -fPIC -Wall -Iinclude
-+
-+ifeq ($(CAPSTONE_USE_SYS_DYN_MEM),yes)
-+CFLAGS += -DCAPSTONE_USE_SYS_DYN_MEM
-+endif
-+
-+ifeq ($(CAPSTONE_HAS_OSXKERNEL), yes)
-+CFLAGS += -DCAPSTONE_HAS_OSXKERNEL
-+endif
-+
-+CFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
-+LDFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
-+
-+PREFIX ?= /usr
-+DESTDIR ?=
-+ifndef BUILDDIR
-+BLDIR = .
-+OBJDIR = .
-+else
-+BLDIR = $(abspath $(BUILDDIR))
-+OBJDIR = $(BLDIR)/obj
-+endif
-+INCDIR = $(DESTDIR)$(PREFIX)/include
-+
-+UNAME_S := $(shell uname -s)
-+
-+LIBDIRARCH ?= lib
-+# Uncomment the below line to installs x86_64 libs to lib64/ directory.
-+# Or better, pass 'LIBDIRARCH=lib64' to 'make install/uninstall' via 'make.sh'.
-+#LIBDIRARCH ?= lib64
-+LIBDIR = $(DESTDIR)$(PREFIX)/$(LIBDIRARCH)
-+
-+LIBDATADIR = $(LIBDIR)
-+ifeq ($(UNAME_S), FreeBSD)
-+LIBDATADIR = $(DESTDIR)$(PREFIX)/libdata
-+endif
-+ifeq ($(UNAME_S), DragonFly)
-+LIBDATADIR = $(DESTDIR)$(PREFIX)/libdata
-+endif
-+
-+INSTALL_BIN ?= install
-+INSTALL_DATA ?= $(INSTALL_BIN) -m0644
-+INSTALL_LIB ?= $(INSTALL_BIN) -m0755
-+
-+LIBNAME = capstone
-+
-+
-+DEP_ARM =
-+DEP_ARM += arch/ARM/ARMGenAsmWriter.inc
-+DEP_ARM += arch/ARM/ARMGenDisassemblerTables.inc
-+DEP_ARM += arch/ARM/ARMGenInstrInfo.inc
-+DEP_ARM += arch/ARM/ARMGenRegisterInfo.inc
-+DEP_ARM += arch/ARM/ARMGenSubtargetInfo.inc
-+
-+LIBOBJ_ARM =
-+ifneq (,$(findstring arm,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_ARM
-+	LIBOBJ_ARM += $(OBJDIR)/arch/ARM/ARMDisassembler.o
-+	LIBOBJ_ARM += $(OBJDIR)/arch/ARM/ARMInstPrinter.o
-+	LIBOBJ_ARM += $(OBJDIR)/arch/ARM/ARMMapping.o
-+	LIBOBJ_ARM += $(OBJDIR)/arch/ARM/ARMModule.o
-+endif
-+
-+DEP_ARM64 =
-+DEP_ARM64 += arch/AArch64/AArch64GenAsmWriter.inc
-+DEP_ARM64 += arch/AArch64/AArch64GenInstrInfo.inc
-+DEP_ARM64 += arch/AArch64/AArch64GenSubtargetInfo.inc
-+DEP_ARM64 += arch/AArch64/AArch64GenDisassemblerTables.inc
-+DEP_ARM64 += arch/AArch64/AArch64GenRegisterInfo.inc
-+
-+LIBOBJ_ARM64 =
-+ifneq (,$(findstring aarch64,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_ARM64
-+	LIBOBJ_ARM64 += $(OBJDIR)/arch/AArch64/AArch64BaseInfo.o
-+	LIBOBJ_ARM64 += $(OBJDIR)/arch/AArch64/AArch64Disassembler.o
-+	LIBOBJ_ARM64 += $(OBJDIR)/arch/AArch64/AArch64InstPrinter.o
-+	LIBOBJ_ARM64 += $(OBJDIR)/arch/AArch64/AArch64Mapping.o
-+	LIBOBJ_ARM64 += $(OBJDIR)/arch/AArch64/AArch64Module.o
-+endif
-+
-+
-+DEP_MIPS =
-+DEP_MIPS += arch/Mips/MipsGenAsmWriter.inc
-+DEP_MIPS += arch/Mips/MipsGenDisassemblerTables.inc
-+DEP_MIPS += arch/Mips/MipsGenInstrInfo.inc
-+DEP_MIPS += arch/Mips/MipsGenRegisterInfo.inc
-+DEP_MIPS += arch/Mips/MipsGenSubtargetInfo.inc
-+
-+LIBOBJ_MIPS =
-+ifneq (,$(findstring mips,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_MIPS
-+	LIBOBJ_MIPS += $(OBJDIR)/arch/Mips/MipsDisassembler.o
-+	LIBOBJ_MIPS += $(OBJDIR)/arch/Mips/MipsInstPrinter.o
-+	LIBOBJ_MIPS += $(OBJDIR)/arch/Mips/MipsMapping.o
-+	LIBOBJ_MIPS += $(OBJDIR)/arch/Mips/MipsModule.o
-+endif
-+
-+
-+DEP_PPC =
-+DEP_PPC += arch/PowerPC/PPCGenAsmWriter.inc
-+DEP_PPC += arch/PowerPC/PPCGenInstrInfo.inc
-+DEP_PPC += arch/PowerPC/PPCGenSubtargetInfo.inc
-+DEP_PPC += arch/PowerPC/PPCGenDisassemblerTables.inc
-+DEP_PPC += arch/PowerPC/PPCGenRegisterInfo.inc
-+
-+LIBOBJ_PPC =
-+ifneq (,$(findstring powerpc,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_POWERPC
-+	LIBOBJ_PPC += $(OBJDIR)/arch/PowerPC/PPCDisassembler.o
-+	LIBOBJ_PPC += $(OBJDIR)/arch/PowerPC/PPCInstPrinter.o
-+	LIBOBJ_PPC += $(OBJDIR)/arch/PowerPC/PPCMapping.o
-+	LIBOBJ_PPC += $(OBJDIR)/arch/PowerPC/PPCModule.o
-+endif
-+
-+
-+DEP_SPARC =
-+DEP_SPARC += arch/Sparc/SparcGenAsmWriter.inc
-+DEP_SPARC += arch/Sparc/SparcGenInstrInfo.inc
-+DEP_SPARC += arch/Sparc/SparcGenSubtargetInfo.inc
-+DEP_SPARC += arch/Sparc/SparcGenDisassemblerTables.inc
-+DEP_SPARC += arch/Sparc/SparcGenRegisterInfo.inc
-+
-+LIBOBJ_SPARC =
-+ifneq (,$(findstring sparc,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_SPARC
-+	LIBOBJ_SPARC += $(OBJDIR)/arch/Sparc/SparcDisassembler.o
-+	LIBOBJ_SPARC += $(OBJDIR)/arch/Sparc/SparcInstPrinter.o
-+	LIBOBJ_SPARC += $(OBJDIR)/arch/Sparc/SparcMapping.o
-+	LIBOBJ_SPARC += $(OBJDIR)/arch/Sparc/SparcModule.o
-+endif
-+
-+
-+DEP_SYSZ =
-+DEP_SYSZ += arch/SystemZ/SystemZGenAsmWriter.inc
-+DEP_SYSZ += arch/SystemZ/SystemZGenInstrInfo.inc
-+DEP_SYSZ += arch/SystemZ/SystemZGenSubtargetInfo.inc
-+DEP_SYSZ += arch/SystemZ/SystemZGenDisassemblerTables.inc
-+DEP_SYSZ += arch/SystemZ/SystemZGenRegisterInfo.inc
-+
-+LIBOBJ_SYSZ =
-+ifneq (,$(findstring systemz,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_SYSZ
-+	LIBOBJ_SYSZ += $(OBJDIR)/arch/SystemZ/SystemZDisassembler.o
-+	LIBOBJ_SYSZ += $(OBJDIR)/arch/SystemZ/SystemZInstPrinter.o
-+	LIBOBJ_SYSZ += $(OBJDIR)/arch/SystemZ/SystemZMapping.o
-+	LIBOBJ_SYSZ += $(OBJDIR)/arch/SystemZ/SystemZModule.o
-+	LIBOBJ_SYSZ += $(OBJDIR)/arch/SystemZ/SystemZMCTargetDesc.o
-+endif
-+
-+
-+# by default, we compile full X86 instruction sets
-+X86_REDUCE =
-+ifneq (,$(findstring yes,$(CAPSTONE_X86_REDUCE)))
-+X86_REDUCE = _reduce
-+CFLAGS += -DCAPSTONE_X86_REDUCE -Os
-+endif
-+
-+DEP_X86 =
-+DEP_X86 += arch/X86/X86GenAsmWriter$(X86_REDUCE).inc
-+DEP_X86 += arch/X86/X86GenAsmWriter1$(X86_REDUCE).inc
-+DEP_X86 += arch/X86/X86GenDisassemblerTables$(X86_REDUCE).inc
-+DEP_X86 += arch/X86/X86GenInstrInfo$(X86_REDUCE).inc
-+DEP_X86 += arch/X86/X86GenRegisterInfo.inc
-+
-+LIBOBJ_X86 =
-+ifneq (,$(findstring x86,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_X86
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86DisassemblerDecoder.o
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86Disassembler.o
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86IntelInstPrinter.o
-+# assembly syntax is irrelevant in Diet mode, when this info is suppressed
-+ifeq (,$(findstring yes,$(CAPSTONE_DIET)))
-+ifeq (,$(findstring yes,$(CAPSTONE_X86_ATT_DISABLE)))
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86ATTInstPrinter.o
-+endif
-+endif
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86Mapping.o
-+	LIBOBJ_X86 += $(OBJDIR)/arch/X86/X86Module.o
-+endif
-+
-+
-+DEP_XCORE =
-+DEP_XCORE += arch/XCore/XCoreGenAsmWriter.inc
-+DEP_XCORE += arch/XCore/XCoreGenInstrInfo.inc
-+DEP_XCORE += arch/XCore/XCoreGenDisassemblerTables.inc
-+DEP_XCORE += arch/XCore/XCoreGenRegisterInfo.inc
-+
-+LIBOBJ_XCORE =
-+ifneq (,$(findstring xcore,$(CAPSTONE_ARCHS)))
-+	CFLAGS += -DCAPSTONE_HAS_XCORE
-+	LIBOBJ_XCORE += $(OBJDIR)/arch/XCore/XCoreDisassembler.o
-+	LIBOBJ_XCORE += $(OBJDIR)/arch/XCore/XCoreInstPrinter.o
-+	LIBOBJ_XCORE += $(OBJDIR)/arch/XCore/XCoreMapping.o
-+	LIBOBJ_XCORE += $(OBJDIR)/arch/XCore/XCoreModule.o
-+endif
-+
-+
-+LIBOBJ =
-+LIBOBJ += $(OBJDIR)/cs.o $(OBJDIR)/utils.o $(OBJDIR)/SStream.o $(OBJDIR)/MCInstrDesc.o $(OBJDIR)/MCRegisterInfo.o
-+LIBOBJ += $(LIBOBJ_ARM) $(LIBOBJ_ARM64) $(LIBOBJ_MIPS) $(LIBOBJ_PPC) $(LIBOBJ_SPARC) $(LIBOBJ_SYSZ) $(LIBOBJ_X86) $(LIBOBJ_XCORE)
-+LIBOBJ += $(OBJDIR)/MCInst.o
-+
-+
-+PKGCFGDIR ?= $(LIBDATADIR)/pkgconfig
-+API_MAJOR=$(shell echo `grep -e CS_API_MAJOR include/capstone.h | grep -v = | awk '{print $$3}'` | awk '{print $$1}')
-+VERSION_EXT =
-+
-+IS_APPLE := $(shell $(CC) -dM -E - < /dev/null | grep __apple_build_version__ | wc -l | tr -d " ")
-+ifeq ($(IS_APPLE),1)
-+EXT = dylib
-+VERSION_EXT = $(API_MAJOR).$(EXT)
-+$(LIBNAME)_LDFLAGS += -dynamiclib -install_name lib$(LIBNAME).$(VERSION_EXT) -current_version $(PKG_MAJOR).$(PKG_MINOR).$(PKG_EXTRA) -compatibility_version $(PKG_MAJOR).$(PKG_MINOR)
-+AR_EXT = a
-+# Homebrew wants to make sure its formula does not disable FORTIFY_SOURCE
-+# However, this is not really necessary because 'CAPSTONE_USE_SYS_DYN_MEM=yes' by default
-+ifneq ($(HOMEBREW_CAPSTONE),1)
-+ifneq ($(CAPSTONE_USE_SYS_DYN_MEM),yes)
-+# remove string check because OSX kernel complains about missing symbols
-+CFLAGS += -D_FORTIFY_SOURCE=0
-+endif
-+endif
-+else
-+$(LIBNAME)_LDFLAGS += -shared
-+# Cygwin?
-+IS_CYGWIN := $(shell $(CC) -dumpmachine | grep -i cygwin | wc -l)
-+ifeq ($(IS_CYGWIN),1)
-+EXT = dll
-+AR_EXT = lib
-+# Cygwin doesn't like -fPIC
-+CFLAGS := $(CFLAGS:-fPIC=)
-+# On Windows we need the shared library to be executable
-+else
-+# mingw?
-+IS_MINGW := $(shell $(CC) --version | grep -i mingw | wc -l)
-+ifeq ($(IS_MINGW),1)
-+EXT = dll
-+AR_EXT = lib
-+# mingw doesn't like -fPIC either
-+CFLAGS := $(CFLAGS:-fPIC=)
-+# On Windows we need the shared library to be executable
-+else
-+# Linux, *BSD
-+EXT = so
-+VERSION_EXT = $(EXT).$(API_MAJOR)
-+AR_EXT = a
-+$(LIBNAME)_LDFLAGS += -Wl,-soname,lib$(LIBNAME).$(VERSION_EXT)
-+endif
-+endif
-+endif
-+
-+ifeq ($(CAPSTONE_SHARED),yes)
-+ifeq ($(IS_MINGW),1)
-+LIBRARY = $(BLDIR)/$(LIBNAME).$(EXT)
-+else ifeq ($(IS_CYGWIN),1)
-+LIBRARY = $(BLDIR)/$(LIBNAME).$(EXT)
-+else	# *nix
-+LIBRARY = $(BLDIR)/lib$(LIBNAME).$(EXT)
-+CFLAGS += -fvisibility=hidden
-+endif
-+endif
-+
-+ifeq ($(CAPSTONE_STATIC),yes)
-+ifeq ($(IS_MINGW),1)
-+ARCHIVE = $(BLDIR)/$(LIBNAME).$(AR_EXT)
-+else ifeq ($(IS_CYGWIN),1)
-+ARCHIVE = $(BLDIR)/$(LIBNAME).$(AR_EXT)
-+else
-+ARCHIVE = $(BLDIR)/lib$(LIBNAME).$(AR_EXT)
-+endif
-+endif
-+
-+PKGCFGF = $(BLDIR)/$(LIBNAME).pc
-+
-+.PHONY: all clean install uninstall dist
-+
-+all: $(LIBRARY) $(ARCHIVE) $(PKGCFGF)
-+ifeq (,$(findstring yes,$(CAPSTONE_BUILD_CORE_ONLY)))
-+ifndef BUILDDIR
-+	cd tests && $(MAKE)
-+else
-+	cd tests && $(MAKE) BUILDDIR=$(BLDIR)
-+endif
-+ifeq ($(CAPSTONE_SHARED),yes)
-+	$(INSTALL_DATA) $(LIBRARY) $(BLDIR)/tests/
-+endif
-+endif
-+
-+ifeq ($(CAPSTONE_SHARED),yes)
-+$(LIBRARY): $(LIBOBJ)
-+ifeq ($(V),0)
-+	$(call log,LINK,$(@:$(BLDIR)/%=%))
-+	@$(create-library)
-+else
-+	$(create-library)
-+endif
-+endif
-+
-+$(LIBOBJ): config.mk
-+
-+$(LIBOBJ_ARM): $(DEP_ARM)
-+$(LIBOBJ_ARM64): $(DEP_ARM64)
-+$(LIBOBJ_MIPS): $(DEP_MIPS)
-+$(LIBOBJ_PPC): $(DEP_PPC)
-+$(LIBOBJ_SPARC): $(DEP_SPARC)
-+$(LIBOBJ_SYSZ): $(DEP_SYSZ)
-+$(LIBOBJ_X86): $(DEP_X86)
-+$(LIBOBJ_XCORE): $(DEP_XCORE)
-+
-+ifeq ($(CAPSTONE_STATIC),yes)
-+$(ARCHIVE): $(LIBOBJ)
-+	@rm -f $(ARCHIVE)
-+ifeq ($(V),0)
-+	$(call log,AR,$(@:$(BLDIR)/%=%))
-+	@$(create-archive)
-+else
-+	$(create-archive)
-+endif
-+endif
-+
-+$(PKGCFGF):
-+ifeq ($(V),0)
-+	$(call log,GEN,$(@:$(BLDIR)/%=%))
-+	@$(generate-pkgcfg)
-+else
-+	$(generate-pkgcfg)
-+endif
-+
-+install: $(PKGCFGF) $(ARCHIVE) $(LIBRARY)
-+	mkdir -p $(LIBDIR)
-+ifeq ($(CAPSTONE_SHARED),yes)
-+	$(INSTALL_LIB) $(LIBRARY) $(LIBDIR)
-+ifneq ($(VERSION_EXT),)
-+	cd $(LIBDIR) && \
-+	mv lib$(LIBNAME).$(EXT) lib$(LIBNAME).$(VERSION_EXT) && \
-+	ln -s lib$(LIBNAME).$(VERSION_EXT) lib$(LIBNAME).$(EXT)
-+endif
-+endif
-+ifeq ($(CAPSTONE_STATIC),yes)
-+	$(INSTALL_DATA) $(ARCHIVE) $(LIBDIR)
-+endif
-+	mkdir -p $(INCDIR)/$(LIBNAME)
-+	$(INSTALL_DATA) include/*.h $(INCDIR)/$(LIBNAME)
-+	mkdir -p $(PKGCFGDIR)
-+	$(INSTALL_DATA) $(PKGCFGF) $(PKGCFGDIR)/
-+
-+uninstall:
-+	rm -rf $(INCDIR)/$(LIBNAME)
-+	rm -f $(LIBDIR)/lib$(LIBNAME).*
-+	rm -f $(PKGCFGDIR)/$(LIBNAME).pc
-+
-+clean:
-+	rm -f $(LIBOBJ)
-+	rm -f $(BLDIR)/lib$(LIBNAME).* $(BLDIR)/$(LIBNAME).*
-+	rm -f $(PKGCFGF)
-+
-+ifeq (,$(findstring yes,$(CAPSTONE_BUILD_CORE_ONLY)))
-+	cd tests && $(MAKE) clean
-+	rm -f $(BLDIR)/tests/lib$(LIBNAME).$(EXT)
-+endif
-+
-+ifdef BUILDDIR
-+	rm -rf $(BUILDDIR)
-+endif
-+
-+ifeq (,$(findstring yes,$(CAPSTONE_BUILD_CORE_ONLY)))
-+	cd bindings/python && $(MAKE) clean
-+	cd bindings/java && $(MAKE) clean
-+	cd bindings/ocaml && $(MAKE) clean
-+endif
-+
-+
-+TAG ?= HEAD
-+ifeq ($(TAG), HEAD)
-+DIST_VERSION = latest
-+else
-+DIST_VERSION = $(TAG)
-+endif
-+
-+dist:
-+	git archive --format=tar.gz --prefix=capstone-$(DIST_VERSION)/ $(TAG) > capstone-$(DIST_VERSION).tgz
-+	git archive --format=zip --prefix=capstone-$(DIST_VERSION)/ $(TAG) > capstone-$(DIST_VERSION).zip
-+
-+
-+TESTS = test test_detail test_arm test_arm64 test_mips test_ppc test_sparc
-+TESTS += test_systemz test_x86 test_xcore test_iter
-+TESTS += test.static test_detail.static test_arm.static test_arm64.static
-+TESTS += test_mips.static test_ppc.static test_sparc.static
-+TESTS += test_systemz.static test_x86.static test_xcore.static
-+TESTS += test_skipdata test_skipdata.static test_iter.static
-+check:
-+	@for t in $(TESTS); do \
-+		echo Check $$t ... ; \
-+		./tests/$$t > /dev/null && echo OK || echo FAILED; \
+--- ./capstone-3.0.4/Makefile.orig	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/Makefile.orig	2021-04-08 13:39:03.446782573 +0800
+@@ -0,0 +1,813 @@
++# Makefile.in generated by automake 1.15.1 from Makefile.am.
++# capstone/Makefile.  Generated from Makefile.in by configure.
++
++# Copyright (C) 1994-2017 Free Software Foundation, Inc.
++
++# This Makefile.in is free software; the Free Software Foundation
++# gives unlimited permission to copy and/or distribute it,
++# with or without modifications, as long as this notice is preserved.
++
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
++# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
++# PARTICULAR PURPOSE.
++
++
++
++#include ../Makefile.am
++
++
++am__is_gnu_make = { \
++  if test -z '$(MAKELEVEL)'; then \
++    false; \
++  elif test -n '$(MAKE_HOST)'; then \
++    true; \
++  elif test -n '$(MAKE_VERSION)' && test -n '$(CURDIR)'; then \
++    true; \
++  else \
++    false; \
++  fi; \
++}
++am__make_running_with_option = \
++  case $${target_option-} in \
++      ?) ;; \
++      *) echo "am__make_running_with_option: internal error: invalid" \
++              "target option '$${target_option-}' specified" >&2; \
++         exit 1;; \
++  esac; \
++  has_opt=no; \
++  sane_makeflags=$$MAKEFLAGS; \
++  if $(am__is_gnu_make); then \
++    sane_makeflags=$$MFLAGS; \
++  else \
++    case $$MAKEFLAGS in \
++      *\\[\ \	]*) \
++        bs=\\; \
++        sane_makeflags=`printf '%s\n' "$$MAKEFLAGS" \
++          | sed "s/$$bs$$bs[$$bs $$bs	]*//g"`;; \
++    esac; \
++  fi; \
++  skip_next=no; \
++  strip_trailopt () \
++  { \
++    flg=`printf '%s\n' "$$flg" | sed "s/$$1.*$$//"`; \
++  }; \
++  for flg in $$sane_makeflags; do \
++    test $$skip_next = yes && { skip_next=no; continue; }; \
++    case $$flg in \
++      *=*|--*) continue;; \
++        -*I) strip_trailopt 'I'; skip_next=yes;; \
++      -*I?*) strip_trailopt 'I';; \
++        -*O) strip_trailopt 'O'; skip_next=yes;; \
++      -*O?*) strip_trailopt 'O';; \
++        -*l) strip_trailopt 'l'; skip_next=yes;; \
++      -*l?*) strip_trailopt 'l';; \
++      -[dEDm]) skip_next=yes;; \
++      -[JT]) skip_next=yes;; \
++    esac; \
++    case $$flg in \
++      *$$target_option*) has_opt=yes; break;; \
++    esac; \
++  done; \
++  test $$has_opt = yes
++am__make_dryrun = (target_option=n; $(am__make_running_with_option))
++am__make_keepgoing = (target_option=k; $(am__make_running_with_option))
++pkgdatadir = $(datadir)/valgrind
++pkgincludedir = $(includedir)/valgrind
++pkglibdir = $(libdir)/valgrind
++pkglibexecdir = $(libexecdir)/valgrind
++am__cd = CDPATH="$${ZSH_VERSION+.}$(PATH_SEPARATOR)" && cd
++install_sh_DATA = $(install_sh) -c -m 644
++install_sh_PROGRAM = $(install_sh) -c
++install_sh_SCRIPT = $(install_sh) -c
++INSTALL_HEADER = $(INSTALL_DATA)
++transform = $(program_transform_name)
++NORMAL_INSTALL = :
++PRE_INSTALL = :
++POST_INSTALL = :
++NORMAL_UNINSTALL = :
++PRE_UNINSTALL = :
++POST_UNINSTALL = :
++build_triplet = x86_64-pc-linux-gnu
++host_triplet = x86_64-pc-linux-gnu
++am__append_1 = libcapstone-x86.a
++subdir = capstone
++ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
++am__aclocal_m4_deps = $(top_srcdir)/configure.ac
++am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
++	$(ACLOCAL_M4)
++DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
++mkinstalldirs = $(install_sh) -d
++CONFIG_HEADER = $(top_builddir)/config.h
++CONFIG_CLEAN_FILES =
++CONFIG_CLEAN_VPATH_FILES =
++LIBRARIES = $(noinst_LIBRARIES)
++ARFLAGS = cru
++AM_V_AR = $(am__v_AR_$(V))
++am__v_AR_ = $(am__v_AR_$(AM_DEFAULT_VERBOSITY))
++am__v_AR_0 = @echo "  AR      " $@;
++am__v_AR_1 = 
++libcapstone_amd64_a_AR = $(AR) $(ARFLAGS)
++libcapstone_amd64_a_LIBADD =
++am__objects_1 = libcapstone_amd64_a-cs.$(OBJEXT) \
++	libcapstone_amd64_a-utils.$(OBJEXT) \
++	libcapstone_amd64_a-SStream.$(OBJEXT) \
++	libcapstone_amd64_a-MCInstrDesc.$(OBJEXT) \
++	libcapstone_amd64_a-MCRegisterInfo.$(OBJEXT) \
++	libcapstone_amd64_a-MCInst.$(OBJEXT)
++am_libcapstone_amd64_a_OBJECTS = $(am__objects_1)
++libcapstone_amd64_a_OBJECTS =  \
++	$(am_libcapstone_amd64_a_OBJECTS)
++libcapstone_x86_a_AR = $(AR) $(ARFLAGS)
++libcapstone_x86_a_LIBADD =
++am__libcapstone_x86_a_SOURCES_DIST = cs.c utils.c \
++	SStream.c MCInstrDesc.c MCRegisterInfo.c MCInst.c
++am__objects_2 = libcapstone_x86_a-cs.$(OBJEXT) \
++	libcapstone_x86_a-utils.$(OBJEXT) \
++	libcapstone_x86_a-SStream.$(OBJEXT) \
++	libcapstone_x86_a-MCInstrDesc.$(OBJEXT) \
++	libcapstone_x86_a-MCRegisterInfo.$(OBJEXT) \
++	libcapstone_x86_a-MCInst.$(OBJEXT)
++am_libcapstone_x86_a_OBJECTS =  \
++	$(am__objects_2)
++libcapstone_x86_a_OBJECTS =  \
++	$(am_libcapstone_x86_a_OBJECTS)
++AM_V_P = $(am__v_P_$(V))
++am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
++am__v_P_0 = false
++am__v_P_1 = :
++AM_V_GEN = $(am__v_GEN_$(V))
++am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
++am__v_GEN_0 = @echo "  GEN     " $@;
++am__v_GEN_1 = 
++AM_V_at = $(am__v_at_$(V))
++am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
++am__v_at_0 = @
++am__v_at_1 = 
++DEFAULT_INCLUDES = -I. -I$(top_builddir)
++depcomp = $(SHELL) $(top_srcdir)/../depcomp
++am__depfiles_maybe = depfiles
++am__mv = mv -f
++AM_V_lt = $(am__v_lt_$(V))
++am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
++am__v_lt_0 = --silent
++am__v_lt_1 = 
++COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++AM_V_CC = $(am__v_CC_$(V))
++am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
++am__v_CC_0 = @echo "  CC      " $@;
++am__v_CC_1 = 
++CCLD = $(CC)
++LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
++AM_V_CCLD = $(am__v_CCLD_$(V))
++am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
++am__v_CCLD_0 = @echo "  CCLD    " $@;
++am__v_CCLD_1 = 
++SOURCES = $(libcapstone_amd64_a_SOURCES) \
++	$(libcapstone_x86_a_SOURCES)
++DIST_SOURCES = $(libcapstone_amd64_a_SOURCES) \
++	$(am__libcapstone_x86_a_SOURCES_DIST)
++am__can_run_installinfo = \
++  case $$AM_UPDATE_INFO_DIR in \
++    n|no|NO) false;; \
++    *) (install-info --version) >/dev/null 2>&1;; \
++  esac
++am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
++am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/../depcomp \
++	ChangeLog README TODO
++DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
++ACLOCAL = ${SHELL} /home/user/valgrind-3.17.0/missing aclocal-1.15
++AMTAR = $${TAR-tar}
++AM_DEFAULT_VERBOSITY = 1
++AR = /usr/bin/ar
++AUTOCONF = ${SHELL} /home/user/valgrind-3.17.0/missing autoconf
++AUTOHEADER = ${SHELL} /home/user/valgrind-3.17.0/missing autoheader
++AUTOMAKE = ${SHELL} /home/user/valgrind-3.17.0/missing automake-1.15
++AWK = gawk
++BOOST_CFLAGS = 
++BOOST_LIBS = 
++CC = gcc
++CCAS = gcc
++CCASDEPMODE = depmode=gcc3
++CCASFLAGS = 
++CCDEPMODE = depmode=gcc3
++CFLAGS = 
++CFLAGS_MPI = -g -O -fno-omit-frame-pointer -Wall -fpic
++CPP = gcc -E
++CPPFLAGS = 
++CXX = g++
++CXXDEPMODE = depmode=gcc3
++CXXFLAGS = 
++CYGPATH_W = echo
++DEFAULT_SUPP = xfree-3.supp xfree-4.supp glibc-2.X-drd.supp glibc-2.34567-NPTL-helgrind.supp glibc-2.X.supp 
++DEFS = -DHAVE_CONFIG_H
++DEPDIR = .deps
++DIFF = diff -u
++DIS_PATH = 
++ECHO_C = 
++ECHO_N = -n
++ECHO_T = 
++EGREP = /bin/grep -E
++EXEEXT = 
++FLAG_FALIGNED_NEW = -faligned-new
++FLAG_FINLINE_FUNCTIONS = -finline-functions
++FLAG_FNO_IPA_ICF = -fno-ipa-icf
++FLAG_FNO_STACK_PROTECTOR = -fno-stack-protector
++FLAG_FSANITIZE = 
++FLAG_FSIZED_DEALLOCATION = -fsized-deallocation
++FLAG_M32 = -m32
++FLAG_M64 = -m64
++FLAG_MLONG_DOUBLE_128 = -mlong-double-128
++FLAG_MMMX = -mmmx
++FLAG_MSA = 
++FLAG_MSSE = -msse
++FLAG_NO_BUILD_ID = 
++FLAG_NO_PIE = -no-pie
++FLAG_OCTEON = 
++FLAG_OCTEON2 = 
++FLAG_PIE = -pie
++FLAG_T_TEXT = -Ttext-segment
++FLAG_UNLIMITED_INLINE_UNIT_GROWTH = --param inline-unit-growth=900
++FLAG_W_CAST_ALIGN = -Wcast-align
++FLAG_W_CAST_QUAL = -Wcast-qual
++FLAG_W_EMPTY_BODY = -Wempty-body
++FLAG_W_ENUM_CONVERSION = 
++FLAG_W_EXTRA = -Wextra
++FLAG_W_FORMAT = -Wformat
++FLAG_W_FORMAT_SECURITY = -Wformat-security
++FLAG_W_FORMAT_SIGNEDNESS = -Wformat-signedness
++FLAG_W_IGNORED_QUALIFIERS = -Wignored-qualifiers
++FLAG_W_IMPLICIT_FALLTHROUGH = -Wimplicit-fallthrough=2
++FLAG_W_LOGICAL_OP = -Wlogical-op
++FLAG_W_MISSING_PARAMETER_TYPE = -Wmissing-parameter-type
++FLAG_W_NO_INFINITE_RECURSION = 
++FLAG_W_NO_MEMSET_TRANSPOSED_ARGS = -Wno-memset-transposed-args
++FLAG_W_NO_MISMATCHED_NEW_DELETE = 
++FLAG_W_NO_NONNULL = -Wno-nonnull
++FLAG_W_NO_OVERFLOW = -Wno-overflow
++FLAG_W_NO_POINTER_SIGN = -Wno-pointer-sign
++FLAG_W_NO_STATIC_LOCAL_IN_INLINE = 
++FLAG_W_NO_UNINITIALIZED = -Wno-uninitialized
++FLAG_W_NO_UNUSED_FUNCTION = -Wno-unused-function
++FLAG_W_OLD_STYLE_DECLARATION = -Wold-style-declaration
++FLAG_W_WRITE_STRINGS = -Wwrite-strings
++GDB = /usr/bin/gdb
++GLIBC_VERSION = 2.27
++GREP = /bin/grep
++HWCAP_HAS_ALTIVEC = 
++HWCAP_HAS_DFP = 
++HWCAP_HAS_HTM = 
++HWCAP_HAS_ISA_2_05 = 
++HWCAP_HAS_ISA_2_06 = 
++HWCAP_HAS_ISA_2_07 = 
++HWCAP_HAS_ISA_3_00 = 
++HWCAP_HAS_ISA_3_1 = 
++HWCAP_HAS_MMA = 
++HWCAP_HAS_VSX = 
++INSTALL = /usr/bin/install -c
++INSTALL_DATA = ${INSTALL} -m 644
++INSTALL_PROGRAM = ${INSTALL}
++INSTALL_SCRIPT = ${INSTALL}
++INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
++LDFLAGS = 
++LDFLAGS_MPI = -fpic -shared
++LIBOBJS = 
++LIBS = 
++LIB_UBSAN = 
++LN_S = ln -s
++LTLIBOBJS = 
++LTO_AR = /usr/bin/ar
++LTO_CFLAGS = 
++LTO_RANLIB = ranlib
++MAINT = #
++MAKEINFO = ${SHELL} /home/user/valgrind-3.17.0/missing makeinfo
++MKDIR_P = /bin/mkdir -p
++MPI_CC = mpicc
++OBJEXT = o
++PACKAGE = valgrind
++PACKAGE_BUGREPORT = valgrind-users@lists.sourceforge.net
++PACKAGE_NAME = Valgrind
++PACKAGE_STRING = Valgrind 3.17.0
++PACKAGE_TARNAME = valgrind
++PACKAGE_URL = 
++PACKAGE_VERSION = 3.17.0
++PATH_SEPARATOR = :
++PERL = /usr/bin/perl
++PREFERRED_STACK_BOUNDARY_2 = -mpreferred-stack-boundary=2
++RANLIB = ranlib
++SED = /bin/sed
++SET_MAKE = 
++SHELL = /bin/bash
++SOLARIS_UNDEF_LARGESOURCE = 
++STRIP = 
++VALT_LOAD_ADDRESS_PRI = 0x58000000
++VALT_LOAD_ADDRESS_SEC = 0x58000000
++VERSION = 3.17.0
++VGCONF_ABI = 
++VGCONF_ARCH_PRI = amd64
++VGCONF_ARCH_SEC = x86
++VGCONF_OS = linux
++VGCONF_PLATFORM_PRI_CAPS = AMD64_LINUX
++VGCONF_PLATFORM_SEC_CAPS = X86_LINUX
++VGCONF_PLATVARIANT = vanilla
++VG_TMPDIR = /tmp
++XCODE_DIR = 
++XCRUN = 
++abs_builddir = /home/user/valgrind-3.17.0/taintgrind/capstone
++abs_srcdir = /home/user/valgrind-3.17.0/taintgrind/capstone
++abs_top_builddir = /home/user/valgrind-3.17.0/taintgrind
++abs_top_srcdir = /home/user/valgrind-3.17.0/taintgrind
++ac_ct_CC = gcc
++ac_ct_CXX = g++
++am__include = include
++am__leading_dot = .
++am__quote = 
++am__tar = $${TAR-tar} chof - "$$tardir"
++am__untar = $${TAR-tar} xf -
++bindir = ${exec_prefix}/bin
++build = x86_64-pc-linux-gnu
++build_alias = 
++build_cpu = x86_64
++build_os = linux-gnu
++build_vendor = pc
++builddir = .
++datadir = ${datarootdir}
++datarootdir = ${prefix}/share
++docdir = ${datarootdir}/doc/${PACKAGE_TARNAME}
++dvidir = ${docdir}
++exec_prefix = ${prefix}
++host = x86_64-pc-linux-gnu
++host_alias = 
++host_cpu = x86_64
++host_os = linux-gnu
++host_vendor = pc
++htmldir = ${docdir}
++includedir = ${prefix}/include
++infodir = ${datarootdir}/info
++install_sh = ${SHELL} /home/user/valgrind-3.17.0/install-sh
++libdir = ${exec_prefix}/lib
++libexecdir = ${exec_prefix}/libexec
++localedir = ${datarootdir}/locale
++localstatedir = ${prefix}/var
++mandir = ${datarootdir}/man
++mkdir_p = $(MKDIR_P)
++oldincludedir = /usr/include
++pdfdir = ${docdir}
++prefix = /home/user/valgrind-3.17.0/taintgrind/../build
++program_transform_name = s,x,x,
++psdir = ${docdir}
++runstatedir = ${localstatedir}/run
++sbindir = ${exec_prefix}/sbin
++sharedstatedir = ${prefix}/com
++srcdir = .
++sysconfdir = ${prefix}/etc
++target_alias = 
++top_build_prefix = ../
++top_builddir = ..
++top_srcdir = ..
++noinst_LIBRARIES = libcapstone-amd64.a $(am__append_1)
++LIBCAPSTONE_SOURCES_COMMON = cs.c utils.c SStream.c MCInstrDesc.c MCRegisterInfo.c MCInst.c
++libcapstone_amd64_a_SOURCES = $(LIBCAPSTONE_SOURCES_COMMON)
++libcapstone_x86_a_SOURCES = $(LIBCAPSTONE_SOURCES_COMMON)
++libcapstone_amd64_a_CPPFLAGS = \
++        $(AM_CPPFLAGS_AMD64_LINUX)
++
++libcapstone_amd64_a_CFLAGS = \
++        $(AM_CFLAGS_AMD64_LINUX) -O2 -I./include
++
++libcapstone_amd64_a_DEPENDENCIES = \
++        $(TOOL_DEPENDENCIES_AMD64_LINUX)
++
++libcapstone_amd64_a_LINK = \
++        ../coregrind/link_tool_exe \
++        0x58000000 \
++        $(LINK) \
++        $(libcapstone_amd64_a_CFLAGS) \
++        $(libcapstone_amd64_a_LDFLAGS)
++
++libcapstone_x86_a_CPPFLAGS = \
++        $(AM_CPPFLAGS_X86_LINUX)
++
++libcapstone_x86_a_CFLAGS = \
++        $(AM_CFLAGS_X86_LINUX) -O2 -I./include
++
++libcapstone_x86_a_DEPENDENCIES = \
++        $(TOOL_DEPENDENCIES_X86_LINUX)
++
++libcapstone_x86_a_LINK = \
++        ../coregrind/link_tool_exe \
++        0x58000000 \
++        $(LINK) \
++        $(libcapstone_x86_a_CFLAGS) \
++        $(libcapstone_x86_a_LDFLAGS)
++
++all: all-am
++
++.SUFFIXES:
++.SUFFIXES: .c .o .obj
++$(srcdir)/Makefile.in: # $(srcdir)/Makefile.am  $(am__configure_deps)
++	@for dep in $?; do \
++	  case '$(am__configure_deps)' in \
++	    *$$dep*) \
++	      ( cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh ) \
++	        && { if test -f $@; then exit 0; else break; fi; }; \
++	      exit 1;; \
++	  esac; \
++	done; \
++	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign capstone/Makefile'; \
++	$(am__cd) $(top_srcdir) && \
++	  $(AUTOMAKE) --foreign capstone/Makefile
++Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
++	@case '$?' in \
++	  *config.status*) \
++	    cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh;; \
++	  *) \
++	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe)'; \
++	    cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe);; \
++	esac;
++
++$(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
++	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
++
++$(top_srcdir)/configure: # $(am__configure_deps)
++	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
++$(ACLOCAL_M4): # $(am__aclocal_m4_deps)
++	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
++$(am__aclocal_m4_deps):
++
++clean-noinstLIBRARIES:
++	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
++
++libcapstone-amd64.a: $(libcapstone_amd64_a_OBJECTS) $(libcapstone_amd64_a_DEPENDENCIES) $(EXTRA_libcapstone_amd64_a_DEPENDENCIES) 
++	$(AM_V_at)-rm -f libcapstone-amd64.a
++	$(AM_V_AR)$(libcapstone_amd64_a_AR) libcapstone-amd64.a $(libcapstone_amd64_a_OBJECTS) $(libcapstone_amd64_a_LIBADD)
++	$(AM_V_at)$(RANLIB) libcapstone-amd64.a
++
++libcapstone-x86.a: $(libcapstone_x86_a_OBJECTS) $(libcapstone_x86_a_DEPENDENCIES) $(EXTRA_libcapstone_x86_a_DEPENDENCIES) 
++	$(AM_V_at)-rm -f libcapstone-x86.a
++	$(AM_V_AR)$(libcapstone_x86_a_AR) libcapstone-x86.a $(libcapstone_x86_a_OBJECTS) $(libcapstone_x86_a_LIBADD)
++	$(AM_V_at)$(RANLIB) libcapstone-x86.a
++
++mostlyclean-compile:
++	-rm -f *.$(OBJEXT)
++
++distclean-compile:
++	-rm -f *.tab.c
++
++include ./$(DEPDIR)/libcapstone_amd64_a-MCInst.Po
++include ./$(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Po
++include ./$(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Po
++include ./$(DEPDIR)/libcapstone_amd64_a-SStream.Po
++include ./$(DEPDIR)/libcapstone_amd64_a-cs.Po
++include ./$(DEPDIR)/libcapstone_amd64_a-utils.Po
++include ./$(DEPDIR)/libcapstone_x86_a-MCInst.Po
++include ./$(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Po
++include ./$(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Po
++include ./$(DEPDIR)/libcapstone_x86_a-SStream.Po
++include ./$(DEPDIR)/libcapstone_x86_a-cs.Po
++include ./$(DEPDIR)/libcapstone_x86_a-utils.Po
++
++.c.o:
++	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
++	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
++	$(am__mv) $$depbase.Tpo $$depbase.Po
++#	$(AM_V_CC)source='$<' object='$@' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(COMPILE) -c -o $@ $<
++
++.c.obj:
++	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
++	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
++	$(am__mv) $$depbase.Tpo $$depbase.Po
++#	$(AM_V_CC)source='$<' object='$@' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
++
++libcapstone_amd64_a-cs.o: cs.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-cs.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-cs.Tpo -c -o libcapstone_amd64_a-cs.o `test -f 'cs.c' || echo '$(srcdir)/'`cs.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-cs.Tpo $(DEPDIR)/libcapstone_amd64_a-cs.Po
++#	$(AM_V_CC)source='cs.c' object='libcapstone_amd64_a-cs.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-cs.o `test -f 'cs.c' || echo '$(srcdir)/'`cs.c
++
++libcapstone_amd64_a-cs.obj: cs.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-cs.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-cs.Tpo -c -o libcapstone_amd64_a-cs.obj `if test -f 'cs.c'; then $(CYGPATH_W) 'cs.c'; else $(CYGPATH_W) '$(srcdir)/cs.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-cs.Tpo $(DEPDIR)/libcapstone_amd64_a-cs.Po
++#	$(AM_V_CC)source='cs.c' object='libcapstone_amd64_a-cs.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-cs.obj `if test -f 'cs.c'; then $(CYGPATH_W) 'cs.c'; else $(CYGPATH_W) '$(srcdir)/cs.c'; fi`
++
++libcapstone_amd64_a-utils.o: utils.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-utils.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-utils.Tpo -c -o libcapstone_amd64_a-utils.o `test -f 'utils.c' || echo '$(srcdir)/'`utils.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-utils.Tpo $(DEPDIR)/libcapstone_amd64_a-utils.Po
++#	$(AM_V_CC)source='utils.c' object='libcapstone_amd64_a-utils.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-utils.o `test -f 'utils.c' || echo '$(srcdir)/'`utils.c
++
++libcapstone_amd64_a-utils.obj: utils.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-utils.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-utils.Tpo -c -o libcapstone_amd64_a-utils.obj `if test -f 'utils.c'; then $(CYGPATH_W) 'utils.c'; else $(CYGPATH_W) '$(srcdir)/utils.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-utils.Tpo $(DEPDIR)/libcapstone_amd64_a-utils.Po
++#	$(AM_V_CC)source='utils.c' object='libcapstone_amd64_a-utils.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-utils.obj `if test -f 'utils.c'; then $(CYGPATH_W) 'utils.c'; else $(CYGPATH_W) '$(srcdir)/utils.c'; fi`
++
++libcapstone_amd64_a-SStream.o: SStream.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-SStream.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-SStream.Tpo -c -o libcapstone_amd64_a-SStream.o `test -f 'SStream.c' || echo '$(srcdir)/'`SStream.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-SStream.Tpo $(DEPDIR)/libcapstone_amd64_a-SStream.Po
++#	$(AM_V_CC)source='SStream.c' object='libcapstone_amd64_a-SStream.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-SStream.o `test -f 'SStream.c' || echo '$(srcdir)/'`SStream.c
++
++libcapstone_amd64_a-SStream.obj: SStream.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-SStream.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-SStream.Tpo -c -o libcapstone_amd64_a-SStream.obj `if test -f 'SStream.c'; then $(CYGPATH_W) 'SStream.c'; else $(CYGPATH_W) '$(srcdir)/SStream.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-SStream.Tpo $(DEPDIR)/libcapstone_amd64_a-SStream.Po
++#	$(AM_V_CC)source='SStream.c' object='libcapstone_amd64_a-SStream.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-SStream.obj `if test -f 'SStream.c'; then $(CYGPATH_W) 'SStream.c'; else $(CYGPATH_W) '$(srcdir)/SStream.c'; fi`
++
++libcapstone_amd64_a-MCInstrDesc.o: MCInstrDesc.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCInstrDesc.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Tpo -c -o libcapstone_amd64_a-MCInstrDesc.o `test -f 'MCInstrDesc.c' || echo '$(srcdir)/'`MCInstrDesc.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Tpo $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Po
++#	$(AM_V_CC)source='MCInstrDesc.c' object='libcapstone_amd64_a-MCInstrDesc.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCInstrDesc.o `test -f 'MCInstrDesc.c' || echo '$(srcdir)/'`MCInstrDesc.c
++
++libcapstone_amd64_a-MCInstrDesc.obj: MCInstrDesc.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCInstrDesc.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Tpo -c -o libcapstone_amd64_a-MCInstrDesc.obj `if test -f 'MCInstrDesc.c'; then $(CYGPATH_W) 'MCInstrDesc.c'; else $(CYGPATH_W) '$(srcdir)/MCInstrDesc.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Tpo $(DEPDIR)/libcapstone_amd64_a-MCInstrDesc.Po
++#	$(AM_V_CC)source='MCInstrDesc.c' object='libcapstone_amd64_a-MCInstrDesc.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCInstrDesc.obj `if test -f 'MCInstrDesc.c'; then $(CYGPATH_W) 'MCInstrDesc.c'; else $(CYGPATH_W) '$(srcdir)/MCInstrDesc.c'; fi`
++
++libcapstone_amd64_a-MCRegisterInfo.o: MCRegisterInfo.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCRegisterInfo.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Tpo -c -o libcapstone_amd64_a-MCRegisterInfo.o `test -f 'MCRegisterInfo.c' || echo '$(srcdir)/'`MCRegisterInfo.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Tpo $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Po
++#	$(AM_V_CC)source='MCRegisterInfo.c' object='libcapstone_amd64_a-MCRegisterInfo.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCRegisterInfo.o `test -f 'MCRegisterInfo.c' || echo '$(srcdir)/'`MCRegisterInfo.c
++
++libcapstone_amd64_a-MCRegisterInfo.obj: MCRegisterInfo.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCRegisterInfo.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Tpo -c -o libcapstone_amd64_a-MCRegisterInfo.obj `if test -f 'MCRegisterInfo.c'; then $(CYGPATH_W) 'MCRegisterInfo.c'; else $(CYGPATH_W) '$(srcdir)/MCRegisterInfo.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Tpo $(DEPDIR)/libcapstone_amd64_a-MCRegisterInfo.Po
++#	$(AM_V_CC)source='MCRegisterInfo.c' object='libcapstone_amd64_a-MCRegisterInfo.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCRegisterInfo.obj `if test -f 'MCRegisterInfo.c'; then $(CYGPATH_W) 'MCRegisterInfo.c'; else $(CYGPATH_W) '$(srcdir)/MCRegisterInfo.c'; fi`
++
++libcapstone_amd64_a-MCInst.o: MCInst.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCInst.o -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCInst.Tpo -c -o libcapstone_amd64_a-MCInst.o `test -f 'MCInst.c' || echo '$(srcdir)/'`MCInst.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCInst.Tpo $(DEPDIR)/libcapstone_amd64_a-MCInst.Po
++#	$(AM_V_CC)source='MCInst.c' object='libcapstone_amd64_a-MCInst.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCInst.o `test -f 'MCInst.c' || echo '$(srcdir)/'`MCInst.c
++
++libcapstone_amd64_a-MCInst.obj: MCInst.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -MT libcapstone_amd64_a-MCInst.obj -MD -MP -MF $(DEPDIR)/libcapstone_amd64_a-MCInst.Tpo -c -o libcapstone_amd64_a-MCInst.obj `if test -f 'MCInst.c'; then $(CYGPATH_W) 'MCInst.c'; else $(CYGPATH_W) '$(srcdir)/MCInst.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_amd64_a-MCInst.Tpo $(DEPDIR)/libcapstone_amd64_a-MCInst.Po
++#	$(AM_V_CC)source='MCInst.c' object='libcapstone_amd64_a-MCInst.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_amd64_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_amd64_a_CFLAGS) $(CFLAGS) -c -o libcapstone_amd64_a-MCInst.obj `if test -f 'MCInst.c'; then $(CYGPATH_W) 'MCInst.c'; else $(CYGPATH_W) '$(srcdir)/MCInst.c'; fi`
++
++libcapstone_x86_a-cs.o: cs.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-cs.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-cs.Tpo -c -o libcapstone_x86_a-cs.o `test -f 'cs.c' || echo '$(srcdir)/'`cs.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-cs.Tpo $(DEPDIR)/libcapstone_x86_a-cs.Po
++#	$(AM_V_CC)source='cs.c' object='libcapstone_x86_a-cs.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-cs.o `test -f 'cs.c' || echo '$(srcdir)/'`cs.c
++
++libcapstone_x86_a-cs.obj: cs.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-cs.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-cs.Tpo -c -o libcapstone_x86_a-cs.obj `if test -f 'cs.c'; then $(CYGPATH_W) 'cs.c'; else $(CYGPATH_W) '$(srcdir)/cs.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-cs.Tpo $(DEPDIR)/libcapstone_x86_a-cs.Po
++#	$(AM_V_CC)source='cs.c' object='libcapstone_x86_a-cs.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-cs.obj `if test -f 'cs.c'; then $(CYGPATH_W) 'cs.c'; else $(CYGPATH_W) '$(srcdir)/cs.c'; fi`
++
++libcapstone_x86_a-utils.o: utils.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-utils.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-utils.Tpo -c -o libcapstone_x86_a-utils.o `test -f 'utils.c' || echo '$(srcdir)/'`utils.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-utils.Tpo $(DEPDIR)/libcapstone_x86_a-utils.Po
++#	$(AM_V_CC)source='utils.c' object='libcapstone_x86_a-utils.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-utils.o `test -f 'utils.c' || echo '$(srcdir)/'`utils.c
++
++libcapstone_x86_a-utils.obj: utils.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-utils.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-utils.Tpo -c -o libcapstone_x86_a-utils.obj `if test -f 'utils.c'; then $(CYGPATH_W) 'utils.c'; else $(CYGPATH_W) '$(srcdir)/utils.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-utils.Tpo $(DEPDIR)/libcapstone_x86_a-utils.Po
++#	$(AM_V_CC)source='utils.c' object='libcapstone_x86_a-utils.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-utils.obj `if test -f 'utils.c'; then $(CYGPATH_W) 'utils.c'; else $(CYGPATH_W) '$(srcdir)/utils.c'; fi`
++
++libcapstone_x86_a-SStream.o: SStream.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-SStream.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-SStream.Tpo -c -o libcapstone_x86_a-SStream.o `test -f 'SStream.c' || echo '$(srcdir)/'`SStream.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-SStream.Tpo $(DEPDIR)/libcapstone_x86_a-SStream.Po
++#	$(AM_V_CC)source='SStream.c' object='libcapstone_x86_a-SStream.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-SStream.o `test -f 'SStream.c' || echo '$(srcdir)/'`SStream.c
++
++libcapstone_x86_a-SStream.obj: SStream.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-SStream.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-SStream.Tpo -c -o libcapstone_x86_a-SStream.obj `if test -f 'SStream.c'; then $(CYGPATH_W) 'SStream.c'; else $(CYGPATH_W) '$(srcdir)/SStream.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-SStream.Tpo $(DEPDIR)/libcapstone_x86_a-SStream.Po
++#	$(AM_V_CC)source='SStream.c' object='libcapstone_x86_a-SStream.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-SStream.obj `if test -f 'SStream.c'; then $(CYGPATH_W) 'SStream.c'; else $(CYGPATH_W) '$(srcdir)/SStream.c'; fi`
++
++libcapstone_x86_a-MCInstrDesc.o: MCInstrDesc.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCInstrDesc.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Tpo -c -o libcapstone_x86_a-MCInstrDesc.o `test -f 'MCInstrDesc.c' || echo '$(srcdir)/'`MCInstrDesc.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Tpo $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Po
++#	$(AM_V_CC)source='MCInstrDesc.c' object='libcapstone_x86_a-MCInstrDesc.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCInstrDesc.o `test -f 'MCInstrDesc.c' || echo '$(srcdir)/'`MCInstrDesc.c
++
++libcapstone_x86_a-MCInstrDesc.obj: MCInstrDesc.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCInstrDesc.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Tpo -c -o libcapstone_x86_a-MCInstrDesc.obj `if test -f 'MCInstrDesc.c'; then $(CYGPATH_W) 'MCInstrDesc.c'; else $(CYGPATH_W) '$(srcdir)/MCInstrDesc.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Tpo $(DEPDIR)/libcapstone_x86_a-MCInstrDesc.Po
++#	$(AM_V_CC)source='MCInstrDesc.c' object='libcapstone_x86_a-MCInstrDesc.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCInstrDesc.obj `if test -f 'MCInstrDesc.c'; then $(CYGPATH_W) 'MCInstrDesc.c'; else $(CYGPATH_W) '$(srcdir)/MCInstrDesc.c'; fi`
++
++libcapstone_x86_a-MCRegisterInfo.o: MCRegisterInfo.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCRegisterInfo.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Tpo -c -o libcapstone_x86_a-MCRegisterInfo.o `test -f 'MCRegisterInfo.c' || echo '$(srcdir)/'`MCRegisterInfo.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Tpo $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Po
++#	$(AM_V_CC)source='MCRegisterInfo.c' object='libcapstone_x86_a-MCRegisterInfo.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCRegisterInfo.o `test -f 'MCRegisterInfo.c' || echo '$(srcdir)/'`MCRegisterInfo.c
++
++libcapstone_x86_a-MCRegisterInfo.obj: MCRegisterInfo.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCRegisterInfo.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Tpo -c -o libcapstone_x86_a-MCRegisterInfo.obj `if test -f 'MCRegisterInfo.c'; then $(CYGPATH_W) 'MCRegisterInfo.c'; else $(CYGPATH_W) '$(srcdir)/MCRegisterInfo.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Tpo $(DEPDIR)/libcapstone_x86_a-MCRegisterInfo.Po
++#	$(AM_V_CC)source='MCRegisterInfo.c' object='libcapstone_x86_a-MCRegisterInfo.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCRegisterInfo.obj `if test -f 'MCRegisterInfo.c'; then $(CYGPATH_W) 'MCRegisterInfo.c'; else $(CYGPATH_W) '$(srcdir)/MCRegisterInfo.c'; fi`
++
++libcapstone_x86_a-MCInst.o: MCInst.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCInst.o -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCInst.Tpo -c -o libcapstone_x86_a-MCInst.o `test -f 'MCInst.c' || echo '$(srcdir)/'`MCInst.c
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCInst.Tpo $(DEPDIR)/libcapstone_x86_a-MCInst.Po
++#	$(AM_V_CC)source='MCInst.c' object='libcapstone_x86_a-MCInst.o' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCInst.o `test -f 'MCInst.c' || echo '$(srcdir)/'`MCInst.c
++
++libcapstone_x86_a-MCInst.obj: MCInst.c
++	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -MT libcapstone_x86_a-MCInst.obj -MD -MP -MF $(DEPDIR)/libcapstone_x86_a-MCInst.Tpo -c -o libcapstone_x86_a-MCInst.obj `if test -f 'MCInst.c'; then $(CYGPATH_W) 'MCInst.c'; else $(CYGPATH_W) '$(srcdir)/MCInst.c'; fi`
++	$(AM_V_at)$(am__mv) $(DEPDIR)/libcapstone_x86_a-MCInst.Tpo $(DEPDIR)/libcapstone_x86_a-MCInst.Po
++#	$(AM_V_CC)source='MCInst.c' object='libcapstone_x86_a-MCInst.obj' libtool=no \
++#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
++#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcapstone_x86_a_CPPFLAGS) $(CPPFLAGS) $(libcapstone_x86_a_CFLAGS) $(CFLAGS) -c -o libcapstone_x86_a-MCInst.obj `if test -f 'MCInst.c'; then $(CYGPATH_W) 'MCInst.c'; else $(CYGPATH_W) '$(srcdir)/MCInst.c'; fi`
++tags TAGS:
++
++ctags CTAGS:
++
++cscope cscopelist:
++
++
++distdir: $(DISTFILES)
++	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
++	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
++	list='$(DISTFILES)'; \
++	  dist_files=`for file in $$list; do echo $$file; done | \
++	  sed -e "s|^$$srcdirstrip/||;t" \
++	      -e "s|^$$topsrcdirstrip/|$(top_builddir)/|;t"`; \
++	case $$dist_files in \
++	  */*) $(MKDIR_P) `echo "$$dist_files" | \
++			   sed '/\//!d;s|^|$(distdir)/|;s,/[^/]*$$,,' | \
++			   sort -u` ;; \
++	esac; \
++	for file in $$dist_files; do \
++	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
++	  if test -d $$d/$$file; then \
++	    dir=`echo "/$$file" | sed -e 's,/[^/]*$$,,'`; \
++	    if test -d "$(distdir)/$$file"; then \
++	      find "$(distdir)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
++	    fi; \
++	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
++	      cp -fpR $(srcdir)/$$file "$(distdir)$$dir" || exit 1; \
++	      find "$(distdir)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
++	    fi; \
++	    cp -fpR $$d/$$file "$(distdir)$$dir" || exit 1; \
++	  else \
++	    test -f "$(distdir)/$$file" \
++	    || cp -p $$d/$$file "$(distdir)/$$file" \
++	    || exit 1; \
++	  fi; \
 +	done
++check-am: all-am
++check: check-am
++all-am: Makefile $(LIBRARIES)
++installdirs:
++install: install-am
++install-exec: install-exec-am
++install-data: install-data-am
++uninstall: uninstall-am
 +
-+$(OBJDIR)/%.o: %.c
-+	@mkdir -p $(@D)
-+ifeq ($(V),0)
-+	$(call log,CC,$(@:$(OBJDIR)/%=%))
-+	@$(compile)
-+else
-+	$(compile)
-+endif
++install-am: all-am
++	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
++
++installcheck: installcheck-am
++install-strip:
++	if test -z '$(STRIP)'; then \
++	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
++	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
++	      install; \
++	else \
++	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
++	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
++	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
++	fi
++mostlyclean-generic:
++
++clean-generic:
++
++distclean-generic:
++	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
++	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
++
++maintainer-clean-generic:
++	@echo "This command is intended for maintainers to use"
++	@echo "it deletes files that may require special tools to rebuild."
++clean: clean-am
++
++clean-am: clean-generic clean-noinstLIBRARIES mostlyclean-am
++
++distclean: distclean-am
++	-rm -rf ./$(DEPDIR)
++	-rm -f Makefile
++distclean-am: clean-am distclean-compile distclean-generic
++
++dvi: dvi-am
++
++dvi-am:
++
++html: html-am
++
++html-am:
++
++info: info-am
++
++info-am:
++
++install-data-am:
++
++install-dvi: install-dvi-am
++
++install-dvi-am:
++
++install-exec-am:
++
++install-html: install-html-am
++
++install-html-am:
++
++install-info: install-info-am
++
++install-info-am:
++
++install-man:
++
++install-pdf: install-pdf-am
++
++install-pdf-am:
++
++install-ps: install-ps-am
++
++install-ps-am:
++
++installcheck-am:
++
++maintainer-clean: maintainer-clean-am
++	-rm -rf ./$(DEPDIR)
++	-rm -f Makefile
++maintainer-clean-am: distclean-am maintainer-clean-generic
++
++mostlyclean: mostlyclean-am
++
++mostlyclean-am: mostlyclean-compile mostlyclean-generic
++
++pdf: pdf-am
++
++pdf-am:
++
++ps: ps-am
++
++ps-am:
++
++uninstall-am:
++
++.MAKE: install-am install-strip
++
++.PHONY: all all-am check check-am clean clean-generic \
++	clean-noinstLIBRARIES cscopelist-am ctags-am distclean \
++	distclean-compile distclean-generic distdir dvi dvi-am html \
++	html-am info info-am install install-am install-data \
++	install-data-am install-dvi install-dvi-am install-exec \
++	install-exec-am install-html install-html-am install-info \
++	install-info-am install-man install-pdf install-pdf-am \
++	install-ps install-ps-am install-strip installcheck \
++	installcheck-am installdirs maintainer-clean \
++	maintainer-clean-generic mostlyclean mostlyclean-compile \
++	mostlyclean-generic pdf pdf-am ps ps-am tags-am uninstall \
++	uninstall-am
++
++.PRECIOUS: Makefile
 +
 +
-+define create-archive
-+	$(AR) q $(ARCHIVE) $(LIBOBJ)
-+	$(RANLIB) $(ARCHIVE)
-+endef
-+
-+
-+define create-library
-+	$(CC) $(LDFLAGS) $($(LIBNAME)_LDFLAGS) $(LIBOBJ) -o $(LIBRARY)
-+endef
-+
-+
-+define generate-pkgcfg
-+	echo 'Name: capstone' > $(PKGCFGF)
-+	echo 'Description: Capstone disassembly engine' >> $(PKGCFGF)
-+	echo 'Version: $(PKG_VERSION)' >> $(PKGCFGF)
-+	echo 'libdir=$(LIBDIR)' >> $(PKGCFGF)
-+	echo 'includedir=$(INCDIR)/capstone' >> $(PKGCFGF)
-+	echo 'archive=$${libdir}/libcapstone.a' >> $(PKGCFGF)
-+	echo 'Libs: -L$${libdir} -lcapstone' >> $(PKGCFGF)
-+	echo 'Cflags: -I$${includedir}' >> $(PKGCFGF)
-+endef
-+
++# Tell versions [3.59,3.63) of GNU make to not export all variables.
++# Otherwise a system limit (for SysV at least) may be exceeded.
++.NOEXPORT:
 diff -rupN ./capstone-3.0.4/MCInst.c ./capstone-3.0.4.patches/MCInst.c
---- ./capstone-3.0.4/MCInst.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/MCInst.c	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/MCInst.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/MCInst.c	2021-04-08 13:39:11.546776310 +0800
 @@ -34,7 +34,7 @@ void MCInst_insert0(MCInst *inst, int in
  	int i;
  
@@ -53080,8 +53302,8 @@ diff -rupN ./capstone-3.0.4/MCInst.c ./capstone-3.0.4.patches/MCInst.c
  
  	inst->Operands[index] = *Op;
 diff -rupN ./capstone-3.0.4/SStream.c ./capstone-3.0.4.patches/SStream.c
---- ./capstone-3.0.4/SStream.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/SStream.c	2016-12-20 10:40:58.732259617 +0000
+--- ./capstone-3.0.4/SStream.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/SStream.c	2021-04-08 13:39:11.546776310 +0800
 @@ -15,8 +15,12 @@
  #include "myinttypes.h"
  #include "utils.h"
@@ -53108,52 +53330,9 @@ diff -rupN ./capstone-3.0.4/SStream.c ./capstone-3.0.4.patches/SStream.c
  	ss->index += len;
  	ss->buffer[ss->index] = '\0';
  #endif
-diff -rupN ./capstone-3.0.4/uninstall_capstone.sh ./capstone-3.0.4.patches/uninstall_capstone.sh
---- ./capstone-3.0.4/uninstall_capstone.sh	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/uninstall_capstone.sh	2016-12-20 10:40:58.736259654 +0000
-@@ -0,0 +1,39 @@
-+#!/bin/sh
-+if [ $# -ne 1 ]
-+then
-+  echo "Error in $0 - Invalid Argument Count"
-+  echo "Usage: $0 <VALGRIND_INST_DIR>"
-+  exit
-+fi
-+
-+# current command: sh compile_capstone.sh ~/zero_mem/VALGRIND/valgrind/valgrind-3.10.1/inst/include/
-+
-+#0 TODO: capstone but be compile now and its header directory added to valgrind -- except if we just install it normally...
-+
-+#-0 added the file VG_defines.h
-+
-+#1- download it
-+#	git clone https://github.com/aquynh/capstone.git
-+
-+#TODO:cd capstone
-+
-+#2- patch files:
-+	# file changed:
-+	#	- cs.c
-+	#	-
-+	# patch created with http://www.cyberciti.biz/faq/appy-patch-file-using-patch-command/
-+	
-+	# patch the Makefile for the CFLAGS -- take as input the -L
-+	
-+	# patch the files that use libc, instead use valgrind versions -- both include and code
-+VG_INSTDIR=$1
-+
-+# grab certain necessary variables from valgrind Makefile: TODO automaticaly
-+VALG_ARCH="VGO_linux=1 VGA_amd64=1"	# -DVGO_linux=1
-+# also pass the relevant CAPSTONE_ARCHS="arm aarch64 x86" as parameter so we don't compile useless stuff
-+# VGA_arm64 is aarch64, ... so check the Makefile of capstone the stuff I've added + the mapping to the ones in Makefile of valgrind
-+# mips is VGA_mips32
-+# then add CAPSTONE_ARCHS="arm aarch64 x86" to the stuff below. Currently I compile all for simplicity and to make sure it all compiles fine
-+
-+#3- clean all
-+VGO_linux=1 VGA_amd64=1 CAPSTONE_BUILD_CORE_ONLY=yes CAPTSTONE_SECRETGRIND_HEADER_DIR=$VG_INSTDIR/include/valgrind/ CAPSTONE_STATIC=yes CAPSTONE_SHARED=no make uninstall
 diff -rupN ./capstone-3.0.4/utils.c ./capstone-3.0.4.patches/utils.c
---- ./capstone-3.0.4/utils.c	2015-07-15 08:44:42.000000000 +0100
-+++ ./capstone-3.0.4.patches/utils.c	2016-12-20 10:40:58.736259654 +0000
+--- ./capstone-3.0.4/utils.c	2015-07-15 15:44:42.000000000 +0800
++++ ./capstone-3.0.4.patches/utils.c	2021-04-08 13:39:11.546776310 +0800
 @@ -10,6 +10,11 @@
  
  #include "utils.h"
@@ -53192,8 +53371,8 @@ diff -rupN ./capstone-3.0.4/utils.c ./capstone-3.0.4.patches/utils.c
  
  // we need this since Windows doesnt have snprintf()
 diff -rupN ./capstone-3.0.4/VG_defines.h ./capstone-3.0.4.patches/VG_defines.h
---- ./capstone-3.0.4/VG_defines.h	1970-01-01 01:00:00.000000000 +0100
-+++ ./capstone-3.0.4.patches/VG_defines.h	2016-12-20 10:59:48.967117950 +0000
+--- ./capstone-3.0.4/VG_defines.h	1970-01-01 07:30:00.000000000 +0730
++++ ./capstone-3.0.4.patches/VG_defines.h	2021-04-08 13:39:11.546776310 +0800
 @@ -0,0 +1,59 @@
 +#ifndef __VG_DEFINES_H__
 +#define __VG_DEFINES_H__

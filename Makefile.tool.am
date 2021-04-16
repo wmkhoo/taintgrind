@@ -1,5 +1,7 @@
 
-SUBDIRS = . tests
+CAPSTONE_VERSION = 3.0.4
+
+SUBDIRS = capstone . tests
 
 include $(top_srcdir)/Makefile.all.am
 
@@ -7,17 +9,15 @@ include $(top_srcdir)/Makefile.all.am
 # <tool>-<platform> stuff
 #----------------------------------------------------------------------------
 
-CAPSTONE_VERSION = 3.0.4
-
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
 	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
-	./capstone-$(CAPSTONE_VERSION)/libcapstone-@VGCONF_ARCH_PRI@.a
+	./capstone/libcapstone-@VGCONF_ARCH_PRI@.a
 if VGCONF_HAVE_PLATFORM_SEC
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
 	../VEX/libvex-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
-	./capstone-$(CAPSTONE_VERSION)/libcapstone-@VGCONF_ARCH_SEC@.a
+	./capstone/libcapstone-@VGCONF_ARCH_SEC@.a
 endif
 
 

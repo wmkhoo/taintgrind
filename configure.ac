@@ -4906,6 +4906,7 @@ AM_CONDITIONAL([HAVE_SHARED_POINTER_ANNOTATION],
 AC_CONFIG_FILES([
    Makefile 
    tests/Makefile 
+   capstone/Makefile 
 ])
 #AC_CONFIG_FILES([coregrind/link_tool_exe_linux],
 #                [chmod +x coregrind/link_tool_exe_linux])

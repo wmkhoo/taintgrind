@@ -1,4 +1,4 @@
-include $(top_srcdir)/Makefile.tool.am
+include Makefile.tool.am
 
 #----------------------------------------------------------------------------
 # Headers
@@ -36,11 +36,12 @@ taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_SOURCES      = $(TAINTGRIND_SOURCES_COM
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CPPFLAGS     = \
 	$(AM_CPPFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CFLAGS       = \
-	$(AM_CFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) -O2 -I./capstone-3.0.4/include
+	$(AM_CFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) -O2 -I./capstone/include
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_DEPENDENCIES = \
 	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@)
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LDADD        = \
-	$(TOOL_LDADD_@VGCONF_PLATFORM_PRI_CAPS@)
+	$(TOOL_LDADD_@VGCONF_PLATFORM_PRI_CAPS@) \
+	capstone/libcapstone-@VGCONF_ARCH_PRI@.a
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LDFLAGS      = \
 	$(TOOL_LDFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
 taintgrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LINK = \
@@ -55,11 +56,12 @@ taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_SOURCES      = $(TAINTGRIND_SOURCES_COM
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CPPFLAGS     = \
 	$(AM_CPPFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CFLAGS       = \
-	$(AM_CFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) -O2 -I./capstone-3.0.4/include
+	$(AM_CFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) -O2 -I./capstone/include
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_DEPENDENCIES = \
 	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@)
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDADD        = \
-	$(TOOL_LDADD_@VGCONF_PLATFORM_SEC_CAPS@)
+	$(TOOL_LDADD_@VGCONF_PLATFORM_SEC_CAPS@) \
+	capstone/libcapstone-@VGCONF_ARCH_SEC@.a
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDFLAGS      = \
 	$(TOOL_LDFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
 taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LINK = \
@@ -69,6 +71,4 @@ taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LINK = \
         $(taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CFLAGS) \
         $(taintgrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDFLAGS)
 endif
-
-tnt_main.o: CFLAGS += -fomit-frame-pointer
 
