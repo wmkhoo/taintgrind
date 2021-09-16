@@ -576,26 +576,28 @@ void TNT_(syscall_socketcall)(ThreadId tid, UWord* args, UInt nArgs, SysRes res)
 }
 
 void TNT_(syscall_socket)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
-  Int fd = sr_Res(res);
+  Int fd = sr_Res(res), t;
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
 
   if (fd > -1 && fd < FD_MAX) {
-    tainted_fds[tid][fd] = True;
+    for(t=0; t < VG_N_THREADS; ++t)
+      tainted_fds[t][fd] = True;
     //VG_(printf)("syscall_socket: tainting %d\n", fd);
   }
 }
 
 void TNT_(syscall_connect)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
   // Assume this is called directly after arguments have been populated.
-  Int fd = args[0];
+  Int fd = args[0], t;
 
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    tainted_fds[tid][fd] = True;
+    for(t=0; t < VG_N_THREADS; ++t)
+      tainted_fds[t][fd] = True;
     // VG_(printf)("syscall_connect: tainting %d\n", fd);
   }
 }
@@ -604,24 +606,26 @@ void TNT_(syscall_socketpair)(ThreadId tid, UWord* args, UInt nArgs, SysRes res)
   // int socketpair(int domain, int type, int protocol, int sv[2]);
 
   // Assume this is called directly after arguments have been populated.
-  Int fd = ((Int *)args[3])[0];
+  Int fd = ((Int *)args[3])[0], t;
 
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    tainted_fds[tid][fd] = True;
+    for(t=0; t < VG_N_THREADS; ++t)
+      tainted_fds[t][fd] = True;
     // VG_(printf)("syscall_socketpair: tainting fd %d\n", fd);
   }
 }
 
 void TNT_(syscall_accept)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
-  Int fd = sr_Res(res);
+  Int fd = sr_Res(res), t;
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    tainted_fds[tid][fd] = True;
+    for(t=0; t < VG_N_THREADS; ++t)
+      tainted_fds[t][fd] = True;
     // VG_(printf)("syscall_connect: tainting %d\n", fd);
   }
 }
