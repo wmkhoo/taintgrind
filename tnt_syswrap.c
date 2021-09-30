@@ -68,16 +68,13 @@ void resolve_filename(UWord fd, HChar *path, Int max)
 }
 
 /* enforce an arbitrary maximum */
-#define VG_N_THREADS 500 
-static Bool tainted_fds[VG_N_THREADS][FD_MAX];
+static Bool tainted_fds[FD_MAX];
 
 void TNT_(setup_tainted_map)( void ) {
-  ThreadId t = 0;
   VG_(memset)(tainted_fds, False, sizeof(tainted_fds));
   /* Taint stdin if specified */
   if (TNT_(clo_taint_stdin))
-    for(t=0; t < VG_N_THREADS; ++t)
-      tainted_fds[t][0] = True;
+    tainted_fds[0] = True;
 }
 
 static UInt read_offset = 0;
@@ -90,7 +87,7 @@ void TNT_(syscall_lseek)(ThreadId tid, UWord* args, UInt nArgs,
    UInt  whence  = args[2];
    Bool  verbose = False;
 
-   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+   if (fd >= FD_MAX || tainted_fds[fd] == False)
       return;
 
    Int   retval       = sr_Res(res);
@@ -125,7 +122,7 @@ void TNT_(syscall_llseek)(ThreadId tid, UWord* args, UInt nArgs,
    ULong offset;
    Bool  verbose      = False;
 
-   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+   if (fd >= FD_MAX || tainted_fds[fd] == False)
       return;
 
    Int   retval       = sr_Res(res);
@@ -257,7 +254,7 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
 
    TNT_(make_mem_untainted)( (UWord)data, curr_len );
 
-   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+   if (fd >= FD_MAX || tainted_fds[fd] == False)
       return;
 
    if(verbose){
@@ -311,7 +308,7 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
 
    TNT_(make_mem_untainted)( (UWord)data, curr_len );
 
-   if (fd >= FD_MAX || tainted_fds[tid][fd] == False)
+   if (fd >= FD_MAX || tainted_fds[fd] == False)
       return;
 
    if(verbose){
@@ -401,7 +398,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
 	    } else if ( VG_(strncmp)(fdpath, "/lib/", 5) == 0 ) {
 	    } else if ( VG_(strncmp)(fdpath, "/etc/", 5) == 0 ) {
 	    } else {
-               tainted_fds[tid][fd] = True;
+               tainted_fds[fd] = True;
                if ( verbose )
                   VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
                //if ( verbose )
@@ -412,7 +409,7 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
         } else if ( VG_(strncmp)(fdpath, TNT_(clo_file_filter), 
                             VG_(strlen)( TNT_(clo_file_filter))) == 0 ) {
 
-            tainted_fds[tid][fd] = True;
+            tainted_fds[fd] = True;
             if ( verbose )
                VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
             read_offset = 0;
@@ -424,16 +421,16 @@ void TNT_(syscall_open)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
                           VG_(strlen)( TNT_(clo_file_filter)) - 1 ) == 0 ) {
 	    // Example: --file-filter=*.pdf
 
-            tainted_fds[tid][fd] = True;
+            tainted_fds[fd] = True;
             if ( verbose )
                VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
             read_offset = 0;
         } else if (TNT_(clo_taint_stdin)) {
-            tainted_fds[tid][fd] = True;
+            tainted_fds[fd] = True;
             if ( verbose )
                VG_(printf)("syscall open %d %s %lx %d\n", (int)tid, fdpath, args[1], fd);
         } else
-            tainted_fds[tid][fd] = False;
+            tainted_fds[fd] = False;
     }
 }
 
@@ -446,7 +443,7 @@ void TNT_(syscall_close)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
      //    VG_(printf)("syscall close %d %d\n", tid, fd);
 
      shared_fds[fd] = 0;
-     tainted_fds[tid][fd] = False;
+     tainted_fds[fd] = False;
    }
 }
 
@@ -576,28 +573,26 @@ void TNT_(syscall_socketcall)(ThreadId tid, UWord* args, UInt nArgs, SysRes res)
 }
 
 void TNT_(syscall_socket)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
-  Int fd = sr_Res(res), t;
+  Int fd = sr_Res(res);
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
 
   if (fd > -1 && fd < FD_MAX) {
-    for(t=0; t < VG_N_THREADS; ++t)
-      tainted_fds[t][fd] = True;
+    tainted_fds[fd] = True;
     //VG_(printf)("syscall_socket: tainting %d\n", fd);
   }
 }
 
 void TNT_(syscall_connect)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
   // Assume this is called directly after arguments have been populated.
-  Int fd = args[0], t;
+  Int fd = args[0];
 
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    for(t=0; t < VG_N_THREADS; ++t)
-      tainted_fds[t][fd] = True;
+    tainted_fds[fd] = True;
     // VG_(printf)("syscall_connect: tainting %d\n", fd);
   }
 }
@@ -606,26 +601,24 @@ void TNT_(syscall_socketpair)(ThreadId tid, UWord* args, UInt nArgs, SysRes res)
   // int socketpair(int domain, int type, int protocol, int sv[2]);
 
   // Assume this is called directly after arguments have been populated.
-  Int fd = ((Int *)args[3])[0], t;
+  Int fd = ((Int *)args[3])[0];
 
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    for(t=0; t < VG_N_THREADS; ++t)
-      tainted_fds[t][fd] = True;
+    tainted_fds[fd] = True;
     // VG_(printf)("syscall_socketpair: tainting fd %d\n", fd);
   }
 }
 
 void TNT_(syscall_accept)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
-  Int fd = sr_Res(res), t;
+  Int fd = sr_Res(res);
   // Nothing to do if no network tainting
   if (!TNT_(clo_taint_network))
     return;
   if (fd > -1 && fd < FD_MAX) {
-    for(t=0; t < VG_N_THREADS; ++t)
-      tainted_fds[t][fd] = True;
+    tainted_fds[fd] = True;
     // VG_(printf)("syscall_connect: tainting %d\n", fd);
   }
 }
@@ -637,7 +630,7 @@ void TNT_(syscall_recv)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
    Int msglen  = sr_Res(res);
    //VG_(printf)("syscall recv %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
-  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && msglen > 0) {
+  if (fd > -1 && fd < FD_MAX && tainted_fds[fd] == True && msglen > 0) {
     TNT_(make_mem_tainted)((UWord)data, msglen);
   }
 }
@@ -651,7 +644,7 @@ void TNT_(syscall_recvfrom)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
    Int msglen  = sr_Res(res);
    //VG_(printf)("syscall recvfrom %d 0x%x 0x%02x\n", tid, msglen, data[0]);
 
-  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && msglen > 0) {
+  if (fd > -1 && fd < FD_MAX && tainted_fds[fd] == True && msglen > 0) {
     TNT_(make_mem_tainted)((UWord)data, msglen);
   }
 }
@@ -663,7 +656,7 @@ void TNT_(syscall_recvmsg)(ThreadId tid, UWord* args, UInt nArgs, SysRes res) {
   Int fd = args[0];
   struct vki_msghdr *msg = (struct vki_msghdr *)args[1];
 
-  if (fd > -1 && fd < FD_MAX && tainted_fds[tid][fd] == True && sr_Res(res) > 0) {
+  if (fd > -1 && fd < FD_MAX && tainted_fds[fd] == True && sr_Res(res) > 0) {
     // XXX: if MSG_TRUNC, this will taint more memory than it should.
     TNT_(make_mem_tainted)((UWord)msg->msg_control, sr_Res(res));
   }
