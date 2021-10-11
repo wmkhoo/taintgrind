@@ -33,8 +33,6 @@ Installation (from source)
 
 		~$ apt install -y git wget gcc build-essential automake python gcc-multilib
 		
-gcc-multilib is optional, but needed for analysing cross-compiled x86 binaries on amd64		
-
 2. Download [Valgrind](http://valgrind.org)
 
 
