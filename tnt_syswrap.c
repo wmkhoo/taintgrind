@@ -237,6 +237,8 @@ void read_common ( UInt taint_offset, Int taint_len,
       TNT_(make_mem_tainted)( addr, len );
 }
 
+extern HChar *varname;
+
 void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
                                   SysRes res) {
 // ssize_t  read(int fildes, void *buf, size_t nbyte);

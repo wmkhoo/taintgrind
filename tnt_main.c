@@ -3906,6 +3906,12 @@ static int tnt_isatty(void)
    return 0;
 }
 
+UInt  *ti;
+ULong *tv;
+UInt  *ri;
+UInt  *tt;
+HChar *varname;
+
 static void tnt_post_clo_init(void)
 {
    if(*TNT_(clo_file_filter) == '\0'){

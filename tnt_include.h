@@ -255,15 +255,15 @@ extern void TNT_(check_var_access)(ThreadId tid, const HChar* varname, Int var_r
 #define VARNAMESIZE 1024 
 // These arrays are initialised to 0 in TNT_(clo_post_init)
 // Tmp variable indices; the MSB indicates whether it's tainted (1) or not (0)
-UInt  *ti;
+extern UInt  *ti;
 // Tmp variable values
-ULong *tv;
+extern ULong *tv;
 // Reg variable indices; values are obtained in real-time
-UInt  *ri;
+extern UInt  *ri;
 // Tmp variable Types/Widths
-UInt  *tt;
+extern UInt  *tt;
 // Stores the variable name derived from describe_data()
-HChar *varname;
+extern HChar *varname;
 
 #define _ti(ltmp) ti[ltmp] & 0x7fffffff
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
