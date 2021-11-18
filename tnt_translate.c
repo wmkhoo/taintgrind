@@ -895,6 +895,21 @@ static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
                                        unop(Iop_CmpNEZ64, tmp4));
          break;
       }
+      case Ity_V256: {
+         /* Chop it in half, OR the halves together, and compare that
+          * with zero.
+          */
+         IRAtom* tmp2 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_0, vbits));
+         IRAtom* tmp3 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_1, vbits));
+         IRAtom* tmp4 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp2, tmp3));
+         IRAtom* tmp5 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_2, vbits));
+         IRAtom* tmp6 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_3, vbits));
+         IRAtom* tmp7 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp5, tmp6));
+         IRAtom* tmp8 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp4, tmp7));
+         tmp1         = assignNew('V', mce, Ity_I1,
+                                       unop(Iop_CmpNEZ64, tmp8));
+         break;
+      }
       default:
          ppIRType(src_ty);
          VG_(tool_panic)("tnt_translate.c: mkPCastTo(1)");
