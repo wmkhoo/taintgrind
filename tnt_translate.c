@@ -895,21 +895,6 @@ static IRAtom* mkPCastTo( MCEnv* mce, IRType dst_ty, IRAtom* vbits )
                                        unop(Iop_CmpNEZ64, tmp4));
          break;
       }
-      case Ity_V256: {
-         /* Chop it in half, OR the halves together, and compare that
-          * with zero.
-          */
-         IRAtom* tmp2 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_0, vbits));
-         IRAtom* tmp3 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_1, vbits));
-         IRAtom* tmp4 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp2, tmp3));
-         IRAtom* tmp5 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_2, vbits));
-         IRAtom* tmp6 = assignNew('V', mce, Ity_I64, unop(Iop_V256to64_3, vbits));
-         IRAtom* tmp7 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp5, tmp6));
-         IRAtom* tmp8 = assignNew('V', mce, Ity_I64, binop(Iop_Or64, tmp4, tmp7));
-         tmp1         = assignNew('V', mce, Ity_I1,
-                                       unop(Iop_CmpNEZ64, tmp8));
-         break;
-      }
       default:
          ppIRType(src_ty);
          VG_(tool_panic)("tnt_translate.c: mkPCastTo(1)");
@@ -1216,14 +1201,14 @@ static IRAtom* doCmpORD ( MCEnv*  mce,
 
 static void setHelperAnns ( MCEnv* mce, IRDirty* di ) {
    di->nFxState = 2;
-   di->fxState[0].fx     = Ifx_Read;
-   di->fxState[0].offset = mce->layout->offset_SP;
-   di->fxState[0].size   = mce->layout->sizeof_SP;
+   di->fxState[0].fx        = Ifx_Read;
+   di->fxState[0].offset    = mce->layout->offset_SP;
+   di->fxState[0].size      = mce->layout->sizeof_SP;
    di->fxState[0].nRepeats  = 0;
    di->fxState[0].repeatLen = 0;
-   di->fxState[1].fx     = Ifx_Read;
-   di->fxState[1].offset = mce->layout->offset_IP;
-   di->fxState[1].size   = mce->layout->sizeof_IP;
+   di->fxState[1].fx        = Ifx_Read;
+   di->fxState[1].offset    = mce->layout->offset_IP;
+   di->fxState[1].size      = mce->layout->sizeof_IP;
    di->fxState[1].nRepeats  = 0;
    di->fxState[1].repeatLen = 0;
 }
@@ -1639,7 +1624,7 @@ IRAtom* mkLazy3 ( MCEnv* mce, IRType finalVty,
    /* I32 x I64 x I64 -> I32 */
    if (t1 == Ity_I32 && t2 == Ity_I64 && t3 == Ity_I64
        && finalVty == Ity_I32) {
-      if (0) VG_(printf)("mkLazy3: I32 x I64 x I64 -> I64\n");
+      if (0) VG_(printf)("mkLazy3: I32 x I64 x I64 -> I32\n");
       at = mkPCastTo(mce, Ity_I64, va1);
       at = mkUifU(mce, Ity_I64, at, va2);
       at = mkUifU(mce, Ity_I64, at, va3);
@@ -1656,6 +1641,19 @@ IRAtom* mkLazy3 ( MCEnv* mce, IRType finalVty,
       at = mkUifU(mce, Ity_I32, at, va2);
       at = mkUifU(mce, Ity_I32, at, va3);
       at = mkPCastTo(mce, Ity_I32, at);
+      return at;
+   }
+
+
+   /* I32 x I16 x I16 -> I16 */
+   /* 16-bit half-precision FP idiom, as (eg) happens on arm64 v8.2 onwards */
+   if (t1 == Ity_I32 && t2 == Ity_I16 && t3 == Ity_I16
+       && finalVty == Ity_I16) {
+      if (0) VG_(printf)("mkLazy3: I32 x I16 x I16 -> I16\n");
+      at = mkPCastTo(mce, Ity_I16, va1);
+      at = mkUifU(mce, Ity_I16, at, va2);
+      at = mkUifU(mce, Ity_I16, at, va3);
+      at = mkPCastTo(mce, Ity_I16, at);
       return at;
    }
 
@@ -2568,6 +2566,7 @@ IROp vanillaNarrowingOpOfShape ( IROp qnarrowOp )
       case Iop_QNarrowUn32Uto16Ux4:
       case Iop_QNarrowUn32Sto16Sx4:
       case Iop_QNarrowUn32Sto16Ux4:
+      case Iop_F32toF16x4_DEP:
          return Iop_NarrowUn32to16x4;
       case Iop_QNarrowUn16Uto8Ux8:
       case Iop_QNarrowUn16Sto8Sx8:
@@ -2960,6 +2959,10 @@ IRAtom* expr2vbits_Triop ( MCEnv* mce,
       case Iop_DivF32:
          /* I32(rm) x F32 x F32 -> I32 */
          return mkLazy3(mce, Ity_I32, vatom1, vatom2, vatom3);
+      case Iop_AddF16:
+      case Iop_SubF16:
+         /* I32(rm) x F16 x F16 -> I16 */
+         return mkLazy3(mce, Ity_I16, vatom1, vatom2, vatom3);
       case Iop_SignificanceRoundD64:
          /* IRRoundingMode(I32) x I8 x D64 -> D64 */
          return mkLazy3(mce, Ity_I64, vatom1, vatom2, vatom3);
@@ -3023,6 +3026,7 @@ IRAtom* expr2vbits_Triop ( MCEnv* mce,
          IR is implemented.
       */
       case Iop_Add16Fx8:
+      case Iop_Sub16Fx8:
         return binary16Fx8_w_rm(mce, vatom1, vatom2, vatom3);
 
       case Iop_Add32Fx8:
@@ -3584,6 +3588,11 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
       case Iop_RSqrtStep64Fx2:
          return binary64Fx2(mce, vatom1, vatom2);      
 
+      case Iop_CmpLT16Fx8:
+      case Iop_CmpLE16Fx8:
+      case Iop_CmpEQ16Fx8:
+         return binary16Fx8(mce, vatom1, vatom2);
+
       case Iop_Sub64F0x2:
       case Iop_Mul64F0x2:
       case Iop_Min64F0x2:
@@ -4067,6 +4076,7 @@ IRAtom* expr2vbits_Binop ( MCEnv* mce,
          /*  I64 x I128 -> D128 */
          return mkLazy2(mce, Ity_I128, vatom1, vatom2);
 
+      case Iop_CmpF16:
       case Iop_CmpF32:
       case Iop_CmpF64:
       case Iop_CmpF128:
@@ -5894,7 +5904,7 @@ void do_shadow_Dirty ( MCEnv* mce, IRStmt* clone, IRDirty* d )
    for (i = 0; d->args[i]; i++) {
       IRAtom* arg = d->args[i];
 
-      if (d->cee->mcx_mask & (1<<i)
+      if ( (d->cee->mcx_mask & (1<<i))
            || UNLIKELY(is_IRExpr_VECRET_or_GSPTR(arg)) ) {
          /* ignore this arg */
       } else {
