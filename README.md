@@ -1,13 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2025-05-27 Support for Valgrind 3.21.0, x86\_linux, amd64\_linux, arm\_linux [v3.25.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.25.1)
+
 2023-10-24 Support for Valgrind 3.21.0, x86\_linux, amd64\_linux, arm\_linux [v3.21.0](https://github.com/wmkhoo/taintgrind/releases/tag/v3.21.0)
 
 2021-11-19 Support for Valgrind 3.18.1, x86\_linux, amd64\_linux, arm\_linux [v3.18.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.18.1)
-
-2021-03-23 Support for Valgrind 3.17.0, x86\_linux, amd64\_linux, arm\_linux [v3.17.0](https://github.com/wmkhoo/taintgrind/releases/tag/v3.17.0)
-
-2020-06-25 Support for Valgrind 3.16.1, x86\_linux, amd64\_linux, arm\_linux [v3.16.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.16.1)
 
 
 Installation (using Docker)
@@ -47,36 +45,6 @@ Installation (from source)
 		~/valgrind-X.X.X$ cd taintgrind 
 
 4. Run build_taintgrind.sh (to build valgrind, taintgrind and [Capstone](http://github.com/aquynh/capstone))
-
-
-The script does the following:
-
-
-		# Patch valgrind-3.13
-		patch -d ../ -p0 < d3basics.patch
-		
-		# Build valgrind
-		cd ../ && \
-		    ./autogen.sh && \
-		    ./configure --prefix=`pwd`/build && \
-		    make && \
-		    make install
-		
-		# build capstone
-		cd taintgrind && \
-		    wget https://github.com/aquynh/capstone/archive/3.0.4.tar.gz -O capstone.tar.gz && \
-		    tar xf capstone.tar.gz && \
-		    sh configure_capstone.sh `pwd`/../build && \
-		    cd capstone-3.0.4 && \
-		    sh make_capstone.sh
-		
-		# build taintgrind
-		cd ../ && \
-		    ../autogen.sh && \
-		    ./configure --prefix=`pwd`/../build && \
-		    make && \
-		    make install && \
-		    make check
 
 
 A simple example
