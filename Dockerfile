@@ -5,10 +5,10 @@ RUN apt install -y git wget gcc build-essential automake python gcc-multilib
 RUN mkdir /code
 
 # build, install valgrind
-RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.21.0.tar.bz2
+RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.25.1.tar.bz2
 RUN cd /code && \
     tar jxf /code/valgrind.tar.bz2 && \
-    mv valgrind-3.21.0 valgrind
+    mv valgrind-3.25.1 valgrind
 
 # clone taintgrind
 RUN cd /code/valgrind && \

@@ -1,7 +1,4 @@
 #!/bin/bash
-# Patch valgrind
-patch -d ../ -p0 < d3basics.patch
-
 # Find out how far we can parallelize the build
 jobs="`lscpu -p | awk 'BEGIN { n = 0 } /^[^#]/ { n += 1 } END { print n }'`"
 if [ "" = "$jobs" -o "1" -gt "$jobs" ]; then
