@@ -5720,14 +5720,11 @@ IRExpr* zwidenToHostWordC ( MCEnv* mce, IRAtom* atom )
          case Ity_I32:
             return assignNew('C', mce, tyH, unop(Iop_32Uto64, atom));
          case Ity_I16:
-            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('C', mce, Ity_I32, unop(Iop_16Uto32, atom))));
+            return assignNew('C', mce, tyH, unop(Iop_16Uto64, atom));
          case Ity_I8:
-            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('C', mce, Ity_I32, unop(Iop_8Uto32, atom))));
+            return assignNew('C', mce, tyH, unop(Iop_8Uto64, atom));
          case Ity_I1:
-            return assignNew('C', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('C', mce, Ity_I32, unop(Iop_1Uto32, atom))));
+            return assignNew('C', mce, tyH, unop(Iop_1Uto64, atom));
          default:
             goto unhandled;
       }
