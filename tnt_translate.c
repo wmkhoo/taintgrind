@@ -5669,14 +5669,11 @@ IRExpr* zwidenToHostWord ( MCEnv* mce, IRAtom* vatom )
          case Ity_I32:
             return assignNew('V', mce, tyH, unop(Iop_32Uto64, vatom));
          case Ity_I16:
-            return assignNew('V', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('V', mce, Ity_I32, unop(Iop_16Uto32, vatom))));
+            return assignNew('V', mce, tyH, unop(Iop_16Uto64, vatom));
          case Ity_I8:
-            return assignNew('V', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('V', mce, Ity_I32, unop(Iop_8Uto32, vatom))));
+            return assignNew('V', mce, tyH, unop(Iop_8Uto64, vatom));
          case Ity_I1:
-            return assignNew('V', mce, tyH, unop(Iop_32Uto64,
-                   assignNew('V', mce, Ity_I32, unop(Iop_1Uto32, vatom))));
+            return assignNew('V', mce, tyH, unop(Iop_1Uto64, vatom));
          default:
             goto unhandled;
       }
