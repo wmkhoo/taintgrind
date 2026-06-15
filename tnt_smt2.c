@@ -432,7 +432,7 @@ void TNT_(smt2_unop_t) ( IRStmt *clone )
       case Iop_64HIto32:  smt2_extract(32, 63, 32);  break;
       case Iop_128to64:   smt2_extract(0, 63, 64);   break;
       case Iop_128HIto64: smt2_extract(64, 127, 64); break;
-      case Iop_Ctz64:     smt2_ctz64(64);            break;
+      case Iop_CtzNat64:  smt2_ctz64(64);            break;
       case Iop_GetMSBs8x8:  smt2_getmsbsMxN(8)       break;
       case Iop_GetMSBs8x16: smt2_getmsbsMxN(16)      break;
       case Iop_Not1:      smt2_unop(bvnot, 1);       break;
