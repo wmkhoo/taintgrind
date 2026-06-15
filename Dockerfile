@@ -1,18 +1,19 @@
-FROM ubuntu:bionic
+FROM ubuntu:24.04
 
 RUN apt update
 RUN apt install -y git wget gcc build-essential automake python gcc-multilib
 RUN mkdir /code
 
 # build, install valgrind
-RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.25.1.tar.bz2
+RUN wget -O /code/valgrind.tar.bz2 https://sourceware.org/pub/valgrind/valgrind-3.27.1.tar.bz2
 RUN cd /code && \
     tar jxf /code/valgrind.tar.bz2 && \
-    mv valgrind-3.25.1 valgrind
+    mv valgrind-3.27.1 valgrind
 
 # clone taintgrind
 RUN cd /code/valgrind && \
-    git clone https://github.com/wmkhoo/taintgrind
+    wget -O /code/valgrind.tar.gz https://github.com/wmkhoo/taintgrind/archive/refs/tags/v3.27.1.tar.gz && \
+    tar zxf /code/valgrind.tar.bz2
 
 # build capstone
 RUN cd /code/valgrind/taintgrind && \
