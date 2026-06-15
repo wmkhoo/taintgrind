@@ -1,11 +1,11 @@
 Taintgrind: a Valgrind taint analysis tool
 ==========================================
 
+2026-06-15 Support for Valgrind 3.27.1, x86\_linux, amd64\_linux, arm\_linux [v3.27.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.27.1)
+
 2025-05-27 Support for Valgrind 3.25.1, x86\_linux, amd64\_linux, arm\_linux [v3.25.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.25.1)
 
 2023-10-24 Support for Valgrind 3.21.0, x86\_linux, amd64\_linux, arm\_linux [v3.21.0](https://github.com/wmkhoo/taintgrind/releases/tag/v3.21.0)
-
-2021-11-19 Support for Valgrind 3.18.1, x86\_linux, amd64\_linux, arm\_linux [v3.18.1](https://github.com/wmkhoo/taintgrind/releases/tag/v3.18.1)
 
 
 Installation (using Docker)
