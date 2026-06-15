@@ -36,7 +36,11 @@ Installation (from source)
 
 		~$ xcode-select --install
 		~$ brew install autoconf automake libtool
-		
+
+   Note: macOS builds depend on the macOS/Darwin platforms supported by the
+   corresponding Valgrind release.
+
+
 2. Download [Valgrind](http://valgrind.org)
 
 
@@ -44,9 +48,6 @@ Installation (from source)
 		~$ cd valgrind-X.X.X
 		~/valgrind-X.X.X$ 
 
-   Taintgrind must be built inside a Valgrind source tree because it uses
-   Valgrind's build system. A packaged Valgrind install, such as Homebrew's
-   valgrind package, is not enough for this build.
 
 3. Git clone taintgrind
 
@@ -59,8 +60,6 @@ Installation (from source)
 
 		~/valgrind-X.X.X/taintgrind$ ./build_taintgrind.sh
 
-   macOS builds depend on the macOS/Darwin platforms supported by the
-   corresponding Valgrind release.
 
 
 A simple example
