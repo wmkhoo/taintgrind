@@ -272,7 +272,7 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
 #endif
    }
    if ( !TNT_(clo_smt2) ) {
-      Int success = TNT_(describe_data)(data, varname, VARNAMESIZE);
+      Int success = TNT_(describe_data)((Addr)data, varname, VARNAMESIZE);
       if ( istty ) VG_(printf)("%s", KMAG);
       if (TNT_(clo_compact))
          VG_(printf)("0xFFFFFFFF ");
@@ -283,7 +283,7 @@ void TNT_(syscall_read)(ThreadId tid, UWord* args, UInt nArgs,
       if ( istty ) VG_(printf)("%s", KRED);
       VG_(printf)("0x%x", curr_offset);
       if ( istty ) VG_(printf)("%s", KNRM);
-      if (success)    VG_(printf)( " | %s:%x\n", varname, data);
+      if (success)    VG_(printf)( " | %s:%#lx\n", varname, (UWord)data);
       else            VG_(printf)( " | %s\n", varname );
    }
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
@@ -326,7 +326,7 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
 
    }
    if ( !TNT_(clo_smt2) ) {
-      Int success = TNT_(describe_data)(data, varname, VARNAMESIZE);
+      Int success = TNT_(describe_data)((Addr)data, varname, VARNAMESIZE);
       if ( istty ) VG_(printf)("%s", KMAG);
       if (TNT_(clo_compact))
          VG_(printf)("0xFFFFFFFF ");
@@ -337,7 +337,7 @@ void TNT_(syscall_pread)(ThreadId tid, UWord* args, UInt nArgs,
       if ( istty ) VG_(printf)("%s", KRED);
       VG_(printf)("0x%x", curr_offset);
       if ( istty ) VG_(printf)("%s", KNRM);
-      if (success)    VG_(printf)( " | %s:%x\n", varname, data);
+      if (success)    VG_(printf)( " | %s:%#lx\n", varname, (UWord)data);
       else            VG_(printf)( " | %s\n", varname );
    }
    read_common ( taint_offset, taint_len, curr_offset, curr_len, data );
