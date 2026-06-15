@@ -3637,9 +3637,18 @@ void tnt_post_syscall(ThreadId tid, UInt syscallno,
       TNT_(syscall_write)(tid, args, nArgs, res);
       break;
 #endif
-#if defined __NR_open && defined __NR_openat
+#ifdef __NR_open
     case __NR_open:
+      TNT_(syscall_open)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_openat
     case __NR_openat:
+      TNT_(syscall_open)(tid, args, nArgs, res);
+      break;
+#endif
+#ifdef __NR_openat2
+    case __NR_openat2:
       TNT_(syscall_open)(tid, args, nArgs, res);
       break;
 #endif
