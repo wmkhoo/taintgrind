@@ -13,6 +13,8 @@ TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
 	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
 	./capstone/libcapstone-@VGCONF_ARCH_PRI@.a
+# Keep Capstone as an explicit archive path. Valgrind's Darwin link wrapper
+# forwards .a and .o arguments, but drops -l/-L library search flags.
 if VGCONF_HAVE_PLATFORM_SEC
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
@@ -238,4 +240,3 @@ clean-local: clean-noinst_DSYMS
 install-exec-local: install-noinst_PROGRAMS install-noinst_DSYMS
 
 uninstall-local: uninstall-noinst_PROGRAMS uninstall-noinst_DSYMS
-

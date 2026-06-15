@@ -30,6 +30,12 @@ Installation (from source)
 
 
 		~$ apt install -y git wget gcc build-essential automake python gcc-multilib
+
+   On macOS, install Xcode Command Line Tools and autotools first:
+
+
+		~$ xcode-select --install
+		~$ brew install autoconf automake libtool
 		
 2. Download [Valgrind](http://valgrind.org)
 
@@ -38,6 +44,10 @@ Installation (from source)
 		~$ cd valgrind-X.X.X
 		~/valgrind-X.X.X$ 
 
+   Taintgrind must be built inside a Valgrind source tree because it uses
+   Valgrind's build system. A packaged Valgrind install, such as Homebrew's
+   valgrind package, is not enough for this build.
+
 3. Git clone taintgrind
 
 
@@ -45,6 +55,12 @@ Installation (from source)
 		~/valgrind-X.X.X$ cd taintgrind 
 
 4. Run build_taintgrind.sh (to build valgrind, taintgrind and [Capstone](http://github.com/aquynh/capstone))
+
+
+		~/valgrind-X.X.X/taintgrind$ ./build_taintgrind.sh
+
+   macOS builds depend on the macOS/Darwin platforms supported by the
+   corresponding Valgrind release.
 
 
 A simple example
