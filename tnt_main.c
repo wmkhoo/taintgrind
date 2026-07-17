@@ -1476,17 +1476,9 @@ void TNT_(make_mem_tainted) ( Addr a, SizeT len )
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
 //      ocache_sarp_Clear_Origins ( a, len );
 
-   // SMT2
+   // Trace symbolic source bytes for offline SMT generation.
    if ( TNT_(clo_smt2) )
-   {
-      Int i = 0;
-      for ( ; i<len; i++ )
-      {
-         VG_(printf)("(declare-fun byte%d () (_ BitVec 8))\n", i);
-         VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
-         VG_(printf)("(assert (= byte%d a%lx))\n", i, a+i);
-      }
-   }
+      TNT_(trace_source)( a, len, "byte" );
 }
 
 void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *var )
@@ -1497,17 +1489,9 @@ void TNT_(make_mem_tainted_named) ( Addr a, SizeT len, const HChar *var )
 //   if (UNLIKELY( TNT_(clo_tnt_level) == 3 ))
 //      ocache_sarp_Clear_Origins ( a, len );
 
-   // SMT2
+   // Trace symbolic source bytes for offline SMT generation.
    if ( TNT_(clo_smt2) )
-   {
-      Int i = 0;
-      for ( ; i<len; i++ )
-      {
-         VG_(printf)("(declare-fun %s%d () (_ BitVec 8))\n", var, i);
-         VG_(printf)("(declare-fun a%lx () (_ BitVec 8))\n", a+i);
-         VG_(printf)("(assert (= %s%d a%lx))\n", var, i, a+i);
-      }
-   }
+      TNT_(trace_source)( a, len, var );
 }
 
 void TNT_(make_mem_untainted) ( Addr a, SizeT len )
@@ -2461,11 +2445,9 @@ int istty = 0;
 #define KNRM "\e[0m"
 
 #define G_SMT2( fn ) \
-   VG_(printf)("; " #fn " \n"); \
    TNT_(fn)(clone);
 
 #define G_SMT2_LOAD( fn ) \
-   VG_(printf)("; " #fn " \n"); \
    TNT_(fn)(clone, value, taint);
 
 
@@ -2648,11 +2630,19 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
          else                    { G_SMT2(smt2_put_t_64); }
          break;
       }
+      case Ist_PutI:
+      case Ist_Dirty:
+      {
+         TNT_(trace_stmt)(clone, value, taint);
+         break;
+      }
       case Ist_Exit:
       {
          IRExpr *g = clone->Ist.Exit.guard;
          if (g->tag == Iex_RdTmp) {
             G_SMT2(smt2_exit);
+         } else {
+            TNT_(trace_stmt)(clone, value, taint);
          }
          break;
       }
@@ -2671,6 +2661,11 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                G_SMT2(smt2_get);
                break;
             }
+            case Iex_GetI:
+            {
+               TNT_(trace_stmt)(clone, value, taint);
+               break;
+            }
             case Iex_RdTmp:
             {
                G_SMT2(smt2_rdtmp);
@@ -2682,6 +2677,8 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
 
                if (arg->tag == Iex_RdTmp) {
                   G_SMT2(smt2_unop_t);
+               } else {
+                  TNT_(trace_stmt)(clone, value, taint);
                }
                break;
             }
@@ -2699,6 +2696,8 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                } else if (arg1->tag == Iex_RdTmp &&
                         arg2->tag == Iex_RdTmp ) {
                   G_SMT2(smt2_binop_tt);
+               } else {
+                  TNT_(trace_stmt)(clone, value, taint);
                }
                break;
             }
@@ -2716,21 +2715,25 @@ void do_smt2(IRStmt *clone, UWord value, UWord taint) {
                    iffalse->tag == Iex_RdTmp ) {
                   G_SMT2(smt2_ite_tt);
                } else {
-                  ppIRExpr(e);
-                  tl_assert(0 && "smt2: ite not implemented");
+                  TNT_(trace_stmt)(clone, value, taint);
                }
                break;
             }
+            case Iex_CCall:
+            case Iex_Qop:
+            case Iex_Triop:
+            {
+               TNT_(trace_stmt)(clone, value, taint);
+               break;
+            }
             default:
-               ppIRExpr(e);
-               tl_assert(0 && "smt2: not implemented");
+               TNT_(trace_stmt)(clone, value, taint);
                break;
          }
          break;
       }
       default:
-         ppIRStmt(clone);
-         tl_assert(0 && "smt2: not implemented");
+         TNT_(trace_stmt)(clone, value, taint);
          break;
    }
 }
@@ -3207,7 +3210,7 @@ void TNT_(emit_insn1) (
 
    // TODO: Check if we're emitting SMT2
    if ( TNT_(clo_smt2) ) {
-   //   do_smt2(clone, value, taint);
+      do_smt2(clone, 0, taint);
       return;
    }
 
@@ -3837,6 +3840,7 @@ Int           TNT_(do_print)                   = 0;
 //Char*         TNT_(clo_allowed_syscalls)       = "";
 //Bool          TNT_(read_syscalls_file)         = False;
 Bool          TNT_(clo_smt2)                   = False;
+HChar         TNT_(clo_trace_file)[MAX_PATH]   = "";
 Bool          TNT_(clo_head)                   = False;
 
 void init_soaap_data(void);
@@ -3860,6 +3864,10 @@ static Bool tnt_process_cmd_line_options(const HChar* arg) {
 //	   TNT_(read_syscalls_file) = True;
 //   }
    else if VG_BOOL_CLO(arg, "--smt2", TNT_(clo_smt2)) {}
+   else if VG_STR_CLO(arg, "--trace-file", tmp_str) {
+      VG_(strncpy)(TNT_(clo_trace_file), tmp_str, MAX_PATH);
+      TNT_(clo_trace_file)[MAX_PATH-1] = 0;
+   }
    else if VG_BOOL_CLO(arg, "--head", TNT_(clo_head)) {}
    else
       return VG_(replacement_malloc_process_cmd_line_option)(arg);
@@ -3878,7 +3886,8 @@ static void tnt_print_usage(void) {
 "    --tainted-ins-only= no|yes  print tainted instructions only [yes]\n"
 "    --critical-ins-only= no|yes print critical instructions only [no]\n"
 "    --compact= no|yes           print the logs in compact form (less difficult to read, faster to process by scripts) [no]\n"
-"    --smt2= no|yes              output SMT-LIBv2 format [no]\n"
+"    --smt2= no|yes              output structured trace for offline SMT-LIBv2 generation [no]\n"
+"    --trace-file=<file>         write structured trace JSONL to file [Valgrind log]\n"
 "    --head= no|yes              limited taint propagation [no]\n"
    );
 }
@@ -3988,6 +3997,7 @@ static void tnt_post_clo_init(void)
    // Print SMT2 preamble if output is smt2
    if ( TNT_(clo_smt2) )
    {
+      TNT_(trace_open)( TNT_(clo_trace_file) );
       TNT_(smt2_preamble)();
       TNT_(clo_tainted_ins_only) = True;
       TNT_(clo_critical_ins_only) = False;
@@ -4008,6 +4018,7 @@ static void tnt_fini(Int exitcode)
    VG_(free)(tt);
    VG_(free)(ri);
    VG_(free)(varname);
+   TNT_(trace_close)();
 }
 
 static void tnt_pre_clo_init(void)

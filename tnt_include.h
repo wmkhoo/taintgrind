@@ -152,6 +152,7 @@ extern Bool   TNT_(clo_taint_network);
 extern Bool   TNT_(clo_taint_stdin);
 extern Int    TNT_(do_print);
 extern Bool   TNT_(clo_smt2);
+extern HChar  TNT_(clo_trace_file)[MAX_PATH];
 extern Bool   TNT_(clo_head);
 //extern Char* TNT_(clo_allowed_syscalls);
 //extern Bool  TNT_(read_syscalls_file);
@@ -269,6 +270,10 @@ extern HChar *varname;
 #define is_tainted(ltmp) (ti[ltmp] >> 31)
 
 /* SMT2 functions */
+extern void TNT_(trace_open)    ( const HChar * );
+extern void TNT_(trace_close)   ( void );
+extern void TNT_(trace_source)  ( Addr, SizeT, const HChar * );
+extern void TNT_(trace_stmt)    ( IRStmt *, UWord, UWord );
 extern void TNT_(smt2_preamble) (void);
 extern void TNT_(smt2_exit)     ( IRStmt * );
 extern void TNT_(smt2_load)     ( IRStmt *, UWord, UWord );
