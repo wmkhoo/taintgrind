@@ -1,7 +1,11 @@
 
 CAPSTONE_VERSION = 3.0.4
 
+if ENABLE_TAINTGRIND_CAPSTONE
 SUBDIRS = capstone . tests
+else
+SUBDIRS = . tests
+endif
 
 include $(top_srcdir)/Makefile.all.am
 
@@ -11,15 +15,21 @@ include $(top_srcdir)/Makefile.all.am
 
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
-	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a \
+	../VEX/libvex-@VGCONF_ARCH_PRI@-@VGCONF_OS@.a
+if ENABLE_TAINTGRIND_CAPSTONE
+TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@ += \
 	./capstone/libcapstone-@VGCONF_ARCH_PRI@.a
+endif
 # Keep Capstone as an explicit archive path. Valgrind's Darwin link wrapper
 # forwards .a and .o arguments, but drops -l/-L library search flags.
 if VGCONF_HAVE_PLATFORM_SEC
 TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@ = \
 	../coregrind/libcoregrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
-	../VEX/libvex-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a \
+	../VEX/libvex-@VGCONF_ARCH_SEC@-@VGCONF_OS@.a
+if ENABLE_TAINTGRIND_CAPSTONE
+TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@ += \
 	./capstone/libcapstone-@VGCONF_ARCH_SEC@.a
+endif
 endif
 
 
