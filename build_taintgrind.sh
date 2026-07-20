@@ -5,6 +5,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 valgrind_root="$(cd "$script_dir/.." && pwd)"
 use_capstone=no
+capstone_placeholder=no
 
 # Find out how far we can parallelize the build.
 jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)"
@@ -75,9 +76,16 @@ prepare_capstone() {
     archive="$script_dir/capstone.tar.gz"
     source_dir="$script_dir/capstone-$capstone_version"
 
-    if [ -d "$script_dir/capstone" ]; then
+    if [ -f "$script_dir/capstone/include/capstone.h" ]; then
         echo "Using existing $script_dir/capstone"
         return
+    fi
+
+    if [ -d "$script_dir/capstone" ]; then
+        if ! rmdir "$script_dir/capstone" 2>/dev/null; then
+            echo "Error: $script_dir/capstone exists but is not a Capstone source tree" >&2
+            exit 1
+        fi
     fi
 
     if [ ! -f "$archive" ]; then
@@ -88,6 +96,13 @@ prepare_capstone() {
     tar xf "$archive"
     patch -p1 -d "$source_dir" < "$script_dir/capstone-$capstone_version.patch"
     mv "$source_dir" "$script_dir/capstone"
+}
+
+cleanup_capstone_placeholder() {
+    if [ "$capstone_placeholder" = yes ]; then
+        rmdir "$script_dir/capstone" 2>/dev/null || true
+        capstone_placeholder=no
+    fi
 }
 
 main() {
@@ -115,12 +130,21 @@ main() {
     if [ "$use_capstone" = yes ]; then
         prepare_capstone
         configure_args+=(--enable-taintgrind-capstone)
+    elif [ ! -d "$script_dir/capstone" ]; then
+        # Automake validates directories named in conditional SUBDIRS even
+        # when the condition is false. The empty directory is needed only
+        # while automake generates Makefile.in.
+        mkdir "$script_dir/capstone"
+        capstone_placeholder=yes
+        trap cleanup_capstone_placeholder EXIT
     fi
 
     # Build Taintgrind as part of the main Valgrind tree so vg-in-place finds
     # the tool under $valgrind_root/.in_place.
     cd "$valgrind_root"
     ./autogen.sh
+    cleanup_capstone_placeholder
+    trap - EXIT
     ./configure "${configure_args[@]}"
     make -j"$jobs"
     make install
